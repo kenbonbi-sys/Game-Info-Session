@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Buddy vs Quái Vật Dễ Sợ</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+  <link rel="stylesheet" href="src/pixel.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+    body {
+      background: var(--page) url("assets/design/cio-academy/assets/bg/bg-main.png") center bottom / cover no-repeat;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+    canvas#game { position: fixed; inset: 0; display: block; touch-action: none; }
+
+    /* Question card (HUD panel) */
+    .qcard { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; translate: -50% 0; width: min(560px, calc(100% - 26px)); padding: 14px 16px 12px; user-select: none; }
+    .qhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; }
+    #qMeta { font: 800 12px/1.3 var(--font-disp); color: var(--ink-2); letter-spacing: 0.02em; }
+    #score { font: 800 11px/1 var(--font-disp); letter-spacing: 0.02em; text-transform: none; }
+    .qcard .pbar { margin: 10px 0 10px; }
+    #qText { margin: 0; font: 800 15.5px/1.4 var(--font-disp); color: var(--ink); text-wrap: pretty; }
+    #qOptions { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+    #qOptions:empty { display: none; }
+    .opt { display: flex; align-items: flex-start; gap: 9px; padding: 7px 9px; font-size: 13.5px; line-height: 1.45; background: var(--cream); border: 2px solid var(--cream-3); }
+    .opt b { flex: none; width: 22px; height: 22px; display: grid; place-items: center; font: 9px/1 var(--font-pixel); color: #fff; background: var(--ink); clip-path: var(--clip-chip-in); }
+    .opt-0 b { background: var(--amber); color: var(--ink); }
+    .opt-1 b { background: var(--blue); }
+    .opt-2 b { background: var(--green); }
+    .opt-3 b { background: var(--violet); }
+    .opt.picked { border-color: var(--ink); }
+    .opt.correct { background: var(--green-l); border-color: var(--green-d); color: var(--green-d); font-weight: 600; }
+    .opt.wrong { background: var(--rose-l); border-color: var(--rose-d); color: var(--rose-d); }
+    .opt.dim { opacity: 0.45; }
+    #qStatus { margin: 10px 0 0; min-height: 1.3em; font: 700 13px/1.4 var(--font-disp); color: var(--primary-d); }
+    .hint { margin: 6px 0 0; font-size: 12px; color: var(--ink-3); }
+
+    /* Answer pop-up: pixel buttons, bottom sheet on phones */
+    .answers { position: fixed; left: 50%; translate: -50% 0; bottom: calc(16px + env(safe-area-inset-bottom)); width: min(560px, calc(100% - 30px)); display: grid; gap: 12px; animation: ca-popin 0.3s steps(6) both; }
+    .ans { --face: var(--blue); display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 12px 16px; text-align: left; color: #fff; font: 700 15px/1.3 var(--font-disp); }
+    .ans b { flex: none; width: 30px; height: 30px; display: grid; place-items: center; font: 11px/1 var(--font-pixel); color: #fff; background: var(--ink); clip-path: var(--clip-chip-in); }
+    .ans-0 { --face: var(--amber); color: var(--ink); }
+    .ans-0:hover { --face: #FBBF24; }
+    .ans-1 { --face: var(--blue); }
+    .ans-1:hover { --face: var(--blue-d); }
+    .ans-2 { --face: var(--green); }
+    .ans-2:hover { --face: var(--green-d); }
+    .ans-3 { --face: var(--violet); }
+    .ans-3:hover { --face: var(--violet-d); }
+    .ans.ans-out { --face: #C4C4C4; color: #fff; opacity: 0.6; pointer-events: none; filter: none; }
+
+    /* Item tray */
+    .items { position: fixed; right: calc(14px + env(safe-area-inset-right)); top: 46%; translate: 0 -50%; display: grid; gap: 14px; }
+    .item { --face: var(--paper); width: 76px; padding: 9px 6px 10px; display: grid; justify-items: center; gap: 3px; color: var(--ink); font: 700 10px/1.15 var(--font-disp); text-align: center; }
+    .item:hover:not(:disabled) { --face: var(--cream-2); }
+    .item img { width: 44px; height: 44px; object-fit: contain; pointer-events: none; }
+    .item .count { position: absolute; top: 7px; right: 7px; min-width: 18px; padding: 3px 4px; font: 8px/1 var(--font-pixel); color: var(--ink); background: var(--amber); clip-path: var(--clip-chip-in); }
+    .item.armed { --face: var(--amber-l); }
+    .item.armed .count { background: var(--green); color: #fff; animation: ca-blink 1s steps(1) infinite; }
+    .item:disabled { cursor: default; }
+    .item:disabled:not(.armed) { opacity: 0.45; filter: none; }
+
+    /* Turret join/leave prompt (lobby) */
+    .seat { --face: var(--amber-l); position: fixed; left: 50%; translate: -50% 0; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(390px, calc(100% - 30px)); display: grid; gap: 8px; padding: 16px 18px 18px; text-align: center; }
+    .seat-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 8px; }
+    #seatTitle { font: 900 17px/1.2 var(--font-disp); color: var(--amber-d); }
+    #seatInfo { font-size: 14px; color: var(--ink); }
+    .seat-sub { font: 700 12px/1 var(--font-disp); color: var(--ink-2); }
+    #seatBtn { --face: var(--amber); color: var(--ink); width: 100%; }
+    #seatBtn:hover:not(:disabled) { --face: var(--amber-d); color: #fff; }
+    #seatBtn.leave { --face: var(--blue); color: #fff; }
+    #seatBtn.leave:hover:not(:disabled) { --face: var(--blue-d); }
+
+    /* Toast banner */
+    #banner { --face: var(--blue-l); --line: var(--ink); position: fixed; left: 50%; top: 56%; translate: -50% -50%; padding: 14px 24px; font: 900 24px/1.1 var(--font-disp); color: var(--blue-d); white-space: nowrap; pointer-events: none; opacity: 0; }
+    #banner[data-tone="green"] { --face: var(--green-l); color: var(--green-d); }
+    #banner[data-tone="rose"] { --face: var(--rose-l); color: var(--rose-d); }
+    #banner[data-tone="amber"] { --face: var(--amber-l); color: var(--amber-d); }
+    #banner.pop { animation: toast-pop 1.2s steps(12) both; }
+    @keyframes toast-pop { 0% { opacity: 0; transform: translateY(10px); } 12%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-10px); } }
+
+    #conn { --face: var(--rose-l); position: fixed; left: 50%; translate: -50% 0; bottom: 18px; padding: 10px 16px; font: 700 13px var(--font-disp); color: var(--rose-d); }
+
+    /* Join & end screens */
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(253, 247, 232, 0.4); }
+    .dialog { width: min(410px, 100%); padding: 26px 24px 24px; text-align: center; }
+    .dialog h1 { margin: 12px 0 8px; font: 900 32px/1.05 var(--font-disp); color: var(--ink); text-wrap: balance; }
+    .dialog h1 span { color: var(--rose); }
+    .dialog p { margin: 6px 0; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+    .eyebrow { font-family: var(--font-pixel); font-size: 8px; letter-spacing: 0.05em; }
+    #nameInput { width: 100%; margin: 16px 0 16px; padding: 12px; font: 700 18px var(--font-disp); color: var(--ink); text-align: center; background: var(--cream); border: 3px solid var(--ink); border-radius: 0; outline: none; }
+    #nameInput:focus { background: #fff; box-shadow: 4px 4px 0 var(--shadow); }
+    #joinBtn { width: 100%; }
+    .error { min-height: 1.2em; font: 700 13px var(--font-disp); color: var(--rose-d) !important; }
+    .rank { margin: 14px 0 10px; font: 28px/1.2 var(--font-pixel); color: var(--primary-d); }
+
+    /* Laptop / desktop: the question card becomes a sidebar, the map fills the right. */
+    @media (min-width: 900px) and (orientation: landscape) {
+      /* Free space between the sidebar card (left) and the item tray (right). */
+      :root { --lane-l: calc(min(480px, 34vw) + 40px); --lane-r: 136px; --lane-mid: calc((var(--lane-l) + 100vw - var(--lane-r)) / 2); }
+      .qcard { top: 18px; left: 18px; translate: none; width: min(480px, 34vw); padding: 20px 22px 16px; }
+      #qMeta { font-size: 14px; }
+      #score { font-size: 10px; }
+      #qText { font-size: 22px; }
+      #qOptions { gap: 8px; }
+      .opt { font-size: 16px; gap: 12px; padding: 9px 11px; }
+      .opt b { width: 28px; height: 28px; font-size: 11px; }
+      #qStatus { font-size: 15px; }
+      .hint { font-size: 13px; }
+      #banner { left: var(--lane-mid); font-size: 30px; }
+      .answers { left: var(--lane-mid); top: 58%; bottom: auto; translate: -50% -50%; width: min(780px, calc(100vw - var(--lane-l) - var(--lane-r) - 16px)); grid-template-columns: 1fr 1fr; gap: 18px 20px; }
+      .ans { min-height: 96px; padding: 14px 18px; font-size: 17px; }
+      .ans b { width: 36px; height: 36px; font-size: 13px; }
+      .seat { left: var(--lane-mid); }
+      .items { right: 20px; top: 50%; gap: 16px; }
+      .item { width: 98px; font-size: 12px; padding: 10px 8px 12px; }
+      .item img { width: 60px; height: 60px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <section id="card" class="px qcard" hidden>
+    <i class="riv l"></i><i class="riv r"></i>
+    <div class="qhead"><span id="qMeta">Đang kết nối…</span><span class="chip soft-amber"><span id="score">0 điểm</span></span></div>
+    <div class="pbar sm amber live"><i id="timerFill"></i></div>
+    <p id="qText"></p>
+    <ol id="qOptions"></ol>
+    <p id="qStatus"></p>
+    <p id="hint" class="hint">WASD / mũi tên để chạy · E vào/thoát ụ · 1–4 chọn đáp án</p>
+  </section>
+
+  <div id="answers" class="answers" hidden></div>
+
+  <div id="items" class="items" hidden>
+    <button type="button" class="item" data-item="hint" title="Buddy thông thái: loại 2 đáp án sai của câu đang hỏi">
+      <img src="assets/source/items/buddy-thong-thai.svg" alt=""><b class="count">1</b><span>Buddy thông thái</span>
+    </button>
+    <button type="button" class="item" data-item="shield" title="Khiên Research Lab: đỡ 1 lần sai hoặc hết giờ, giữ chuỗi combo">
+      <img src="assets/source/items/khien-research-lab.svg" alt=""><b class="count">1</b><span>Khiên Research Lab</span>
+    </button>
+    <button type="button" class="item" data-item="boost" title="Súng giọt tự tin: câu đúng kế tiếp được x2 điểm">
+      <img src="assets/source/items/sung-giot-tu-tin.svg" alt=""><b class="count">1</b><span>Súng giọt tự tin</span>
+    </button>
+  </div>
+
+  <div id="seat" class="px seat" hidden>
+    <i class="riv l"></i><i class="riv r"></i>
+    <div class="seat-row"><span id="seatTitle"></span><span id="seatInfo"></span></div>
+    <div id="seatFree" class="seat-sub"></div>
+    <button id="seatBtn" type="button" class="pbtn">Tham gia</button>
+  </div>
+
+  <div id="banner" class="px tier-card"></div>
+  <div id="conn" class="px tier-card" hidden>Mất kết nối, đang thử lại…</div>
+
+  <section id="join" class="overlay">
+    <form id="joinForm" class="px dialog">
+      <i class="riv l"></i><i class="riv r"></i>
+      <span class="chip soft-blue eyebrow">CIO ACADEMY · INFO SESSION</span>
+      <h1>Buddy vs <span>Quái Vật Dễ Sợ</span></h1>
+      <p>Chọn một ụ súng trong phòng chờ. Trả lời đúng thì ụ của bạn bắn Quái Vật Dễ Sợ, sai thì bị bắn trả. Càng nhanh càng nhiều điểm!</p>
+      <input id="nameInput" maxlength="20" placeholder="Tên của bạn" autocomplete="nickname" required>
+      <button id="joinBtn" type="submit" class="pbtn lg">Vào chơi</button>
+      <p id="joinError" class="error"></p>
+    </form>
+  </section>
+
+  <section id="end" class="overlay" hidden>
+    <div class="px dialog">
+      <i class="riv l"></i><i class="riv r"></i>
+      <span class="chip soft-amber eyebrow">GAME OVER</span>
+      <h1 id="endTitle">Kết thúc!</h1>
+      <div id="endRank" class="rank ca-rankpop"></div>
+      <p id="endScore"></p>
+      <p>Xem bảng xếp hạng trên màn hình lớn nhé!</p>
+    </div>
+  </section>
+
+  <script type="module" src="src/play.js"></script>
+</body>
+</html>

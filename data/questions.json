@@ -1,0 +1,187 @@
+{
+  "timePerQuestion": 15,
+  "revealSeconds": 5,
+  "shuffleOptions": true,
+  "order": [
+    "Comm-2",
+    "LH-2", "LH-3", "LH-4", "LH-5", "LH-6", "LH-7",
+    "RL-1", "RL-2", "RL-3", "RL-4", "RL-5", "RL-6",
+    "Comm-3",
+    "Case-1"
+  ],
+  "questions": [
+    {
+      "id": "LH-1", "group": "Learning Hub", "answer": 2,
+      "note": "Đổi lại wording — đang không nằm trong order",
+      "text": "Sếp hỏi: \"Bao nhiêu người đang gặp lỗi này?\". Nhóm nên làm gì?",
+      "options": [
+        "Phỏng vấn sâu 5 người gặp lỗi để hiểu rõ nguyên nhân",
+        "Quan sát 3 người dùng thao tác lại đúng luồng bị lỗi",
+        "Khảo sát định lượng trên mẫu đủ lớn để ra con số",
+        "Đọc lại báo cáo định tính của quý trước để suy ra"
+      ]
+    },
+    {
+      "id": "LH-2", "group": "Learning Hub", "answer": 1,
+      "text": "Đâu là câu hỏi \"dẫn dắt\" (leading question) cần tránh khi phỏng vấn?",
+      "options": [
+        "\"Điều gì khiến bạn quyết định không đăng ký sản phẩm?\"",
+        "\"Bạn thấy tính năng này tiện và dễ dùng đúng không?\"",
+        "\"Bạn nghĩ gì về trải nghiệm khi dùng tính năng này?\"",
+        "\"Kể lại lần gần nhất bạn cân nhắc dùng sản phẩm này?\""
+      ]
+    },
+    {
+      "id": "LH-3", "group": "Learning Hub", "answer": 3,
+      "text": "Nguyên tắc Phễu (Funnel) khi thiết kế câu hỏi phỏng vấn là gì?",
+      "options": [
+        "Hỏi cùng một câu ở nhiều thời điểm để kiểm tra độ nhất quán",
+        "Bắt đầu bằng câu hỏi hẹp, rồi mở rộng dần ra bối cảnh xung quanh",
+        "Hỏi xen kẽ câu dễ và câu khó để người dùng đỡ mệt khi trả lời",
+        "Bắt đầu bằng câu hỏi rộng, rồi thu hẹp dần vào chi tiết cụ thể"
+      ]
+    },
+    {
+      "id": "LH-4", "group": "Learning Hub", "answer": 0,
+      "text": "Sếp nói \"Test đi em\". Bạn cần biết người dùng vướng ở bước nào trong luồng. Chọn phương pháp nào?",
+      "options": [
+        "Usability Testing — cho người dùng thao tác thật rồi quan sát",
+        "A/B Testing — so sánh hai phiên bản xem bản nào cho số tốt hơn",
+        "Concept Test — đo mức độ hấp dẫn của ý tưởng trước khi làm",
+        "Khảo sát định lượng — hỏi người dùng xem họ vướng ở bước nào"
+      ]
+    },
+    {
+      "id": "LH-5", "group": "Learning Hub", "answer": 2,
+      "text": "Người dùng trả lời chung chung: \"Tôi thấy hơi phức tạp\". Bạn nên làm gì?",
+      "options": [
+        "Ghi nhận \"giao diện phức tạp\" rồi chuyển sang câu hỏi kế tiếp",
+        "Nhắc lại nguyên văn câu hỏi ban đầu để họ trả lời rõ ràng hơn",
+        "Hỏi tiếp để họ kể cụ thể lúc nào và ở bước nào thấy phức tạp",
+        "Gợi ý sẵn vài lý do để họ chọn cho nhanh, đỡ mất thời gian"
+      ]
+    },
+    {
+      "id": "LH-6", "group": "Learning Hub", "answer": 1,
+      "text": "Luyện phỏng vấn với AI trên Learning Hub trước khi gặp người dùng thật giúp gì?",
+      "options": [
+        "Tạo sẵn báo cáo nghiên cứu để khỏi phải viết lại sau buổi phỏng vấn",
+        "Nhận feedback ngay về cách đặt câu hỏi để sửa lỗi trước khi ra thật",
+        "Thay cho việc phỏng vấn người dùng thật nếu không kịp tuyển đáp viên",
+        "Bỏ được bước soạn kịch bản thảo luận (DG) trước mỗi buổi phỏng vấn"
+      ]
+    },
+    {
+      "id": "LH-7", "group": "Learning Hub", "answer": 0,
+      "text": "Bạn đang vướng một bài toán Research nhưng chưa biết học phần nào. Learning Hub giúp bằng cách nào?",
+      "options": [
+        "Nhập bài toán đang vướng, hệ thống gợi ý Lộ trình cá nhân cần học",
+        "Gửi toàn bộ 40 bài học để bạn tự chọn phần mình đang cần dùng",
+        "Xếp một buổi tư vấn 1-1 với chuyên gia research của CIO Academy",
+        "Chuyển câu hỏi của bạn sang kênh chat để đồng nghiệp cùng trả lời"
+      ]
+    },
+    {
+      "id": "Comm-1", "group": "Chiến dịch", "answer": 2, "answerConfirmed": false,
+      "note": "Đang không nằm trong order (chỉ lấy 2 câu Comm)",
+      "text": "Trong chiến dịch, chú cáo cam CIO Buddy đóng vai trò gì?",
+      "options": [
+        "Người hùng trực tiếp ra tay tiêu diệt quái vật",
+        "Chuyên gia chấm điểm bài làm của MoMoers",
+        "Người đồng hành cùng MoMoers trên con đường chuẩn bị tiêu diệt quái vật",
+        "Người dùng thật được mời tới buổi phỏng vấn"
+      ]
+    },
+    {
+      "id": "Comm-2", "group": "Chiến dịch", "answer": 2, "answerConfirmed": false,
+      "text": "Quái vật \"Dễ sợ\" mà cả nhà cùng chung tay tiêu diệt đại diện cho điều gì?",
+      "options": [
+        "Deadline dự án luôn bị rút ngắn quá mức",
+        "Việc thiếu ngân sách cho nghiên cứu người dùng",
+        "Sợ làm nghiên cứu vì không biết bắt đầu từ đâu",
+        "Các đối thủ cạnh tranh mạnh trên thị trường"
+      ]
+    },
+    {
+      "id": "Comm-3", "group": "Chiến dịch", "answer": 2,
+      "text": "Trong chiến dịch, Learning Hub và Research Lab khác nhau ở đâu?",
+      "options": [
+        "Learning Hub dạy lý thuyết, Research Lab cho làm bài tập thực hành",
+        "Learning Hub dành cho người mới, Research Lab cho người đã có nghề",
+        "Learning Hub để học đúng phần đang cần, Research Lab để làm dự án thật",
+        "Cả hai đều là nơi học, chỉ khác nhau ở độ dài của mỗi bài"
+      ]
+    },
+    {
+      "id": "Case-1", "group": "Case study", "answer": 2, "answerConfirmed": false,
+      "note": "Câu out of scope, đặt cuối",
+      "text": "Trong case \"Hoàn tiền mua sắm\", phương án nào dưới đây KHÔNG phải là giả định của BU về khó khăn trong việc thúc đẩy người dùng sử dụng tính năng?",
+      "options": [
+        "Người dùng ngại chia sẻ số điện thoại làm mã giới thiệu",
+        "Quy trình giới thiệu khó hiểu",
+        "Ngân sách cho chương trình khuyến mãi chưa đủ lớn",
+        "Người dùng không biết ai chưa dùng Hoàn Tiền Mua Sắm để giới thiệu"
+      ]
+    },
+    {
+      "id": "RL-1", "group": "Research Lab", "answer": 2, "answerConfirmed": false,
+      "text": "Research Lab KHÔNG làm giúp bạn việc nào sau đây?",
+      "options": [
+        "Viết kế hoạch nghiên cứu từ mô tả yêu cầu",
+        "Dựng bảng câu hỏi cho khảo sát định lượng",
+        "Ngồi phỏng vấn người dùng thay bạn",
+        "Tổng hợp dữ liệu khảo sát và báo cáo"
+      ]
+    },
+    {
+      "id": "RL-2", "group": "Research Lab", "answer": 0, "answerConfirmed": false,
+      "text": "Muốn Research Lab cho ra kế hoạch tốt, điều quan trọng nhất bạn cần chuẩn bị là gì?",
+      "options": [
+        "Mô tả rõ vấn đề kinh doanh và điều mình muốn biết",
+        "Danh sách người dùng sẽ mời tham gia phỏng vấn",
+        "Ngân sách dự kiến cho toàn bộ dự án nghiên cứu",
+        "Bản báo cáo của dự án nghiên cứu gần nhất"
+      ]
+    },
+    {
+      "id": "RL-3", "group": "Research Lab", "answer": 2, "answerConfirmed": false,
+      "text": "Báo cáo cuối cùng của một dự án trên Research Lab được tạo ra từ đâu?",
+      "options": [
+        "Từ ý kiến của những người tham gia dự án",
+        "Từ báo cáo của các dự án tương tự trước đó",
+        "Từ dữ liệu trả lời khảo sát mà người dùng gửi về",
+        "Từ số liệu kinh doanh của sản phẩm"
+      ]
+    },
+    {
+      "id": "RL-4", "group": "Research Lab", "answer": 3, "answerConfirmed": false,
+      "text": "Khi nào nên dùng phỏng vấn định tính thay vì khảo sát định lượng?",
+      "options": [
+        "Khi cần biết bao nhiêu phần trăm người dùng nghĩ vậy",
+        "Khi cần có kết quả nhanh trong vòng một ngày",
+        "Khi cần số liệu để đưa vào báo cáo cho cấp trên",
+        "Khi cần hiểu vì sao người dùng hành xử như vậy"
+      ]
+    },
+    {
+      "id": "RL-5", "group": "Research Lab", "answer": 0, "answerConfirmed": false,
+      "text": "Vì sao cần có kế hoạch nghiên cứu trước khi bắt tay vào phỏng vấn hay khảo sát?",
+      "options": [
+        "Để biết cần tìm hiểu điều gì và cần hỏi ai",
+        "Để dự án trông chuyên nghiệp hơn khi trình bày",
+        "Để đủ hồ sơ khi xin duyệt ngân sách nghiên cứu",
+        "Để có tài liệu lưu lại sau khi dự án kết thúc"
+      ]
+    },
+    {
+      "id": "RL-6", "group": "Research Lab", "answer": 3, "answerConfirmed": false,
+      "text": "Giả thuyết (hypothesis) trong một dự án nghiên cứu là gì?",
+      "options": [
+        "Kết luận cuối cùng đã được chứng minh bằng số liệu",
+        "Danh sách câu hỏi sẽ dùng khi đi phỏng vấn",
+        "Mục tiêu kinh doanh mà sản phẩm cần đạt được",
+        "Phỏng đoán về nguyên nhân, cần được kiểm chứng"
+      ]
+    }
+  ]
+}

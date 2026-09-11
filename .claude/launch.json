@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fox-swarm",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 5173
+    },
+    {
+      "name": "fox-quiz-test",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js", "--port=5174"],
+      "port": 5174
+    }
+  ]
+}

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Interview Modules — bản pixel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+@font-face{font-family:"MoMo Trusts Display";src:url("assets/fonts/MomoTrustDisplay-Regular.ttf") format("truetype");font-weight:400 900;font-display:swap}
+@font-face{font-family:"MoMo Trusts Sans";src:url("assets/fonts/MomoTrustSans-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-display:swap}
+*{box-sizing:border-box}
+body{margin:0;background:#FDF7E8;color:#4F1F13;font-family:"MoMo Trusts Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+img{image-rendering:pixelated}
+a{color:#BE185D;text-decoration:none}
+a:hover{color:#EC4899;text-decoration:underline}
+pre{margin:0;white-space:pre-wrap}
+textarea,input,button{font-family:inherit}
+@keyframes ca-popin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes ca-blink{50%{opacity:0}}
+@keyframes ca-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+@keyframes ca-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ca-voice-bar{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+@keyframes ca-shimmer-sweep{0%{background-position:180% 0}100%{background-position:-80% 0}}
+@keyframes ca-fill{0%{width:6%}100%{width:94%}}
+</style>
+</helmet>
+
+<div style="--ink:#4F1F13;--clip:polygon(0 12px,4px 12px,4px 8px,8px 8px,8px 4px,12px 4px,12px 0,calc(100% - 12px) 0,calc(100% - 12px) 4px,calc(100% - 8px) 4px,calc(100% - 8px) 8px,calc(100% - 4px) 8px,calc(100% - 4px) 12px,100% 12px,100% calc(100% - 12px),calc(100% - 4px) calc(100% - 12px),calc(100% - 4px) calc(100% - 8px),calc(100% - 8px) calc(100% - 8px),calc(100% - 8px) calc(100% - 4px),calc(100% - 12px) calc(100% - 4px),calc(100% - 12px) 100%,12px 100%,12px calc(100% - 4px),8px calc(100% - 4px),8px calc(100% - 8px),4px calc(100% - 8px),4px calc(100% - 12px),0 calc(100% - 12px));--clipPi:polygon(0 8px,4px 8px,4px 4px,8px 4px,8px 0,calc(100% - 8px) 0,calc(100% - 8px) 4px,calc(100% - 4px) 4px,calc(100% - 4px) 8px,100% 8px,100% calc(100% - 8px),calc(100% - 4px) calc(100% - 8px),calc(100% - 4px) calc(100% - 4px),calc(100% - 8px) calc(100% - 4px),calc(100% - 8px) 100%,8px 100%,8px calc(100% - 4px),4px calc(100% - 4px),4px calc(100% - 8px),0 calc(100% - 8px));--clipC:polygon(0 6px,2px 6px,2px 4px,4px 4px,4px 2px,6px 2px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 2px,calc(100% - 4px) 2px,calc(100% - 4px) 4px,calc(100% - 2px) 4px,calc(100% - 2px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 2px) calc(100% - 6px),calc(100% - 2px) calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) calc(100% - 2px),calc(100% - 6px) calc(100% - 2px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 2px),4px calc(100% - 2px),4px calc(100% - 4px),2px calc(100% - 4px),2px calc(100% - 6px),0 calc(100% - 6px));--clipCi:polygon(0 4px,2px 4px,2px 2px,4px 2px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 2px) calc(100% - 4px),calc(100% - 2px) calc(100% - 2px),calc(100% - 4px) calc(100% - 2px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 2px),2px calc(100% - 2px),2px calc(100% - 4px),0 calc(100% - 4px));--clipSi:polygon(0 2px,2px 2px,2px 0,calc(100% - 2px) 0,calc(100% - 2px) 2px,100% 2px,100% calc(100% - 2px),calc(100% - 2px) calc(100% - 2px),calc(100% - 2px) 100%,2px 100%,2px calc(100% - 2px),0 calc(100% - 2px));--bd:drop-shadow(4px 0 0 #4F1F13) drop-shadow(-4px 0 0 #4F1F13) drop-shadow(0 4px 0 #4F1F13) drop-shadow(0 -4px 0 #4F1F13);--btn:drop-shadow(4px 0 0 #4F1F13) drop-shadow(-4px 0 0 #4F1F13) drop-shadow(0 4px 0 #4F1F13) drop-shadow(0 -4px 0 #4F1F13) drop-shadow(4px 4px 0 rgba(42,31,23,1));--sh4:drop-shadow(4px 4px 0 rgba(42,31,23,1));--sh5:drop-shadow(5px 5px 0 rgba(42,31,23,1));--sh7:drop-shadow(7px 7px 0 rgba(42,31,23,1));background:#FDF7E8;min-height:100vh;font-family:'MoMo Trusts Sans',system-ui,sans-serif;color:#4F1F13">
+
+<div style="background-color:#FCF8EC;background-image:linear-gradient(rgba(42,31,23,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(42,31,23,.035) 1px,transparent 1px);background-size:24px 24px;border-bottom:4px solid #4F1F13">
+  <div style="max-width:1240px;margin:0 auto;padding:48px 40px 42px;display:grid;grid-template-columns:1fr 240px;gap:36px;align-items:center">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:.05em;color:#6D28D9;background:#EDE9FE;border:2px solid #4F1F13;padding:6px 10px;margin-bottom:20px">
+        <span>AI INTERVIEW MODULES</span><span style="animation:ca-blink 1s steps(1) infinite">_</span>
+      </div>
+      <h1 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:52px;line-height:1.02;margin:0;letter-spacing:-.01em">Luyện phỏng vấn với AI<br /><span style="color:#8B5CF6">bản pixel</span></h1>
+      <p style="font-size:16.5px;line-height:1.65;color:#6E5F4E;max-width:600px;margin:18px 0 24px;text-wrap:pretty">Thiết kế lại 4 màn của module <code style="font-family:ui-monospace,monospace;font-size:14px;background:#F4ECD6;padding:2px 6px">practice</code> / <code style="font-family:ui-monospace,monospace;font-size:14px;background:#F4ECD6;padding:2px 6px">interview</code> theo hệ pixel. Nội dung là dữ liệu thật: 7 drill trong <code style="font-family:ui-monospace,monospace;font-size:14px;background:#F4ECD6;padding:2px 6px">seed-practice-scenarios.ts</code>, persona trong <code style="font-family:ui-monospace,monospace;font-size:14px;background:#F4ECD6;padding:2px 6px">PRACTICE_DRILL_PERSONAS</code>, 4 trục điểm trong <code style="font-family:ui-monospace,monospace;font-size:14px;background:#F4ECD6;padding:2px 6px">TECHNIQUE_LABELS</code>.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <a href="#hub" style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;color:#fff;background:#8B5CF6;padding:11px 20px;display:inline-flex;align-items:center;gap:8px;clip-path:var(--clip);filter:var(--btn);text-decoration:none" style-hover="background:#6D28D9;text-decoration:none" style-active="transform:translate(4px,4px);filter:var(--bd)">Xem 4 màn</a>
+        <a href="CIO Academy Pixel System.dc.html" style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;color:#4F1F13;background:#FFFFFF;padding:11px 20px;display:inline-flex;align-items:center;gap:8px;clip-path:var(--clip);filter:var(--btn);text-decoration:none" style-hover="background:#F4ECD6;text-decoration:none" style-active="transform:translate(4px,4px);filter:var(--bd)">← Design system</a>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:flex-end;gap:0">
+      <img src="assets/motion/boss-talk.svg" alt="Người tham gia AI" style="width:150px;height:150px;animation:ca-nudge 1.1s steps(2) infinite" />
+      <img src="assets/pose/writing-note.svg" alt="Moderator" style="width:110px;height:110px;animation:ca-bob 2.4s steps(5) infinite" />
+    </div>
+  </div>
+</div>
+
+<div style="max-width:1240px;margin:0 auto;padding:40px;display:flex;flex-direction:column;gap:64px">
+
+  <section id="hub" data-screen-label="01 Hub AI Playground" style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:10px;color:#8B5CF6;letter-spacing:.05em;margin-bottom:12px">MÀN 01 · /CIO-ACADEMY/PRACTICE</div>
+      <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:32px;margin:0 0 8px;line-height:1.05">Hub — chọn bài luyện</h2>
+      <p style="font-size:15.5px;line-height:1.65;color:#6E5F4E;max-width:700px;margin:0">Bản hiện tại có hero ảnh CDN <code style="font-family:ui-monospace,monospace;font-size:13.5px">ai-interview-hero-v2.png</code> dùng chung cho cả 6 drill card, nên 6 thẻ trông y hệt nhau. Bản pixel bỏ ảnh, thay bằng <b>icon kỹ năng + màu độ khó</b> — phân biệt được ngay từ xa.</p>
+    </div>
+
+    <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh7)">
+      <div style="background:#FDF7E8;clip-path:var(--clipPi);overflow:hidden;display:grid;grid-template-columns:236px 1fr">
+
+        <div style="border-right:2px solid #FDEFE0;display:flex;flex-direction:column;background:#FCF8EC;padding:8px 0 14px">
+          <div style="display:flex;justify-content:center;padding:4px 0 10px"><img src="assets/icon/logo-learning-hub.svg" alt="Learning Hub" style="width:150px;height:auto" /></div>
+          <nav style="display:flex;flex-direction:column;gap:4px;padding:6px 10px;flex:1">
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/ai-nav-icon.svg" alt="" style="width:24px;height:24px" />Lộ trình cá nhân</span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/explore-map-icon.svg" alt="" style="width:24px;height:24px" />Tất cả khóa học</span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:13.5px;color:#7B4000;background:#FDF6E3;border:2px solid #C47A1E;border-radius:12px;box-shadow:0 3px 0 #8B5213"><img src="assets/icon/sparkles.svg" alt="" style="width:24px;height:24px" /><span style="flex:1">AI Playground</span><span style="border-radius:9999px;padding:2px 6px;font-size:8.5px;font-weight:900;text-transform:uppercase;color:#fff;background:#F59E0B">Mới</span></span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/leaderboard.svg" alt="" style="width:24px;height:24px" />Bảng xếp hạng</span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/quest.svg" alt="" style="width:24px;height:24px" />Nhiệm vụ</span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/shop.svg" alt="" style="width:24px;height:24px" />Cửa hàng</span>
+            <span style="display:flex;align-items:center;gap:11px;padding:9px 11px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:13.5px;color:#4F1F13;border:2px solid transparent;border-radius:12px"><img src="assets/icon/arcade.svg" alt="" style="width:24px;height:24px" />Giải trí</span>
+          </nav>
+        </div>
+
+        <div style="padding:16px 24px 30px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:22px">
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 10px;border:3px solid #4F1F13;background:#FFFFFF;box-shadow:3px 3px 0 0 rgba(42,31,23,1);font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px;color:#B45309"><img src="assets/icon/streak.svg" alt="" style="width:18px;height:18px" />12</div>
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 10px;border:3px solid #4F1F13;background:#FFFFFF;box-shadow:3px 3px 0 0 rgba(42,31,23,1);font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px;color:#B45309"><img src="assets/icon/coin.svg" alt="" style="width:18px;height:18px" />2.450</div>
+            <div style="display:flex;align-items:center;gap:7px;padding:5px 10px;border:3px solid #4F1F13;background:#FFFFFF;box-shadow:3px 3px 0 0 rgba(42,31,23,1);font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px;color:#B45309"><img src="assets/icon/xp.svg" alt="" style="width:18px;height:18px" />18.900</div>
+          </div>
+
+          <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh5);margin-bottom:26px">
+            <div style="background:#EDE9FE;clip-path:var(--clipPi);padding:22px 24px;display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+              <div style="flex:1;min-width:280px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <h1 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:26px;margin:0;color:#4F1F13">AI Playground</h1>
+                  <span style="display:inline-block;background:#6D28D9;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#FFFFFF;color:#6D28D9">Đề xuất</span></span>
+                </div>
+                <p style="font-size:14.5px;line-height:1.6;color:#4F1F13;margin:0 0 14px;max-width:520px">Bạn đóng vai người phỏng vấn. AI đóng vai người tham gia — có tính cách, có thói xấu, không hợp tác sẵn. Mỗi bài chỉ 3–6 lượt, luyện đúng một kỹ năng.</p>
+                <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px">
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#4F1F13"><span style="width:7px;height:7px;background:#8B5CF6;display:block;flex-shrink:0"></span>Chọn một kỹ năng cần luyện</div>
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#4F1F13"><span style="width:7px;height:7px;background:#8B5CF6;display:block;flex-shrink:0"></span>Trò chuyện ngắn 3–6 lượt với AI</div>
+                  <div style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#4F1F13"><span style="width:7px;height:7px;background:#8B5CF6;display:block;flex-shrink:0"></span>Nhận nhận xét ngay sau khi kết thúc</div>
+                </div>
+                <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;color:#fff;background:#8B5CF6;border:none;padding:11px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;clip-path:var(--clip);filter:var(--btn);transition:transform 50ms steps(2),filter 50ms steps(2)" style-hover="background:#6D28D9" style-active="transform:translate(4px,4px);filter:var(--bd)"><img src="assets/icon/chat-pose.svg" alt="" style="width:20px;height:20px" />Bắt đầu ngay →</button>
+              </div>
+              <div style="position:relative;width:190px;height:150px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:center">
+                <img src="assets/motion/boss-idle.svg" alt="" style="width:120px;height:120px" />
+                <img src="assets/pose/questioning.svg" alt="" style="width:86px;height:86px;margin-left:-18px" />
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:4px;flex-wrap:wrap">
+            <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:20px;margin:0">Luyện theo từng kỹ năng</h2>
+            <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#9A8B77">7 DRILL · 3-6 LƯỢT MỖI BÀI</span>
+          </div>
+          <p style="font-size:13.5px;color:#6E5F4E;margin:0 0 18px">Mỗi drill huấn luyện đúng một nước đi. Icon cho biết kỹ năng, viền màu cho biết độ khó.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px">
+            <sc-for list="{{ drills }}" as="d" hint-placeholder-count="7">
+              <div style="background:{{ d.bd }};clip-path:var(--clipC);padding:2px;filter:var(--sh4);transition:transform 60ms steps(2)" style-hover="transform:translate(-2px,-2px)">
+                <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:15px;display:flex;flex-direction:column;gap:9px;height:100%">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                    <span style="width:44px;height:44px;background:{{ d.bd }};clip-path:var(--clipCi);padding:2px;flex-shrink:0;display:block"><span style="display:flex;width:100%;height:100%;background:{{ d.tint }};clip-path:var(--clipSi);align-items:center;justify-content:center"><img src="assets/icon/{{ d.icon }}" alt="" style="width:24px;height:24px" /></span></span>
+                    <span style="display:inline-block;background:{{ d.bd }};clip-path:var(--clipCi);padding:2px;flex-shrink:0"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 7px;line-height:1;clip-path:var(--clipSi);background:{{ d.tint }};color:{{ d.bd }}">{{ d.diff }}</span></span>
+                  </div>
+                  <div style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:15px;line-height:1.25">{{ d.title }}</div>
+                  <p style="font-size:12.5px;line-height:1.55;color:#6E5F4E;margin:0;flex:1">{{ d.summary }}</p>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:2px">
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77"><img src="assets/icon/clock.svg" alt="" style="width:13px;height:13px" />{{ d.turns }}</span>
+                    <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:12px;color:#fff;background:#8B5CF6;border:none;padding:7px 13px;cursor:pointer;clip-path:var(--clip);filter:drop-shadow(4px 0 0 #4F1F13) drop-shadow(-4px 0 0 #4F1F13) drop-shadow(0 4px 0 #4F1F13) drop-shadow(0 -4px 0 #4F1F13) drop-shadow(3px 3px 0 rgba(42,31,23,1));transition:transform 50ms steps(2),filter 50ms steps(2)" style-hover="background:#6D28D9" style-active="transform:translate(3px,3px);filter:var(--bd)">Luyện</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:30px 0 14px;flex-wrap:wrap">
+            <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:20px;margin:0">Buổi luyện gần đây</h2>
+            <a href="#debrief" style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:13px;color:#BE185D">Xem tất cả lịch sử →</a>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:12px 15px;display:grid;grid-template-columns:1fr 130px 92px 104px;gap:14px;align-items:center">
+                <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Giữ trung lập khi bị chê sản phẩm</span>
+                <span style="font-size:12.5px;color:#9A8B77">Tuấn · 18/08</span>
+                <span style="font-family:ui-monospace,monospace;font-size:12px;color:#9A8B77">5 lượt · 6′</span>
+                <span style="display:inline-block;background:#15803D;clip-path:var(--clipCi);padding:2px;justify-self:end"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#DCFCE7;color:#15803D">Tốt</span></span>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:12px 15px;display:grid;grid-template-columns:1fr 130px 92px 104px;gap:14px;align-items:center">
+                <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Tránh câu hỏi dẫn dắt</span>
+                <span style="font-size:12.5px;color:#9A8B77">Linh · 17/08</span>
+                <span style="font-family:ui-monospace,monospace;font-size:12px;color:#9A8B77">5 lượt · 4′</span>
+                <span style="display:inline-block;background:#B45309;clip-path:var(--clipCi);padding:2px;justify-self:end"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#FEF3C7;color:#B45309">Đạt</span></span>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:12px 15px;display:grid;grid-template-columns:1fr 130px 92px 104px;gap:14px;align-items:center">
+                <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Chủ đề nhạy cảm</span>
+                <span style="font-size:12.5px;color:#9A8B77">Tuấn · 15/08</span>
+                <span style="font-family:ui-monospace,monospace;font-size:12px;color:#9A8B77">6 lượt · 8′</span>
+                <span style="display:inline-block;background:#BE123C;clip-path:var(--clipCi);padding:2px;justify-self:end"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#FFE4E6;color:#BE123C">Chưa đạt</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="prep" data-screen-label="02 Chuẩn bị" style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:10px;color:#8B5CF6;letter-spacing:.05em;margin-bottom:12px">MÀN 02 · /INTERVIEW/[SESSIONID] · PREP-VIEW</div>
+      <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:32px;margin:0 0 8px;line-height:1.05">Chuẩn bị — biết mình sắp gặp ai</h2>
+      <p style="font-size:15.5px;line-height:1.65;color:#6E5F4E;max-width:700px;margin:0">Màn này là nơi người học đọc trước khi đồng hồ bắt đầu chạy (đồng hồ đếm từ <b>lượt đầu tiên</b>, không phải từ lúc tạo phiên). Bản pixel giữ nguyên 3 thẻ chỉ số + panel cấu hình, nhưng đổi thanh độ khó liên tục <code style="font-family:ui-monospace,monospace;font-size:13.5px">33/66/100%</code> thành <b>3 ô rời</b> — độ khó chỉ có 3 giá trị, không nên vẽ như số liên tục.</p>
+    </div>
+
+    <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh7)">
+      <div style="background:#FCF8EC;background-image:linear-gradient(rgba(42,31,23,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(42,31,23,.035) 1px,transparent 1px);background-size:24px 24px;clip-path:var(--clipPi);padding:30px 24px 34px">
+        <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+            <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#6D28D9;letter-spacing:.05em">CHUẨN BỊ</div>
+            <div style="display:flex;gap:0;background:#4F1F13;clip-path:var(--clipCi);padding:2px">
+              <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:12px;padding:6px 14px;background:#8B5CF6;color:#fff;clip-path:var(--clipSi)">Nhập chữ</span>
+              <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:400;font-size:12px;padding:6px 14px;background:#FCF8EC;color:#6E5F4E">Nói</span>
+            </div>
+          </div>
+
+          <div>
+            <h1 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:27px;margin:0;line-height:1.15">Giữ trung lập khi bị chê sản phẩm</h1>
+            <p style="font-size:15px;line-height:1.65;color:#6E5F4E;margin:9px 0 0">Người tham gia chê sản phẩm và hỏi ngược ý kiến bạn — luyện không bênh, không hùa theo, kéo về trải nghiệm thật.</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:13px 15px;display:flex;gap:12px;align-items:center">
+                <span style="width:46px;height:46px;background:#4F1F13;clip-path:var(--clipCi);padding:2px;flex-shrink:0;display:block"><span style="display:flex;width:100%;height:100%;background:#EDE9FE;clip-path:var(--clipSi);align-items:center;justify-content:center;overflow:hidden"><img src="assets/motion/boss-idle.svg" alt="" style="width:34px;height:34px" /></span></span>
+                <span>
+                  <span style="display:block;font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77">Người tham gia</span>
+                  <span style="display:block;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:15px;margin-top:2px">Tuấn · 27</span>
+                  <span style="display:block;font-size:11.5px;color:#6E5F4E">Nhân viên văn phòng</span>
+                </span>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:13px 15px">
+                <span style="display:block;font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:9px">Độ khó</span>
+                <span style="display:flex;gap:3px;margin-bottom:8px">
+                  <i style="flex:1;height:12px;background:#BE123C;clip-path:var(--clipSi);display:block"></i>
+                  <i style="flex:1;height:12px;background:#BE123C;clip-path:var(--clipSi);display:block"></i>
+                  <i style="flex:1;height:12px;background:#BE123C;clip-path:var(--clipSi);display:block"></i>
+                </span>
+                <span style="display:block;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:14px;color:#BE123C">Khó · 3/3</span>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:13px 15px">
+                <span style="display:block;font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:6px">Thời lượng dự kiến</span>
+                <span style="display:flex;align-items:center;gap:8px"><img src="assets/icon/clock.svg" alt="" style="width:20px;height:20px" /><span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:15px">4–5 lượt</span></span>
+                <span style="display:block;font-size:11.5px;color:#6E5F4E;margin-top:4px">tối đa 8 lượt · 10 phút</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh5)">
+            <div style="background:#FFFFFF;clip-path:var(--clipPi);padding:19px 21px">
+              <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#9A8B77;margin-bottom:16px">CẤU HÌNH BẠN ĐÃ CHỌN</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;margin-bottom:18px">
+                <div>
+                  <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:4px">Sản phẩm</div>
+                  <div style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14.5px">Ví MoMo</div>
+                </div>
+                <div>
+                  <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:4px">Quan hệ với sản phẩm</div>
+                  <div style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14.5px">Đang dùng, đang bực</div>
+                </div>
+              </div>
+              <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:10px">Tính cách đã điều chỉnh</div>
+              <div style="display:flex;gap:9px;flex-wrap:wrap">
+                <span style="display:inline-block;background:#6D28D9;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#EDE9FE;color:#6D28D9">Nói nhiều</span></span>
+                <span style="display:inline-block;background:#6D28D9;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#EDE9FE;color:#6D28D9">Cảnh giác cao</span></span>
+                <span style="display:inline-block;background:#6D28D9;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;line-height:1;clip-path:var(--clipSi);background:#EDE9FE;color:#6D28D9">Nhớ mờ nhạt</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh5)">
+            <div style="background:#FEF3C7;clip-path:var(--clipPi);padding:19px 21px">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+                <img src="assets/icon/goal.svg" alt="" style="width:22px;height:22px" />
+                <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:15px;color:#B45309">Bài này chấm đúng một nước đi</span>
+              </div>
+              <p style="margin:0;font-size:14.5px;line-height:1.65;color:#B45309">Ghi nhận cảm xúc, <b>không bênh cũng không hùa theo</b>, không đưa ý kiến cá nhân, và kéo cuộc trò chuyện về một tình huống cụ thể người tham gia đã trải qua.</p>
+            </div>
+          </div>
+
+          <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+            <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:17px 19px;display:flex;gap:14px;align-items:flex-start">
+              <img src="assets/motion/boss-angry.svg" alt="" style="width:52px;height:52px;flex-shrink:0" />
+              <div>
+                <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:6px">Tuấn sẽ mở đầu bằng</div>
+                <p style="margin:0;font-size:15px;line-height:1.6;font-style:italic;color:#4F1F13">“Nói thiệt chứ MoMo dạo này xài bực lắm bạn ơi, bạn làm bên đó chắc bạn cũng biết đúng không?”</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:4px">
+            <div style="position:relative;display:inline-block;padding-bottom:6px;--clip4:polygon(4px 0px,4px 2px,2px 2px,2px 4px,0px 4px,0px calc(100% - 4px),2px calc(100% - 4px),2px calc(100% - 2px),4px calc(100% - 2px),4px 100%,calc(100% - 4px) 100%,calc(100% - 4px) calc(100% - 2px),calc(100% - 2px) calc(100% - 2px),calc(100% - 2px) calc(100% - 4px),100% calc(100% - 4px),100% 4px,calc(100% - 2px) 4px,calc(100% - 2px) 2px,calc(100% - 4px) 2px,calc(100% - 4px) 0px)">
+              <span style="position:absolute;left:0;right:0;top:2px;bottom:0;background:#5b2fb0;clip-path:var(--clip4);display:block"></span>
+              <button style="position:relative;z-index:1;display:block;background:#8B5CF6;clip-path:var(--clip4);border:0;padding:13px 26px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-size:18px;font-weight:600;letter-spacing:.03rem;color:#FFFFFF;cursor:pointer;transition:transform .1s,filter .15s ease" style-hover="filter:brightness(1.08)" style-active="transform:translateY(2px);filter:brightness(.9)">Bắt đầu luyện</button>
+            </div>
+            <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;background:transparent;border:3px solid transparent;color:#4F1F13;padding:9px 12px;cursor:pointer" style-hover="background:#F4ECD6;border-color:#4F1F13">Đổi người tham gia</button>
+            <span style="font-size:12.5px;color:#9A8B77;margin-left:auto">Đồng hồ chỉ chạy từ lượt hỏi đầu tiên.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="live" data-screen-label="03 Phiên trực tiếp" style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:10px;color:#8B5CF6;letter-spacing:.05em;margin-bottom:12px">MÀN 03 · SESSION-CLIENT</div>
+      <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:32px;margin:0 0 8px;line-height:1.05">Phiên trực tiếp</h2>
+      <p style="font-size:15.5px;line-height:1.65;color:#6E5F4E;max-width:720px;margin:0">Màn duy nhất trong Academy <b>không có sidebar</b> — <code style="font-family:ui-monospace,monospace;font-size:13.5px">/interview</code> nằm ngoài route group <code style="font-family:ui-monospace,monospace;font-size:13.5px">(main)</code>, nên nó là toàn màn hình. Bật <b>Nói</b> trong bảng Tweaks để xem trạng thái ghi âm.</p>
+    </div>
+
+    <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh7)">
+      <div style="background:#FDF7E8;clip-path:var(--clipPi);padding:14px 18px 20px">
+
+        <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4);margin-bottom:18px">
+          <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:12px 15px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <span style="width:52px;height:52px;background:#4F1F13;clip-path:var(--clipCi);padding:2px;flex-shrink:0;display:block"><span style="display:flex;width:100%;height:100%;background:#EDE9FE;clip-path:var(--clipSi);align-items:center;justify-content:center"><img src="assets/motion/boss-talk.svg" alt="" style="width:40px;height:40px;animation:ca-nudge .8s steps(2) infinite" /></span></span>
+            <div style="flex:1;min-width:190px">
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:4px">
+                <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:16px">Luyện với: Tuấn</span>
+                <span style="display:inline-block;background:#6D28D9;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;line-height:1;clip-path:var(--clipSi);background:#EDE9FE;color:#6D28D9">Drill</span></span>
+                <span style="display:inline-block;background:#BE123C;clip-path:var(--clipCi);padding:2px"><span style="display:inline-flex;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;line-height:1;clip-path:var(--clipSi);background:#FFE4E6;color:#BE123C">Khó</span></span>
+              </div>
+              <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6E5F4E">Không bênh, không hùa theo, kéo về trải nghiệm thật.</p>
+            </div>
+            <div style="min-width:150px">
+              <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-bottom:7px">Lượt hỏi <b style="color:#4F1F13;font-family:'Press Start 2P',monospace;font-size:10px">3/8</b></div>
+              <div style="display:flex;gap:3px">
+                <i style="flex:1;height:12px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#F59E0B;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i>
+                <i style="flex:1;height:12px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:6px 11px;border:3px solid #4F1F13;background:#FFFFFF;box-shadow:3px 3px 0 0 rgba(42,31,23,1);font-family:'Press Start 2P',monospace;font-size:11px;color:#4F1F13;flex-shrink:0"><img src="assets/icon/clock.svg" alt="" style="width:17px;height:17px" />04:12</div>
+            <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:13px;color:#fff;background:#F43F5E;border:none;padding:9px 16px;cursor:pointer;clip-path:var(--clip);filter:drop-shadow(4px 0 0 #4F1F13) drop-shadow(-4px 0 0 #4F1F13) drop-shadow(0 4px 0 #4F1F13) drop-shadow(0 -4px 0 #4F1F13) drop-shadow(3px 3px 0 rgba(42,31,23,1));flex-shrink:0;transition:transform 50ms steps(2),filter 50ms steps(2)" style-hover="background:#BE123C" style-active="transform:translate(3px,3px);filter:var(--bd)">Kết thúc</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 244px;gap:18px;align-items:start">
+
+          <div style="min-width:0">
+            <div style="display:flex;flex-direction:column;gap:16px;padding:4px 0 18px">
+
+              <div style="display:flex;align-items:flex-end;gap:10px">
+                <span style="width:38px;height:38px;background:#4F1F13;clip-path:var(--clipCi);padding:2px;flex-shrink:0;display:block"><span style="display:flex;width:100%;height:100%;background:#EDE9FE;clip-path:var(--clipSi);align-items:center;justify-content:center"><img src="assets/motion/boss-idle.svg" alt="" style="width:28px;height:28px" /></span></span>
+                <div style="max-width:76%;min-width:0">
+                  <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin:0 0 5px 3px">Tuấn</div>
+                  <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+                    <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:11px 14px;font-size:14.5px;line-height:1.6;color:#4F1F13">Nói thiệt chứ MoMo dạo này xài bực lắm bạn ơi, bạn làm bên đó chắc bạn cũng biết đúng không?</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:10px">
+                <span style="display:flex;width:38px;height:38px;background:#4F1F13;clip-path:var(--clipCi);padding:2px;flex-shrink:0"><span style="display:flex;width:100%;height:100%;background:#FCE7F3;clip-path:var(--clipSi);align-items:center;justify-content:center;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:15px;color:#BE185D">B</span></span>
+                <div style="max-width:76%;min-width:0">
+                  <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin:0 3px 5px 0;text-align:right">Bạn</div>
+                  <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+                    <div style="background:#EC4899;clip-path:var(--clipCi);padding:11px 14px;font-size:14.5px;line-height:1.6;color:#FFFFFF">Mình hiểu là bạn đang thấy bực. Bạn kể mình nghe lần gần nhất bị vậy là khi nào, lúc đó cụ thể chuyện gì xảy ra?</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:flex-end;gap:10px">
+                <span style="width:38px;height:38px;background:#4F1F13;clip-path:var(--clipCi);padding:2px;flex-shrink:0;display:block"><span style="display:flex;width:100%;height:100%;background:#EDE9FE;clip-path:var(--clipSi);align-items:center;justify-content:center"><img src="assets/motion/boss-talk.svg" alt="" style="width:28px;height:28px;animation:ca-nudge .8s steps(2) infinite" /></span></span>
+                <div style="max-width:76%;min-width:0">
+                  <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin:0 0 5px 3px">Tuấn</div>
+                  <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+                    <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:11px 14px;font-size:14.5px;line-height:1.6;color:#4F1F13">Hôm thứ ba tuần trước, tôi chuyển 2 triệu cho nhà cung cấp mà nó trừ tiền rồi báo lỗi<span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;background:linear-gradient(100deg,#A69BA2 0%,#A69BA2 35%,#F64076 50%,#A69BA2 65%,#A69BA2 100%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ca-shimmer-sweep 2.4s linear infinite">▌</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="height:3px;background-image:repeating-linear-gradient(90deg,#4F1F13 0 8px,transparent 8px 16px);margin-bottom:16px"></div>
+
+            <sc-if value="{{ textMode }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;margin-bottom:9px">
+                  <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:9px;display:flex;align-items:flex-end;gap:9px">
+                    <textarea rows="3" placeholder="Nhập câu hỏi của bạn…" style="flex:1;height:70px;max-height:70px;resize:none;border:none;outline:none;background:transparent;padding:6px 8px;font-size:14.5px;line-height:1.6;color:#4F1F13"></textarea>
+                    <button style="width:44px;height:44px;flex-shrink:0;background:#4F1F13;clip-path:var(--clipCi);padding:2px;border:0;cursor:pointer;display:block" style-hover="background:#8B5CF6"><span style="display:flex;width:100%;height:100%;background:#FCF8EC;clip-path:var(--clipSi);align-items:center;justify-content:center"><img src="assets/icon/chat-pose.svg" alt="Nói câu hỏi" style="width:22px;height:22px" /></span></button>
+                    <button style="width:44px;height:44px;flex-shrink:0;background:#4F1F13;clip-path:var(--clipCi);padding:2px;border:0;cursor:pointer;display:block" style-hover="background:#6D28D9"><span style="display:flex;width:100%;height:100%;background:#8B5CF6;clip-path:var(--clipSi);align-items:center;justify-content:center"><span style="width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:13px solid #FFFFFF;display:block;margin-left:3px"></span></span></button>
+                  </div>
+                </div>
+                <p style="margin:0;text-align:center;font-size:12px;color:#9A8B77">AI có thể mắc lỗi. Hãy kiểm tra lại các thông tin quan trọng.</p>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ voiceMode }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;margin-bottom:9px">
+                  <div style="background:#4F1F13;clip-path:var(--clipCi);padding:9px;display:flex;align-items:center;gap:11px">
+                    <button style="width:38px;height:38px;flex-shrink:0;background:#FCF8EC;clip-path:var(--clipSi);border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:16px;color:#4F1F13">✕</button>
+                    <div style="flex:1;height:34px;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden">
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .6s steps(3) infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .75s steps(3) .08s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .9s steps(3) .16s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.05s steps(3) .24s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.2s steps(3) .32s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .6s steps(3) .4s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .75s steps(3) .48s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .9s steps(3) .56s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.05s steps(3) infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.2s steps(3) .12s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .6s steps(3) .2s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .75s steps(3) .28s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .9s steps(3) .36s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.05s steps(3) .44s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar 1.2s steps(3) .52s infinite"></span>
+                      <span style="width:3px;height:100%;background:#FCF8EC;display:block;animation:ca-voice-bar .6s steps(3) .6s infinite"></span>
+                    </div>
+                    <button style="width:38px;height:38px;flex-shrink:0;background:#FCF8EC;clip-path:var(--clipSi);border:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:13px;height:13px;background:#4F1F13;display:block"></span></button>
+                    <button style="width:38px;height:38px;flex-shrink:0;background:#8B5CF6;clip-path:var(--clipSi);border:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:12px solid #FFFFFF;display:block"></span></button>
+                  </div>
+                </div>
+                <p style="margin:0;display:flex;align-items:center;gap:8px;font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:12.5px;color:#BE185D"><span style="width:8px;height:8px;background:#EC4899;display:block;animation:ca-blink 1s steps(1) infinite"></span>Đang ghi âm: “lần gần nhất bị vậy là khi nào…”</p>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FEF3C7;clip-path:var(--clipCi);padding:14px 16px">
+                <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#B45309;margin-bottom:11px">NƯỚC ĐI CẦN LÀM</div>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#B45309">Ghi nhận cảm xúc → không đưa ý kiến cá nhân → hỏi về <b>một lần cụ thể</b>.</p>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:14px 16px">
+                <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#9A8B77;margin-bottom:12px">BẪY THƯỜNG GẶP</div>
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;gap:8px;align-items:flex-start"><span style="width:14px;height:14px;background:#F43F5E;clip-path:var(--clipSi);flex-shrink:0;margin-top:2px;display:block"></span><span style="font-size:12.5px;line-height:1.5;color:#6E5F4E">Bênh sản phẩm hoặc hứa sẽ sửa</span></div>
+                  <div style="display:flex;gap:8px;align-items:flex-start"><span style="width:14px;height:14px;background:#F43F5E;clip-path:var(--clipSi);flex-shrink:0;margin-top:2px;display:block"></span><span style="font-size:12.5px;line-height:1.5;color:#6E5F4E">Hùa theo chê cùng cho dễ nói chuyện</span></div>
+                  <div style="display:flex;gap:8px;align-items:flex-start"><span style="width:14px;height:14px;background:#F43F5E;clip-path:var(--clipSi);flex-shrink:0;margin-top:2px;display:block"></span><span style="font-size:12.5px;line-height:1.5;color:#6E5F4E">Trả lời câu hỏi ngược của người tham gia</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px">
+              <div style="background:#FCF8EC;clip-path:var(--clipCi);padding:14px 16px;display:flex;gap:11px;align-items:flex-start">
+                <img src="assets/pose/questioning.svg" alt="" style="width:40px;height:40px;flex-shrink:0" />
+                <p style="margin:0;font-size:12.5px;line-height:1.55;color:#6E5F4E">Còn <b style="color:#B45309">5 lượt</b>. Từ lượt 6 hệ thống sẽ gợi ý bạn kết thúc.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="debrief" data-screen-label="04 Nhận xét" style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:10px;color:#8B5CF6;letter-spacing:.05em;margin-bottom:12px">MÀN 04 · DEBRIEF-PANEL</div>
+      <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:32px;margin:0 0 8px;line-height:1.05">Nhận xét sau buổi</h2>
+      <p style="font-size:15.5px;line-height:1.65;color:#6E5F4E;max-width:720px;margin:0">Drill có <b>3 kết quả</b>, không phải đạt/không đạt — <code style="font-family:ui-monospace,monospace;font-size:13.5px">MISSED · PASSED · STRONG</code>. Bản hiện tại chỉ hiện <code style="font-family:ui-monospace,monospace;font-size:13.5px">✓ Đạt / ○ Chưa đạt</code> bằng chữ nhỏ; bản pixel cho nó một thẻ kết quả có mascot khớp cảm xúc. Đổi kết quả trong bảng Tweaks.</p>
+    </div>
+
+    <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh7)">
+      <div style="background:#FDF7E8;clip-path:var(--clipPi);padding:26px 24px 30px">
+        <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+
+          <div style="background:{{ outBd }};clip-path:var(--clip);padding:4px;filter:var(--sh5)">
+            <div style="background:{{ outTint }};clip-path:var(--clipPi);padding:24px;display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+              <img src="assets/pose/{{ outPose }}" alt="" style="width:92px;height:92px;flex-shrink:0" />
+              <div style="flex:1;min-width:220px">
+                <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:{{ outBd }};margin-bottom:10px">KẾT QUẢ BÀI LUYỆN</div>
+                <div style="display:flex;align-items:center;gap:11px;margin-bottom:9px">
+                  <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:32px;color:{{ outBd }};line-height:1">{{ outMark }} {{ outLabel }}</span>
+                </div>
+                <p style="margin:0;font-size:14.5px;line-height:1.65;color:#4F1F13">Bạn ghi nhận được cảm xúc của Tuấn và không bênh sản phẩm. Nhưng ở lượt 2 bạn đã trả lời câu hỏi ngược của bạn ấy thay vì kéo về trải nghiệm — đó là chỗ mất điểm trung lập.</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#FFFFFF;clip-path:var(--clipCi);padding:17px 19px;height:100%">
+                <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#BE123C;margin-bottom:12px">LƯỢT QUYẾT ĐỊNH KẾT QUẢ</div>
+                <blockquote style="margin:0;padding-left:14px;border-left:5px solid #FECDD3;font-size:14px;line-height:1.6;font-style:italic;color:#4F1F13">“Ừ mình cũng thấy chỗ đó hơi bất tiện, bên mình đang tính cải thiện…”</blockquote>
+              </div>
+            </div>
+            <div style="background:#4F1F13;clip-path:var(--clipC);padding:2px;filter:var(--sh4)">
+              <div style="background:#DCFCE7;clip-path:var(--clipCi);padding:17px 19px;height:100%">
+                <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#15803D;margin-bottom:12px">ĐÁNG LẼ NÊN HỎI</div>
+                <p style="margin:0;font-size:14px;line-height:1.6;font-weight:600;color:#15803D">“Mình chưa dám nói thay bên kỹ thuật. Bạn kể mình nghe hôm đó bạn bấm gì, màn hình hiện gì?”</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh5)">
+            <div style="background:#FFFFFF;clip-path:var(--clipPi);padding:21px 23px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+                <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#9A8B77">4 TRỤC KỸ THUẬT · THANG 1–5</div>
+                <span style="font-size:12px;color:#9A8B77">Thang chấm khắt khe — phần lớn lần thử thật rơi vào 2–3.</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:grid;grid-template-columns:154px 1fr 34px;gap:14px;align-items:center">
+                  <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Đào sâu</span>
+                  <span style="display:flex;gap:3px"><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i></span>
+                  <span style="font-family:'Press Start 2P',monospace;font-size:11px;color:#4F1F13;text-align:right">3</span>
+                </div>
+                <div style="display:grid;grid-template-columns:154px 1fr 34px;gap:14px;align-items:center">
+                  <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Trung lập</span>
+                  <span style="display:flex;gap:3px"><i style="flex:1;height:16px;background:#F43F5E;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#F43F5E;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i></span>
+                  <span style="font-family:'Press Start 2P',monospace;font-size:11px;color:#BE123C;text-align:right">2</span>
+                </div>
+                <div style="display:grid;grid-template-columns:154px 1fr 34px;gap:14px;align-items:center">
+                  <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Tạo thiện cảm</span>
+                  <span style="display:flex;gap:3px"><i style="flex:1;height:16px;background:#16A34A;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#16A34A;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#16A34A;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#16A34A;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i></span>
+                  <span style="font-family:'Press Start 2P',monospace;font-size:11px;color:#15803D;text-align:right">4</span>
+                </div>
+                <div style="display:grid;grid-template-columns:154px 1fr 34px;gap:14px;align-items:center">
+                  <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">Bám discussion guide</span>
+                  <span style="display:flex;gap:3px"><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#8B5CF6;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i><i style="flex:1;height:16px;background:#EDE3C7;clip-path:var(--clipSi);display:block"></i></span>
+                  <span style="font-family:'Press Start 2P',monospace;font-size:11px;color:#4F1F13;text-align:right">3</span>
+                </div>
+              </div>
+              <div style="margin-top:20px;padding-top:18px;border-top:3px solid #F4ECD6;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div>
+                  <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#15803D;margin-bottom:11px">LÀM TỐT</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;gap:9px;align-items:flex-start"><span style="width:13px;height:13px;background:#16A34A;clip-path:var(--clipSi);flex-shrink:0;margin-top:3px;display:block"></span><span style="font-size:13px;line-height:1.55;color:#4F1F13">Ghi nhận cảm xúc ngay lượt đầu, không cắt lời</span></div>
+                    <div style="display:flex;gap:9px;align-items:flex-start"><span style="width:13px;height:13px;background:#16A34A;clip-path:var(--clipSi);flex-shrink:0;margin-top:3px;display:block"></span><span style="font-size:13px;line-height:1.55;color:#4F1F13">Câu hỏi về “lần gần nhất” lấy được chi tiết thật</span></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#BE123C;margin-bottom:11px">CẦN SỬA</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;gap:9px;align-items:flex-start"><span style="width:13px;height:13px;background:#F43F5E;clip-path:var(--clipSi);flex-shrink:0;margin-top:3px;display:block"></span><span style="font-size:13px;line-height:1.55;color:#4F1F13">Đừng trả lời câu hỏi ngược — chuyển lại thành câu hỏi</span></div>
+                    <div style="display:flex;gap:9px;align-items:flex-start"><span style="width:13px;height:13px;background:#F43F5E;clip-path:var(--clipSi);flex-shrink:0;margin-top:3px;display:block"></span><span style="font-size:13px;line-height:1.55;color:#4F1F13">Tránh nói “bên mình đang tính cải thiện”</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:4px">
+            <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;color:#fff;background:#8B5CF6;border:none;padding:11px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;clip-path:var(--clip);filter:var(--btn);transition:transform 50ms steps(2),filter 50ms steps(2)" style-hover="background:#6D28D9" style-active="transform:translate(4px,4px);filter:var(--bd)"><img src="assets/icon/revision-quest.svg" alt="" style="width:20px;height:20px" />Luyện lại bài này</button>
+            <button style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:700;font-size:14px;color:#4F1F13;background:#FFFFFF;border:none;padding:11px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;clip-path:var(--clip);filter:var(--btn);transition:transform 50ms steps(2),filter 50ms steps(2)" style-hover="background:#F4ECD6" style-active="transform:translate(4px,4px);filter:var(--bd)">Về AI Playground</button>
+            <span style="display:inline-flex;align-items:center;gap:7px;margin-left:auto;padding:6px 11px;border:3px solid #4F1F13;background:#FFFFFF;box-shadow:3px 3px 0 0 rgba(42,31,23,1);font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px;color:#B45309"><img src="assets/icon/coin.svg" alt="" style="width:18px;height:18px" />+80 Xu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section data-screen-label="Đổi gì" style="display:flex;flex-direction:column;gap:18px">
+    <h2 style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:900;font-size:26px;margin:0">Đổi gì so với bản đang chạy</h2>
+    <div style="background:#4F1F13;clip-path:var(--clip);padding:4px;filter:var(--sh5)">
+      <div style="background:#FFFFFF;clip-path:var(--clipPi);padding:24px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#F4ECD6;border:2px solid #EDE3C7">
+            <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#6E5F4E">THÀNH PHẦN</span>
+            <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#BE123C">HIỆN TẠI</span>
+            <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#15803D">BẢN PIXEL</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Drill card</span>
+            <span style="color:#6E5F4E">Cùng một ảnh CDN cho cả 6 thẻ · chip <code style="font-family:ui-monospace,monospace;font-size:12.5px">rounded-full</code> hồng cho mọi độ khó</span>
+            <span style="color:#6E5F4E">Icon kỹ năng riêng + viền màu theo độ khó (xanh/hổ phách/đỏ)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Bong bóng chat</span>
+            <span style="color:#6E5F4E"><code style="font-family:ui-monospace,monospace;font-size:12.5px">rounded-2xl</code>, avatar tròn, màu <code style="font-family:ui-monospace,monospace;font-size:12.5px">#D42A87</code></span>
+            <span style="color:#6E5F4E">clip 6→4px, avatar vuông bậc thang, <code style="font-family:ui-monospace,monospace;font-size:12.5px">--ca-pink</code></span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Độ khó (prep)</span>
+            <span style="color:#6E5F4E">Thanh liên tục <code style="font-family:ui-monospace,monospace;font-size:12.5px">33% / 66% / 100%</code></span>
+            <span style="color:#6E5F4E">3 ô rời — độ khó chỉ có 3 giá trị, không phải số liên tục</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Lượt hỏi</span>
+            <span style="color:#6E5F4E">Chữ <code style="font-family:ui-monospace,monospace;font-size:12.5px">3 / 8</code> ở góc header</span>
+            <span style="color:#6E5F4E">8 ô — nhìn thấy ngân sách lượt còn lại mà không cần đọc số</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Điểm 4 trục</span>
+            <span style="color:#6E5F4E">Radar recharts — SVG bo mượt, cần thư viện chart</span>
+            <span style="color:#6E5F4E">4 thanh 5 ô: đọc được điểm chính xác, không cần recharts</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Kết quả drill</span>
+            <span style="color:#6E5F4E">Một dòng chữ nhỏ <code style="font-family:ui-monospace,monospace;font-size:12.5px">✓ Đạt / ○ Chưa đạt</code></span>
+            <span style="color:#6E5F4E">Thẻ kết quả 3 mức + mascot khớp cảm xúc + Xu thưởng</span>
+          </div>
+          <div style="display:grid;grid-template-columns:158px 1fr 1fr;gap:14px;padding:11px 14px;background:#FCF8EC;border:2px solid #EDE3C7;font-size:13.5px;line-height:1.55">
+            <span style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800">Icon</span>
+            <span style="color:#6E5F4E">lucide <code style="font-family:ui-monospace,monospace;font-size:12.5px">ArrowUp · Square · X · SendHorizontal</code> + icon font <code style="font-family:ui-monospace,monospace;font-size:12.5px">hn-podcasts</code></span>
+            <span style="color:#6E5F4E">Tam giác/vuông vẽ bằng CSS + <code style="font-family:ui-monospace,monospace;font-size:12.5px">chat-pose.svg</code> của Academy</span>
+          </div>
+        </div>
+        <div style="margin-top:20px;background:#DCFCE7;border:3px solid #16A34A;padding:14px 16px">
+          <p style="margin:0;font-size:13.5px;line-height:1.65;color:#15803D"><b>Giữ nguyên:</b> mọi giới hạn trong <code style="font-family:ui-monospace,monospace;font-size:12.5px">types.ts</code> — drill 8 lượt / cảnh báo ở lượt 6 / 10 phút, phỏng vấn đầy đủ 40 lượt / 45 phút; đồng hồ chạy từ lượt đầu tiên; 3 mức <code style="font-family:ui-monospace,monospace;font-size:12.5px">PracticeDrillOutcome</code>; 4 trục <code style="font-family:ui-monospace,monospace;font-size:12.5px">TECHNIQUE_DIMENSIONS</code>. Không đụng vào prompt hay grader.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="border-top:4px solid #4F1F13;padding:24px 0 8px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:14px">
+      <img src="assets/motion/boss-happy.svg" alt="" style="width:44px;height:44px" />
+      <div>
+        <div style="font-family:'MoMo Trusts Display',system-ui,sans-serif;font-weight:800;font-size:14px">AI Interview Modules · bản pixel</div>
+        <div style="font-family:ui-monospace,monospace;font-size:11px;color:#9A8B77;margin-top:3px">Nguồn: practice/page.tsx · prep-view.tsx · interview-header.tsx · transcript-view.tsx · debrief-panel.tsx · types.ts · seed-practice-scenarios.ts</div>
+      </div>
+    </div>
+    <a href="CIO Academy Pixel System.dc.html" style="font-family:'Press Start 2P',monospace;font-size:9px;color:#BE185D">← DESIGN SYSTEM</a>
+  </div>
+
+  <!--MORE-->
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;voiceMode&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Màn 03 — phiên trực tiếp&quot;},&quot;outcome&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;MISSED&quot;,&quot;PASSED&quot;,&quot;STRONG&quot;],&quot;default&quot;:&quot;PASSED&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Màn 04 — nhận xét&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const T = {
+      EASY:   { diff: "Dễ",          bd: "#15803D", tint: "#DCFCE7" },
+      MEDIUM: { diff: "Trung bình",  bd: "#B45309", tint: "#FEF3C7" },
+      HARD:   { diff: "Khó",         bd: "#BE123C", tint: "#FFE4E6" },
+    };
+    const drill = (title, summary, level, turns, icon) => ({ title, summary, turns, icon, ...T[level] });
+
+    const outcome = this.props.outcome ?? "PASSED";
+    const OUT = {
+      MISSED: { label: "Chưa đạt", mark: "○", bd: "#BE123C", tint: "#FFE4E6", pose: "khoc.svg" },
+      PASSED: { label: "Đạt", mark: "✓", bd: "#B45309", tint: "#FEF3C7", pose: "writing-note.svg" },
+      STRONG: { label: "Tốt", mark: "✓", bd: "#15803D", tint: "#DCFCE7", pose: "leu-leu.svg" },
+    }[outcome] || {};
+
+    return {
+      voiceMode: this.props.voiceMode ?? false,
+      textMode: !(this.props.voiceMode ?? false),
+      outLabel: OUT.label,
+      outMark: OUT.mark,
+      outBd: OUT.bd,
+      outTint: OUT.tint,
+      outPose: OUT.pose,
+      drills: [
+        drill("Đào sâu câu trả lời mơ hồ", "\"Tại sao\", laddering, im lặng có chủ đích — khai thác khi câu trả lời còn chung chung.", "MEDIUM", "5-6 lượt", "magnifier.svg"),
+        drill("Xử lý câu trả lời né tránh", "Người tham gia lảng sang chủ đề khác — chuyển hướng lịch sự về câu hỏi gốc.", "MEDIUM", "4-5 lượt", "la-ban.svg"),
+        drill("Tránh câu hỏi dẫn dắt", "Đặt câu hỏi trung lập thay vì gợi ý sẵn câu trả lời.", "EASY", "5 lượt", "accuracy.svg"),
+        drill("Chủ đề nhạy cảm", "Hỏi về thu nhập/tài chính cá nhân — xin phép và giảm nhẹ cảm giác bị dò xét.", "HARD", "5-6 lượt", "bottle-protection-shield.svg"),
+        drill("Xử lý câu trả lời cụt", "Chỉ trả lời vài chữ — im lặng có chủ đích và đặt lại câu hỏi thay vì hỏi dồn.", "MEDIUM", "5-6 lượt", "chat-pose.svg"),
+        drill("Giữ trung lập khi bị chê sản phẩm", "Không bênh, không hùa theo, kéo về trải nghiệm thật.", "HARD", "4-5 lượt", "goal.svg"),
+        drill("Xử lý người tham gia bức xúc", "Gắt, lớn tiếng ngay từ đầu — xin lỗi thay và hạ nhiệt trước khi hỏi tiếp.", "HARD", "4-5 lượt", "hint.svg"),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
