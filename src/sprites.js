@@ -297,9 +297,23 @@ export async function loadGridSheet(url, { cols, rows, size, pivot, anims }) {
   }
   const out = {};
   for (const [name, a] of Object.entries(anims)) out[name] = { frames: a.frames, fps: a.fps ?? 8, loop: a.loop ?? true };
+  // Visible art height inside a cell, unioned over every frame: what callers scale the sprite by.
+  const data = g.getImageData(0, 0, image.width, image.height).data;
+  let top = fh;
+  let bottom = -1;
+  for (const f of frames) {
+    for (let r = 0; r < f.h; r++) {
+      let opaque = false;
+      for (let c = 0; c < f.w && !opaque; c++) opaque = data[((f.y + r) * image.width + f.x + c) * 4 + 3] > 0;
+      if (!opaque) continue;
+      top = Math.min(top, r);
+      bottom = Math.max(bottom, r);
+    }
+  }
   return {
     image, frames, anims: out,
     pivot: { x: fw * pivot.x, y: fh * pivot.y },
+    headroom: bottom + 1 - top,
     hurtImage: tinted(image, 'rgba(255, 60, 60, 0.55)'),
     flashImage: silhouette(image, '#ffffff'),
     source: url,

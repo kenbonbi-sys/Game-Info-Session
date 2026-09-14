@@ -2,7 +2,18 @@
 // views = frame order of a 360° turnaround strip.
 export const SPRITES = {
   hero: { url: 'assets/source/hero-360.svg', views: ['down-right', 'right', 'up-right', 'up', 'up-left', 'left', 'down-left'] },
-  boss: { url: 'assets/source/boss-angry.svg', name: 'idle', fps: 8 },
+  // 7×3 grid PNG (168px cells, drawn 1:1): row 1 idle, row 2 taking a hit, row 3 breathing fire.
+  // Cleaned from a generated sheet whose "transparent" background was a painted checkerboard.
+  boss: {
+    url: 'assets/source/boss-smoke.png',
+    cols: 7, rows: 3, size: 168,
+    pivot: { x: 0.5, y: 1 },
+    anims: {
+      idle: { frames: [0, 1, 2, 3, 4, 5, 6], fps: 8 },
+      hurt: { frames: [7, 8, 9, 10, 11, 12, 13], fps: 14, loop: false },
+      attack: { frames: [14, 15, 16, 17, 18, 19, 20], fps: 12, loop: false },
+    },
+  },
   // 4×3 grid PNG (362×373 cells, bases aligned): row 1 idle, row 2 charging, row 3 firing upward.
   // Cleaned from turret-topdown-raw.png, whose "transparent" background was a painted checkerboard.
   turret: {
@@ -24,25 +35,23 @@ export const SPRITES = {
   },
 };
 
-// Space arena map (map pixels). Measured on space-arena-empty.png.
+// Portrait space arena (map pixels). Shared by the backdrop and live entities.
 export const ARENA = {
-  url: 'assets/source/map/space-arena-empty.png',
-  width: 1672,
-  height: 941,
-  // The 30 painted neon rings, back row first, left to right: [x, y]. Server turret i = slot i.
+  legacyUrl: 'assets/source/map/space-arena-empty.png',
+  width: 720,
+  height: 1160,
+  // Five banks of six turrets flank a clear central walkway. Server turret i = slot i.
   slots: [
-    [310, 325], [515, 325], [725, 325], [950, 325], [1155, 325], [1360, 325],
-    [250, 425], [475, 425], [710, 425], [965, 425], [1195, 425], [1425, 425],
-    [180, 540], [435, 540], [695, 540], [975, 540], [1235, 540], [1495, 540],
-    [110, 670], [395, 670], [680, 670], [990, 670], [1275, 670], [1560, 670],
-    [250, 790], [480, 790], [710, 790], [960, 790], [1210, 790], [1435, 790],
+    [85, 410], [170, 410], [255, 410], [465, 410], [550, 410], [635, 410],
+    [85, 550], [170, 550], [255, 550], [465, 550], [550, 550], [635, 550],
+    [85, 690], [170, 690], [255, 690], [465, 690], [550, 690], [635, 690],
+    [85, 830], [170, 830], [255, 830], [465, 830], [550, 830], [635, 830],
+    [85, 970], [170, 970], [255, 970], [465, 970], [550, 970], [635, 970],
   ],
-  // Ring width at a given floor y (perspective): ~95px on the back row, ~150px on row 4.
-  ringWidth: { y0: 325, w0: 95, perPx: 0.16, min: 80, max: 175 },
-  // Walkable floor: a trapezoid, narrower at the back.
-  floor: { top: 275, bottom: 845, topX: [205, 1465], bottomX: [45, 1625] },
-  // The boss painted on its platform; the animated boss sprite is drawn over it.
-  boss: { x: 842, feetY: 190, height: 150 },
+  ringWidth: { y0: 410, w0: 58, perPx: 0, min: 58, max: 58 },
+  floor: { top: 300, bottom: 1080, topX: [42, 678], bottomX: [42, 678] },
+  boss: { x: 360, feetY: 265, height: 145 * 1.3, flight: { radiusX: 92, radiusY: 20, period: 16 } },
+  spawn: { x: 360, y: 1050 },
 };
 
 // Power-ups every player gets once per game. Effects are applied by the server.

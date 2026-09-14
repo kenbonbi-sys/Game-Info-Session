@@ -6,13 +6,22 @@ export const Input = {
   pressed: new Set(),
 
   init() {
+    const clearKeys = () => {
+      this.down.clear();
+      this.pressed.clear();
+    };
     addEventListener('keydown', e => {
+      const target = e.target;
+      if (target instanceof Element && (target.matches('input, textarea, select') || target.isContentEditable)) return;
       if (!e.repeat) this.pressed.add(e.code);
       this.down.add(e.code);
       if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
     });
     addEventListener('keyup', e => this.down.delete(e.code));
-    addEventListener('blur', () => this.down.clear());
+    addEventListener('blur', clearKeys);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clearKeys();
+    });
   },
 
   axis() {

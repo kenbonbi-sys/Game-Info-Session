@@ -1,13 +1,17 @@
 # Asset guide — Fox Swarm
 
-## Sprite SVG đang dùng (export từ Canva)
+## Sprite đang dùng
 
 | Nhân vật | File | Kết quả trong game |
 |---|---|---|
 | Nhân vật chính | `assets/source/hero-360.svg` | 7 hướng nhìn, frame 64×64 |
-| Boss | `assets/source/boss-angry.svg` | 7 frame lặp, 8 fps, frame 168×168 |
+| Logo lockup | `assets/source/learning-hub-x-research-lab.png` | Hiện trên thẻ vào phòng. Chữ đã đảo sang trắng để đọc được trên nền tối; con cáo, chữ "Learning" cam và vòng tròn xanh giữ nguyên màu gốc |
+| Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 168×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần) |
 
-Game tự đọc SVG khi mở: lấy ảnh bitmap nhúng bên trong, dùng lớp mask làm nền trong suốt,
+Boss dùng sheet PNG dạng lưới (`loadGridSheet`) như ụ súng: nền trong suốt, mỗi hàng là một animation.
+Nếu file gốc có nền checkerboard vẽ chết, phải tách nền (flood fill từ viền) trước khi đưa vào `assets/source/`.
+
+Hero vẫn đọc từ SVG khi mở: lấy ảnh bitmap nhúng bên trong, dùng lớp mask làm nền trong suốt,
 tự phát hiện ảnh pixel bị phóng to bao nhiêu lần (hiện là ×3) rồi thu về đúng 1 pixel art = 1 pixel game.
 
 Yêu cầu khi thay file SVG khác:

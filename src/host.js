@@ -1,5 +1,5 @@
 // Projector screen for the MC: join QR, live question + answer counts, shared boss, Top 5, CSV export.
-import { loadSvgStrip } from './sprites.js';
+import { loadGridSheet } from './sprites.js';
 import { SPRITES } from './config.js';
 
 const $ = id => document.getElementById(id);
@@ -188,6 +188,6 @@ addEventListener('keydown', e => {
   else if (state.phase !== 'end') action('next');
 });
 
-loadSvgStrip(SPRITES.boss.url, SPRITES.boss).then(sheet => { bossSheet = sheet; }).catch(err => console.warn(err));
+loadGridSheet(SPRITES.boss.url, SPRITES.boss).then(sheet => { bossSheet = sheet; }).catch(err => console.warn(err));
 connect();
 requestAnimationFrame(tick);

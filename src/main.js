@@ -1,5 +1,5 @@
 // Game loop: spawning, combat, rendering, HUD and menus.
-import { buildFoxSheet, buildSlimeArt, loadAsepriteSheet, loadSvgStrip, sheetToAsepriteJson, makeCanvas } from './sprites.js';
+import { buildFoxSheet, buildSlimeArt, loadAsepriteSheet, loadGridSheet, loadSvgStrip, sheetToAsepriteJson, makeCanvas } from './sprites.js';
 import { Input, World, SpatialHash, WORLD } from './world.js';
 import { Player, Enemy, UPGRADES, applyUpgrade, rollChoices, weaponStats } from './entities.js';
 import { SPRITES } from './config.js';
@@ -699,7 +699,7 @@ async function boot() {
       () => loadSvgStrip(SPRITES.hero.url, SPRITES.hero),
       () => loadAsepriteSheet('assets/fox.json'),
     ]).then(sheet => sheet ?? buildFoxSheet()),
-    loadFirst([() => loadSvgStrip(SPRITES.boss.url, SPRITES.boss)]),
+    loadFirst([() => loadGridSheet(SPRITES.boss.url, SPRITES.boss)]),
   ]);
   slimeArt = buildSlimeArt();
   $('spriteSource').textContent = foxSheet.source.split('/').pop();
