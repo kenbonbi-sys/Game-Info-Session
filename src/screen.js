@@ -5,6 +5,9 @@ import { ANSWERS, ARENA, shapeSvg } from './config.js';
 import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, bossUnleash, bossHealth } from './arena-view.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
+import { mountBottle, setBottleFill } from './bottle.js';
+import { FINALE } from './finale-config.js';
+import { loadVictoryArt, drawVictoryFilm } from './victory-film.js';
 
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -13,11 +16,9 @@ const PREVIEW = params.has('preview');
 const PREVIEW_FRAME_MS = 50;
 const PHASE_LABEL = {
   lobby: 'Phòng chờ', countdown: 'Chuẩn bị', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!',
-  final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'ĐÒN KẾT LIỄU', end: 'Kết thúc',
+  final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'NÉM BÌNH!', victory: 'CÙNG NHAU CHIẾN THẮNG', end: 'Top 5',
 };
 const RING = 2 * Math.PI * 52;
-// The finishing volley plays before the leaderboard covers the arena.
-const FINALE_SECONDS = 3.4;
 
 let key = params.get('key');
 try {
@@ -30,11 +31,66 @@ let state = null;
 let offset = 0;
 let seatsTaken = 0;
 let builtIndex = -1;
-let finaleAt = 0;
 let lastCount = -1;
 let roundShots = 0;
 let bossSeen = null;   // last boss "dead" flag shown, null until the first frame after connecting
 const announced = new Set();
+const victoryPlayback = { active: false, complete: false, fallback: false, started: 0, progress: 0, progressAt: 0 };
+let victoryArt = null;
+let podiumKey = '';
+
+const phaseElapsed = s => Math.max(0, ((Date.now() + offset) - (s.phaseAt || s.now)) / 1000);
+
+function stopVictory() {
+  $('victoryVideo').pause();
+  Object.assign(victoryPlayback, { active: false, complete: false, fallback: false });
+  $('victoryFallback').hidden = true;
+  $('victoryVideo').hidden = false;
+  $('victoryPlay').hidden = true;
+}
+
+function fallbackVictory() {
+  if (!victoryPlayback.active || victoryPlayback.complete || victoryPlayback.fallback) return;
+  const video = $('victoryVideo');
+  const elapsed = Math.min(FINALE.victorySeconds, video.currentTime || phaseElapsed(state));
+  video.pause();
+  victoryPlayback.fallback = true;
+  victoryPlayback.started = performance.now() / 1000 - elapsed;
+  video.hidden = true;
+  $('victoryFallback').hidden = false;
+}
+
+function startVictory(s) {
+  const video = $('victoryVideo');
+  Object.assign(victoryPlayback, { active: true, complete: false, fallback: false, started: performance.now() / 1000 - phaseElapsed(s), progress: -1, progressAt: performance.now() });
+  video.hidden = false;
+  $('victoryFallback').hidden = true;
+  const play = () => {
+    if (!victoryPlayback.active || victoryPlayback.fallback) return;
+    video.currentTime = Math.min(phaseElapsed(s), Math.max(0, (video.duration || FINALE.victorySeconds) - 0.05));
+    video.play().catch(fallbackVictory);
+  };
+  if (video.readyState >= 1) play();
+  else video.addEventListener('loadedmetadata', play, { once: true });
+  if (video.error) fallbackVictory();
+}
+
+function tickVictory(now) {
+  if (!victoryPlayback.active || victoryPlayback.complete) return;
+  const video = $('victoryVideo');
+  if (victoryPlayback.fallback) {
+    const elapsed = now / 1000 - victoryPlayback.started;
+    if (victoryArt) drawVictoryFilm($('victoryFallback'), victoryArt, Math.min(FINALE.victorySeconds - 0.001, elapsed));
+    if (elapsed >= FINALE.victorySeconds) victoryPlayback.complete = true;
+    return;
+  }
+  if (video.currentTime !== victoryPlayback.progress) {
+    victoryPlayback.progress = video.currentTime;
+    victoryPlayback.progressAt = now;
+  } else if (now - victoryPlayback.progressAt > 2500 && !document.hidden) {
+    fallbackVictory();
+  }
+}
 
 function connect() {
   const es = new EventSource(`/api/host/events?key=${encodeURIComponent(key)}&view=${PREVIEW ? 'preview' : 'screen'}`);
@@ -80,8 +136,7 @@ function renderCharge({ taps, goal, full }) {
   const p = Math.min(1, taps / Math.max(1, goal));
   $('chargeFill').style.width = `${p * 100}%`;
   $('chargeFill').parentElement.setAttribute('aria-valuenow', Math.round(p * 100));
-  $('bottleLive').style.clipPath = `inset(${(1 - p) * 100}% 0 0 0)`;
-  $('bottleFill').style.bottom = `${p * 100}%`;
+  setBottleFill($('chargeBottle'), p);
   $('chargeNum').textContent = taps.toLocaleString('vi-VN');
   $('chargeGoal').textContent = `/${goal.toLocaleString('vi-VN')} lượt tap`;
   const bottle = document.querySelector('.bottle');
@@ -90,7 +145,7 @@ function renderCharge({ taps, goal, full }) {
   bottle.dataset.full = String(!!full);
   if (full) {
     $('chargeTitle').textContent = 'BÌNH ĐẦY RỒI!';
-    $('chargeSub').textContent = 'Buddy, bắn đi!';
+    $('chargeSub').textContent = 'Cùng nhau ném bình về phía Quái Vật!';
   }
 }
 
@@ -120,10 +175,11 @@ function onState(s) {
 }
 
 function enterPhase(s, live) {
+  if (!['victory', 'end'].includes(s.phase)) stopVictory();
   setArenaPhase(s.phase);
   switch (s.phase) {
     case 'lobby':
-      finaleAt = 0;
+      podiumKey = '';
       break;
     case 'countdown':
       lastCount = -1;
@@ -159,17 +215,17 @@ function enterPhase(s, live) {
       renderCharge(s.charge ?? { taps: 0, goal: 300, full: false });
       if (live) banner('TÍCH NƯỚC — TAP TAP TAP!', 'warn');
       break;
-    case 'unleash':
-      // The beam lands at ~2s (see .beam in screen.css); the boss writhes until the splash clears.
-      bossUnleash(2, 4.6);
+    case 'unleash': {
+      renderCharge({ ...(s.charge || {}), taps: s.charge?.goal || 300, goal: s.charge?.goal || 300, full: true });
+      const rect = $('chargeBottle').getBoundingClientRect();
+      const stage = $('stage').getBoundingClientRect();
+      const k = stage.width / ARENA.width;
+      syncBoss(s.bossDmg, s.bossMax, true);
+      bossUnleash({ elapsed: phaseElapsed(s), from: { x: (rect.x + rect.width / 2 - stage.x) / k, y: (rect.y + rect.height / 2 - stage.y) / k, width: rect.width / k, height: rect.height / k } });
       break;
-    case 'end':
-      if (live && s.finisher) {
-        banner('QUÁI VẬT DỄ SỢ ĐÃ BỊ HẠ GỤC!', 'warn');
-        finaleAt = performance.now() + FINALE_SECONDS * 1000;
-      } else {
-        finaleAt = performance.now() + (live ? 1800 : 0);
-      }
+    }
+    case 'victory':
+      startVictory(s);
       break;
   }
 }
@@ -275,8 +331,11 @@ function render(s) {
     $('answeredOf').textContent = `/${Math.max(s.online ?? 0, s.answered ?? 0)} đã trả lời`;
   }
   if (s.phase === 'end') {
-    $('endTitle').textContent = 'Quái Vật Dễ Sợ đã bị hạ gục!';
-    $('podium').replaceChildren(...renderPodium(s.top));
+    const nextKey = JSON.stringify(s.top);
+    if (nextKey !== podiumKey) {
+      podiumKey = nextKey;
+      $('podium').replaceChildren(...renderPodium(s.top));
+    }
     $('endStats').textContent = `${s.players} người chơi · ${s.total} câu hỏi · cả hội trường tap ${s.totalShots.toLocaleString('vi-VN')} lượt`;
   }
 }
@@ -297,20 +356,29 @@ function bump(el) {
 }
 
 function sceneFor(s) {
-  if (s.phase === 'end') return performance.now() < finaleAt ? 'finale' : 'end';
+  if (s.phase === 'end' && victoryPlayback.active && !victoryPlayback.complete) return 'victory';
   return s.phase;
 }
 
 // Top 5 on the victory screen: the score that ranked them, plus how much of the hall's tapping
 // was theirs — the number people actually want to hear read out.
 function renderPodium(list) {
-  return list.map((p, i) => {
+  return list.slice(0, 5).map((p, i) => {
     const li = document.createElement('li');
+    li.style.setProperty('--step-height', `${[340, 270, 225, 170, 130][i]}px`);
+    li.style.setProperty('--podium-order', [3, 2, 4, 1, 5][i]);
+    li.style.setProperty('--reveal-delay', `${(4 - i) * 350}ms`);
+    li.setAttribute('aria-label', `Hạng ${i + 1}, ${p.name}, ${p.score} điểm, ${p.shots ?? 0} lượt tap`);
+    const step = Object.assign(document.createElement('div'), { className: 'podium-step' });
+    step.append(
+      Object.assign(document.createElement('b'), { textContent: String(i + 1) }),
+      Object.assign(document.createElement('i'), { textContent: `${(p.shots ?? 0).toLocaleString('vi-VN')} tap` }),
+    );
     li.append(
-      Object.assign(document.createElement('b'), { textContent: `#${i + 1}` }),
+      Object.assign(document.createElement('img'), { className: 'podium-fox', src: '/assets/design/icons/default-mascot.svg', alt: '', width: 120, height: 120 }),
       Object.assign(document.createElement('span'), { textContent: p.name }),
       Object.assign(document.createElement('em'), { textContent: `${p.score.toLocaleString('vi-VN')} điểm` }),
-      Object.assign(document.createElement('i'), { textContent: `${(p.shots ?? 0).toLocaleString('vi-VN')} tap` }),
+      step,
     );
     return li;
   });
@@ -321,6 +389,11 @@ function tickHud() {
   const scene = sceneFor(s);
   if (document.body.dataset.scene !== scene) document.body.dataset.scene = scene;
   const left = Math.max(0, s.endsAt - (Date.now() + offset)) / 1000;
+  if (s.phase === 'unleash') {
+    const t = phaseElapsed(s);
+    $('unleashWord').textContent = t < FINALE.throwAt ? 'BÌNH ĐẦY RỒI!' : t < FINALE.impactAt ? 'CÙNG NHAU… NÉM!' : t < FINALE.defeatAt ? 'TRÚNG RỒI!' : 'QUÁI VẬT ĐÃ BỊ HẠ GỤC!';
+    $('unleash').dataset.beat = t < FINALE.impactAt ? 'throw' : t < FINALE.defeatAt ? 'impact' : 'defeated';
+  }
   if (s.phase === 'countdown') {
     const n = Math.max(1, Math.ceil(left));
     if (n !== lastCount) {
@@ -353,7 +426,7 @@ function tickBoss() {
     bossSeen = dead;
   } else if (dead !== bossSeen) {
     bossSeen = dead;
-    if (dead && state?.phase !== 'end') banner('Quái Vật Dễ Sợ gục ngã!', 'warn');
+    if (dead && !['unleash', 'victory', 'end'].includes(state?.phase)) banner('Quái Vật Dễ Sợ gục ngã!', 'warn');
   }
 }
 
@@ -378,6 +451,11 @@ function wake() {
 
 async function boot() {
   document.body.classList.toggle('preview', PREVIEW);
+  mountBottle($('chargeBottle'));
+  $('victoryVideo').src = FINALE.videoUrl;
+  $('victoryVideo').addEventListener('ended', () => { if (victoryPlayback.active) victoryPlayback.complete = true; });
+  $('victoryVideo').addEventListener('error', fallbackVictory);
+  loadVictoryArt().then(art => { victoryArt = art; }).catch(err => console.warn('Victory fallback artwork:', err));
   // initArena takes the canvas synchronously, so the first fit can size it while sprites load.
   const loading = initArena($('arena'));
   fit();
@@ -415,6 +493,7 @@ async function boot() {
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
     arenaFrame(dt, now / 1000);
+    tickVictory(now);
     tickBoss();
     if (state) tickHud();
   });

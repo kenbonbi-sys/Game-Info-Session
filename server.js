@@ -5,13 +5,14 @@
 // and /host is the MC dashboard on the laptop. Each question runs question → reveal → fire:
 // players who answered right tap to shoot, everyone else gets hit back.
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { createReadStream, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO } from './src/config.js';
+import { FINALE } from './src/finale-config.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const argPort = process.argv.find(a => a.startsWith('--port='))?.slice('--port='.length);
@@ -27,6 +28,8 @@ const TYPES = {
   '.otf': 'font/otf',
   '.ttf': 'font/ttf',
   '.webp': 'image/webp',
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4',
   '.md': 'text/markdown; charset=utf-8',
 };
 const ROUTES = { '/': '/index.html', '/host': '/host.html', '/screen': '/screen.html', '/sandbox': '/sandbox.html' };
@@ -44,8 +47,6 @@ const BOSS_FLOOR = 0.15;
 // a full room fills it before anyone sees it move.
 const CHARGE_PER_PLAYER = 25;
 const CHARGE_MIN = 300;
-// Seconds of aura → beam → impact → the boss coming apart, before the victory screen.
-const UNLEASH_SECONDS = 9;
 // Taps accepted per player: a steady rate with a small burst, so batching and jitter cost nothing
 // but auto-clickers gain nothing either.
 const TAP_RATE = 12;
@@ -232,6 +233,7 @@ function stateFor(role) {
   const s = {
     type: 'state',
     phase: game.phase,
+    phaseAt: game.phaseAt,
     index: game.index,
     total: game.round.length || game.quiz.questions.length,
     time: game.quiz.time,
@@ -255,7 +257,7 @@ function stateFor(role) {
     s.options = fq.options.length;
     if (game.phase !== 'final') s.answer = fq.answer;
   }
-  if (['charge', 'unleash'].includes(game.phase)) s.charge = { ...game.charge };
+  if (['charge', 'unleash', 'victory'].includes(game.phase)) s.charge = { ...game.charge };
   if (role === 'player') return s;
   if (inRound) s.question = { id: q.id, group: q.group, text: q.text, options: q.options };
   if (inFinale) s.question = { id: fq.id, group: fq.group, text: fq.text, options: fq.options };
@@ -387,13 +389,17 @@ setInterval(() => {
   broadcastPlayers({ type: 'boss', boss: bossPercent() });
 }, 1000);
 
+const phaseTimers = new Set();
+
 function schedule(phase, seconds, next) {
   clearTimeout(game.timer);
+  for (const timer of phaseTimers) clearTimeout(timer);
+  phaseTimers.clear();
   game.timer = null;
   game.phase = phase;
   game.phaseAt = Date.now();
   if (phase !== 'fire') game.firing = false;
-  game.endsAt = seconds > 0 ? Date.now() + seconds * 1000 : 0;
+  game.endsAt = seconds > 0 ? game.phaseAt + seconds * 1000 : 0;
   if (seconds > 0 && next) game.timer = setTimeout(next, seconds * 1000);
   broadcast();
 }
@@ -436,13 +442,13 @@ function nextQuestion() {
   sendRanks();
 }
 
-// ---- Finale: the fun question, then the whole hall charging one shot ---------------
+// ---- Finale: fill the bottle, throw it, defeat the boss, celebrate, then show Top 5 --
 
 // The quiz is over and the boss is still standing on its last sliver. One joke question, then
 // everyone — right answer or not — taps the bottle full and it goes off in the boss's face.
 function startFinale() {
   if (!game.quiz.finale) {
-    endGame();
+    startCharge();
     return;
   }
   game.finalePick = {};
@@ -473,11 +479,32 @@ function fillCharge(why) {
   if (game.phase !== 'charge' || game.charge.full) return;
   game.charge.full = true;
   game.charge.taps = Math.max(game.charge.taps, game.charge.goal);
-  Object.assign(game.boss, { dmg: game.boss.max, finisher: true });
-  bossChanged = true;
-  logEvent(`Bình nước đầy (${why}) — tung đòn kết liễu!`, 'good');
-  schedule('unleash', UNLEASH_SECONDS, endGame);
+  game.boss.finisher = true;
+  logEvent(`Bình nước đầy (${why}) — cùng ném bình vào Quái Vật!`, 'good');
+  schedule('unleash', FINALE.unleashSeconds, startVictory);
+  // The boss stays alive while the bottle flies, hits, and makes it reel. Only the
+  // actual defeat moment may remove the last HP. schedule() also cancels this on reset.
+  const timer = setTimeout(() => {
+    phaseTimers.delete(timer);
+    defeatBoss();
+  }, FINALE.defeatAt * 1000);
+  phaseTimers.add(timer);
   broadcastScreens(chargeMessage());
+}
+
+function defeatBoss() {
+  if (game.phase !== 'unleash' || game.boss.dmg >= game.boss.max) return;
+  game.boss.dmg = game.boss.max;
+  bossChanged = true;
+  logEvent('Quái Vật đã bị hạ gục nhờ bình nước của cả đội cáo!', 'good');
+  broadcast();
+}
+
+function startVictory() {
+  if (game.phase !== 'unleash') return;
+  defeatBoss();
+  logEvent('Chiếu clip chiến thắng của cả đội cáo — sau clip sẽ vinh danh Top 5', 'phase');
+  schedule('victory', FINALE.victorySeconds, endGame);
 }
 
 function finaleCounts() {
@@ -527,8 +554,7 @@ function tapCharge(p, n) {
 }
 
 function endGame() {
-  // Whatever is left of the boss falls to one last volley from the whole hall.
-  if (game.boss.dmg < game.boss.max) Object.assign(game.boss, { dmg: game.boss.max, finisher: true });
+  if (game.phase !== 'victory') return;
   const [first] = leaderboard();
   logEvent(`Kết thúc game${game.boss.finisher ? ' (đòn kết liễu chung)' : ''}${first ? ` · Top 1: ${first.name}, ${first.score.toLocaleString('vi-VN')} điểm` : ''}`, 'good');
   schedule('end', 0);
@@ -609,8 +635,7 @@ function hostAction(action) {
       else if (game.phase === 'final') revealFinale();
       else if (game.phase === 'finalreveal') startCharge();
       return true;
-    // The MC's escape hatch: a half-empty hall, a dead phone battery, taps not arriving. Skips
-    // straight to the finisher instead of leaving the finale stuck on a meter nobody can fill.
+    // The MC can top up a slow bottle. The throw, defeat and victory clip still play in full.
     case 'fill':
       if (game.phase === 'charge') fillCharge('MC nạp đầy');
       return true;
@@ -619,6 +644,9 @@ function hostAction(action) {
       game.index = -1;
       game.boss = { max: 1, dmg: 0, finisher: false, fellAt: -1 };
       game.totalShots = 0;
+      game.roundShots = 0;
+      pendingShots.clear();
+      bossChanged = false;
       game.charge = { taps: 0, goal: CHARGE_MIN, full: false };
       game.finalePick = {};
       for (const p of players.values()) freshStats(p);
@@ -870,7 +898,36 @@ async function handleApi(req, res, url, path) {
   json(res, 404, { error: 'Not found' });
 }
 
-async function serveStatic(res, urlPath) {
+// Browsers request byte ranges when resuming or seeking a victory clip after reconnecting.
+async function serveVideo(req, res, file, type) {
+  const { size } = await stat(file);
+  const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
+  let start = 0;
+  let end = size - 1;
+  const range = req.headers.range;
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (match && (match[1] || match[2])) {
+      if (match[1]) {
+        start = Number(match[1]);
+        if (match[2]) end = Math.min(end, Number(match[2]));
+      } else {
+        start = Math.max(0, size - Number(match[2]));
+      }
+    } else start = size;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) {
+      res.writeHead(416, { ...headers, 'Content-Range': `bytes */${size}` }).end();
+      return;
+    }
+    headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  }
+  headers['Content-Length'] = Math.max(0, end - start + 1);
+  res.writeHead(range ? 206 : 200, headers);
+  if (req.method === 'HEAD' || !size) res.end();
+  else createReadStream(file, { start, end }).on('error', () => res.destroy()).pipe(res);
+}
+
+async function serveStatic(req, res, urlPath) {
   const clean = normalize(ROUTES[urlPath] ?? urlPath).replace(/\\/g, '/');
   if (PRIVATE.test(clean)) {
     res.writeHead(404).end('Not found');
@@ -882,9 +939,11 @@ async function serveStatic(res, urlPath) {
     return;
   }
   try {
+    const type = TYPES[extname(file)] ?? 'application/octet-stream';
+    if (type.startsWith('video/')) return await serveVideo(req, res, file, type);
     const data = await readFile(file);
-    res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
-    res.end(data);
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
     res.writeHead(404).end('Not found');
   }
@@ -895,7 +954,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const path = decodeURIComponent(url.pathname);
     if (path.startsWith('/api/')) await handleApi(req, res, url, path);
-    else await serveStatic(res, path);
+    else await serveStatic(req, res, path);
   } catch (err) {
     console.error(err);
     if (!res.headersSent) json(res, 500, { error: 'Lỗi server' });

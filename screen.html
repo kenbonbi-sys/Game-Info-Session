@@ -69,19 +69,12 @@
       </div>
     </section>
 
-    <!-- The finale: everyone taps water into the bottle, then it goes off in the boss's face. -->
+    <!-- Water lives inside the vessel; the same vessel is thrown into the arena. -->
     <section id="charge" class="charge-scene" aria-live="polite">
       <span class="eyebrow">ĐÒN KẾT LIỄU</span>
       <h1 id="chargeTitle">CẢ HỘI TRƯỜNG TAP ĐI!</h1>
       <div class="charge-body">
-        <!-- Two copies of the same art: a dim one underneath, the lit one revealed from the
-             bottom up as the hall fills it, so any bottle artwork reads as filling. -->
-        <div class="bottle" aria-hidden="true">
-          <img class="bottle-art ghost" src="assets/source/items/binh-nuoc-cao.svg" alt="" width="96" height="96">
-          <img id="bottleLive" class="bottle-art live" src="assets/source/items/binh-nuoc-cao.svg" alt="" width="96" height="96">
-          <i id="bottleFill" class="bottle-line"></i>
-          <span class="bottle-shine"></span>
-        </div>
+        <div id="chargeBottle" class="bottle" aria-hidden="true"></div>
         <div class="charge-readout">
           <div class="charge-meter" role="progressbar" aria-label="Tích nước" aria-valuemin="0" aria-valuemax="100"><i id="chargeFill"></i></div>
           <p class="charge-count"><b id="chargeNum">0</b><span id="chargeGoal">/300 lượt tap</span></p>
@@ -90,15 +83,19 @@
       </div>
     </section>
 
-    <div id="unleash" class="unleash-scene" aria-hidden="true">
-      <div id="beam" class="beam"></div>
-      <div id="splash" class="splash"></div>
-      <b id="unleashWord" class="unleash-word">KAMEHAMEHA!</b>
+    <div id="unleash" class="unleash-scene" aria-live="polite">
+      <b id="unleashWord" class="unleash-word"></b>
     </div>
 
+    <section id="victory" class="victory-scene" aria-label="Clip các chú cáo cùng hợp sức chiến thắng">
+      <video id="victoryVideo" class="victory-video" preload="auto" muted playsinline disablepictureinpicture poster="assets/video/fox-team-victory-poster.jpg" aria-label="Các chú cáo hội tụ, cùng ăn mừng chiến thắng"></video>
+      <canvas id="victoryFallback" class="victory-video" width="1280" height="720" hidden aria-label="Các chú cáo cùng hợp sức chiến thắng"></canvas>
+      <button id="victoryPlay" class="victory-play" type="button" hidden>Phát clip chiến thắng</button>
+    </section>
+
     <section id="end" class="end-scene" aria-labelledby="endTitle">
-      <span class="eyebrow">BẢNG XẾP HẠNG</span>
-      <h1 id="endTitle">Quái Vật Dễ Sợ đã bị hạ gục!</h1>
+      <span class="eyebrow">CẢ HỘI TRƯỜNG ĐÃ CHIẾN THẮNG</span>
+      <h1 id="endTitle">VINH DANH TOP 5</h1>
       <ol id="podium" class="podium"></ol>
       <p id="endStats" class="end-stats"></p>
     </section>

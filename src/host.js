@@ -6,7 +6,7 @@ import { ANSWERS, shapeSvg } from './config.js';
 const $ = id => document.getElementById(id);
 const PHASE_NAME = {
   lobby: 'Phòng chờ', countdown: 'Đếm ngược', question: 'Đang trả lời', reveal: 'Hiện đáp án', fire: 'Lượt bắn',
-  final: 'Câu đố vui', finalreveal: 'Đáp án câu vui', charge: 'Tích nước', unleash: 'Đòn kết liễu', end: 'Kết thúc',
+  final: 'Câu đố vui', finalreveal: 'Đáp án câu vui', charge: 'Tích nước', unleash: 'Ném bình nước', victory: 'Clip chiến thắng', end: 'Vinh danh Top 5',
 };
 const STATUS_LABEL = { answered: 'Đã chọn', correct: 'Đúng', wrong: 'Sai', timeout: 'Hết giờ', blocked: 'Khiên đỡ' };
 
@@ -85,7 +85,7 @@ function onState(s) {
   state = s;
   document.body.dataset.phase = s.phase;
   const sig = `${s.phase}|${s.index}|${s.firing}|${s.endsAt}`;
-  if (timer.sig !== sig) Object.assign(timer, { sig, total: Math.max(1, s.endsAt - s.now) });
+  if (timer.sig !== sig) Object.assign(timer, { sig, total: Math.max(1, s.endsAt - (s.phaseAt || s.now)) });
   renderTop();
   renderControl();
   renderRound();
@@ -122,8 +122,9 @@ function nextLabel(s) {
     case 'fire': return s.index + 1 >= s.total ? 'Sang câu đố vui cuối' : `Sang câu ${s.index + 2}`;
     case 'final': return 'Khoá & hiện đáp án';
     case 'finalreveal': return '💧 Mở màn tích nước!';
-    case 'charge': return charged(s) ? 'Đang tung đòn…' : 'Chờ hội trường tap…';
-    case 'unleash': return 'Đang tung đòn…';
+    case 'charge': return charged(s) ? 'Đang ném bình…' : 'Chờ hội trường tap…';
+    case 'unleash': return 'Đang ném bình…';
+    case 'victory': return 'Đang chiếu clip chiến thắng…';
     case 'end': return '↺ Chơi lại';
     default: return 'Tiếp';
   }
@@ -144,17 +145,18 @@ function renderControl() {
     final: ['Câu đố vui cuối', 'Không tính điểm. Đọc to câu hỏi cho cả hội trường — trả lời xong là tới màn tích nước.'],
     finalreveal: ['Đáp án câu vui', `${right} người đoán đúng. Bấm để mở màn tích nước cho cả hội trường.`],
     charge: charged(s)
-      ? ['Bình đã đầy!', 'Đòn kết liễu đang chạy trên màn chiếu.']
+      ? ['Bình đã đầy!', 'Cả đội cáo đang ném bình nước vào Quái Vật trên màn chiếu.']
       : ['Tích nước!', `${(s.charge?.taps ?? 0).toLocaleString('vi-VN')}/${(s.charge?.goal ?? 0).toLocaleString('vi-VN')} lượt tap. Hô hào cả hội trường tap đi — hoặc bấm "Nạp đầy" nếu muốn chốt sớm.`],
-    unleash: ['Đòn kết liễu', 'Quái Vật đang lãnh trọn bình nước. Bảng xếp hạng hiện ngay sau đó.'],
+    unleash: ['Ném bình nước!', 'Bình nước bay vào Quái Vật, khiến nó chao đảo rồi gục xuống. Tiếp theo là clip cả đội cáo ăn mừng.'],
+    victory: ['Cả đội cáo cùng chiến thắng!', 'Clip chiến thắng đang phát trên màn chiếu. Top 5 tự hiện sau khi clip kết thúc.'],
     end: ['Kết thúc', 'Màn chiếu đang hiện Top 5 kèm lượt tap. Tải CSV để lấy danh sách trao quà.'],
   }[s.phase] ?? ['', ''];
   $('ctrlTitle').textContent = title;
   $('ctrlText').textContent = text;
   $('fillBtn').hidden = s.phase !== 'charge' || charged(s);
   $('nextBtn').textContent = nextLabel(s);
-  // Nothing for the MC to advance while the hall is tapping or the finisher is playing.
-  $('nextBtn').disabled = s.phase === 'charge' || s.phase === 'unleash';
+  // Let the hall finish its bottle and watch the full victory clip before revealing Top 5.
+  $('nextBtn').disabled = ['charge', 'unleash', 'victory'].includes(s.phase) || performance.now() < nextLockedUntil;
   $('autoBtn').setAttribute('aria-pressed', String(s.auto));
   $('autoBtn').querySelector('b').textContent = s.auto ? 'BẬT' : 'TẮT';
 }
@@ -343,10 +345,10 @@ function tick() {
 // A short lockout after each press, so a double click can't skip the reveal or the shooting.
 let nextLockedUntil = 0;
 function next() {
-  if (!state || performance.now() < nextLockedUntil) return;
+  if (!state || ['charge', 'unleash', 'victory'].includes(state.phase) || performance.now() < nextLockedUntil) return;
   nextLockedUntil = performance.now() + 900;
   $('nextBtn').disabled = true;
-  setTimeout(() => { $('nextBtn').disabled = false; }, 900);
+  setTimeout(() => { if (state) renderControl(); }, 900);
   if (state.phase === 'lobby') return action('start');
   if (state.phase === 'end') {
     if (confirm('Chơi lại từ đầu? Điểm lượt trước sẽ bị xoá (tải CSV trước nếu cần).')) action('start');

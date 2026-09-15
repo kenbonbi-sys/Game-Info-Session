@@ -124,7 +124,7 @@ function onState(msg) {
   net.offset = msg.now - Date.now();
   const prev = { phase: quiz.phase, index: quiz.index };
   Object.assign(quiz, {
-    phase: msg.phase, index: msg.index, total: msg.total, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
+    phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
     players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss,
     charge: msg.charge ?? quiz.charge,
   });
@@ -293,6 +293,7 @@ function currentView() {
     case 'finalreveal': return 'finalresult';
     case 'charge': return 'charge';
     case 'unleash': return 'unleash';
+    case 'victory': return 'victory';
     case 'end': return 'end';
     default: return 'connecting';
   }
@@ -426,8 +427,13 @@ function renderWait(view) {
     case 'unleash':
       art = 'boss';
       badge = null;
-      title = 'BÙM!';
-      text = 'Cả hội trường vừa dội nguyên bình nước vào Quái Vật. Nhìn lên màn hình lớn đi!';
+      title = 'Cùng ném bình nước!';
+      text = 'Bình nước của cả hội trường đang bay về phía Quái Vật. Cùng xem đòn kết liễu trên màn hình lớn!';
+      break;
+    case 'victory':
+      badge = { kind: 'good', content: '🦊' };
+      title = 'Cả đội cùng chiến thắng!';
+      text = 'Nhìn lên màn hình lớn để xem clip các chú cáo hợp sức chiến thắng. Top 5 sẽ được vinh danh sau clip!';
       break;
     case 'stunned':
       art = 'boss';
@@ -506,7 +512,7 @@ function renderBoss() {
 function renderItems() {
   const tray = $('items');
   // Items do nothing in the finale — that question is not scored and the charge is not a round.
-  const inFinale = ['final', 'finalreveal', 'charge', 'unleash'].includes(quiz.phase);
+  const inFinale = ['final', 'finalreveal', 'charge', 'unleash', 'victory'].includes(quiz.phase);
   tray.hidden = inFinale || !PLAY_VIEWS.includes(document.body.dataset.view);
   if (tray.hidden) return;
   for (const btn of tray.querySelectorAll('.item')) {

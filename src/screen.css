@@ -135,17 +135,26 @@ body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0
 .fire-stats em { color: #fff; font: 700 23px var(--font-disp); font-style: normal; }
 
 /* ---- End ------------------------------------------------------------------------- */
-.end-scene { position: absolute; z-index: 2; top: 128px; left: 50%; width: 1060px; margin-left: -530px; padding: 38px 56px 42px; text-align: center; background: #0a1827f5; border: 2px solid #5c7998; border-radius: 20px 6px; box-shadow: 0 30px 80px #02080e; transform: scale(.94); }
-.end-scene h1 { margin: 8px 0 28px; font: 800 58px/1.12 var(--font-disp); text-wrap: balance; }
-.podium { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; text-align: left; }
-.podium li { display: flex; align-items: center; gap: 22px; padding: 15px 28px; border: 2px solid #3d546d; border-radius: 11px 3px; background: #112337; font: 800 36px/1.25 var(--font-disp); animation: arrive 500ms both; }
-.podium li:nth-child(2) { animation-delay: 120ms; } .podium li:nth-child(3) { animation-delay: 240ms; } .podium li:nth-child(4) { animation-delay: 360ms; } .podium li:nth-child(5) { animation-delay: 480ms; }
-.podium li:first-child { border-color: var(--ui-orange); background: linear-gradient(90deg, #5a2a1c, #2b1d1a); font-size: 46px; }
-.podium li b { width: 76px; font-size: 26px; }
-.podium li em { font-size: 24px; }
-.end-stats { margin: 26px 0 0; color: #abbccf; font: 600 24px var(--font-sans); }
-.podium li i { flex: none; min-width: 150px; padding: 6px 14px; border-radius: 8px 3px; background: #0c2033; color: #9fd0ff; font: 600 19px var(--font-sans); text-align: right; font-variant-numeric: tabular-nums; }
-.podium li:first-child i { background: #3a201a; color: #ffc7b4; }
+.end-scene { position: absolute; z-index: 2; inset: 150px 150px 55px; text-align: center; transform: translateY(24px); }
+.end-scene .eyebrow { color: #ffd6a7; font-size: 21px; }
+.end-scene h1 { margin: 14px 0 34px; font: 800 84px/1.1 var(--font-disp); color: #fff4dd; text-shadow: 0 5px 0 #6b3924; }
+.podium { display: flex; justify-content: center; align-items: flex-end; gap: 14px; min-height: 570px; margin: 0; padding: 0 32px; list-style: none; text-align: center; }
+.podium li { order: var(--podium-order); flex: 0 1 270px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; font: 800 29px/1.2 var(--font-disp); opacity: 0; }
+body[data-scene="end"] .podium li { animation: podium-reveal 750ms cubic-bezier(.2,.8,.2,1) var(--reveal-delay) both; }
+.podium li > span { flex: none; width: 100%; padding: 0 4px; box-sizing: border-box; }
+.podium li > em { color: #a4d6ff; font: 700 25px var(--font-disp); }
+.podium-fox { width: 106px; height: 106px; object-fit: contain; filter: drop-shadow(0 8px 12px #0008); }
+.podium-step { box-sizing: border-box; display: flex; align-items: center; flex-direction: column; width: 100%; height: var(--step-height); margin-top: 12px; padding: 22px 10px; border: 2px solid #5f819e; border-top: 8px solid #a4cbe6; background: linear-gradient(#244966, #102b42); box-shadow: inset -12px 0 #071a2933, 0 20px 30px #0005; }
+.podium li .podium-step b { width: auto; color: #d2e9fb; font: 800 66px/1 var(--font-disp); }
+.podium li .podium-step i { margin-top: 12px; color: #b5d4eb; font: normal 600 20px var(--font-sans); }
+.podium li:first-child .podium-step { border-color: #ffb968; border-top-color: #ffe3a9; background: linear-gradient(#965829, #4a2a20); box-shadow: inset -12px 0 #54291755, 0 0 70px #ffb15a22; }
+.podium li:first-child .podium-step b { color: #ffe4ac; font-size: 94px; }
+.podium li:first-child > span { color: #ffe4ac; font-size: 35px; }
+.podium li:first-child > em, .podium li:first-child .podium-step i { color: #ffdaae; }
+.podium li:first-child .podium-fox { width: 130px; height: 130px; }
+.podium li:nth-child(3) .podium-step { border-color: #aa7860; border-top-color: #d1a48a; background: linear-gradient(#644938, #302921); }
+.end-stats { margin: 28px 0 0; color: #abbccf; font: 600 24px var(--font-sans); }
+@keyframes podium-reveal { from { opacity: 0; transform: translateY(85px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---- Finale: the shared water charge ------------------------------------------- */
 .charge-scene { position: absolute; z-index: 2; top: 176px; left: 50%; width: 1240px; margin-left: -620px; padding: 34px 56px 44px; text-align: center; background: #0a1827f2; border: 2px solid #5c7998; border-radius: 20px 6px; box-shadow: 0 30px 80px #02080e; transform: scale(.94); }
@@ -153,19 +162,12 @@ body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0
 .charge-body { display: flex; align-items: center; gap: 52px; }
 
 /* The bottle: the art is the vessel, a clipped block rises behind it as the water. */
-.bottle { position: relative; flex: none; width: 260px; height: 340px; }
-.bottle-art { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-.bottle-art.ghost { z-index: 1; opacity: .3; filter: grayscale(1) brightness(.6); }
-.bottle-art.live { z-index: 2; clip-path: inset(100% 0 0 0); filter: drop-shadow(0 0 18px #5fc4ff88); transition: clip-path 180ms cubic-bezier(.2, .9, .3, 1); }
-/* The waterline itself, riding on top of the revealed part. */
-.bottle-line { position: absolute; z-index: 3; left: 8%; right: 8%; bottom: 0; height: 5px; border-radius: 3px; background: linear-gradient(90deg, #5fc4ff00, #dffaff, #5fc4ff00); box-shadow: 0 0 20px #8fe3ff; opacity: 0; transition: bottom 180ms cubic-bezier(.2, .9, .3, 1); }
-.bottle[data-wet="true"] .bottle-line { opacity: 1; }
-.bottle-shine { position: absolute; inset: -18%; z-index: 0; border-radius: 50%; opacity: 0; background: radial-gradient(circle, #7fd8ffbb 0%, #7fd8ff00 68%); }
-/* Past nine tenths the bottle starts shaking and the aura comes up. */
-.bottle[data-near="true"] .bottle-shine { opacity: 1; animation: aura 700ms ease-in-out infinite; }
-.bottle[data-near="true"] .bottle-art.live { animation: rattle 140ms steps(2, end) infinite; }
-.bottle[data-full="true"] .bottle-shine { opacity: 1; animation: aura 380ms ease-in-out infinite; }
-.bottle[data-full="true"] .bottle-art.live { filter: drop-shadow(0 0 40px #8fe3ff) brightness(1.15); }
+.bottle { position: relative; flex: none; width: 252px; height: 392px; filter: drop-shadow(0 16px 25px #0006); }
+/* The glass and fox cap remain visible at every fill level. */
+.bottle svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bottle[data-near="true"] { filter: drop-shadow(0 0 26px #74d5ff88); }
+.bottle[data-full="true"] { filter: drop-shadow(0 0 35px #9be7ffaa); }
+body[data-scene="unleash"] .charge-scene { visibility: hidden; opacity: 0; transition: none; transform: none; }
 
 .charge-readout { flex: 1; min-width: 0; text-align: left; }
 .charge-meter { height: 42px; border: 3px solid #4a6c92; border-radius: 10px 3px; background: #071726; overflow: hidden; }
@@ -178,19 +180,14 @@ body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0
 /* ---- Finale: the shot itself --------------------------------------------------- */
 .unleash-scene { position: absolute; inset: 0; z-index: 5; visibility: hidden; pointer-events: none; }
 body[data-scene="unleash"] .unleash-scene { visibility: visible; }
-/* A column of water thrown from the hall's turrets up into the boss. */
-.beam { position: absolute; left: 50%; bottom: 120px; width: 190px; height: 0; translate: -50% 0; border-radius: 95px 95px 0 0; background: linear-gradient(0deg, #1C66BB, #b6ecff 60%, #ffffff); box-shadow: 0 0 90px #6fd2ff, 0 0 200px #1C66BBcc; opacity: 0; }
-body[data-scene="unleash"] .beam { animation: beam-rise 1.5s cubic-bezier(.3, .7, .2, 1) .5s both; }
-.splash { position: absolute; left: 50%; top: 292px; width: 40px; height: 40px; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, #ffffff 0%, #b6ecff 32%, #1C66BB 58%, #1c66bb00 70%); opacity: 0; }
-body[data-scene="unleash"] .splash { animation: splash-burst 2.4s cubic-bezier(.2, .8, .3, 1) 1.9s both; }
-.unleash-word { position: absolute; left: 50%; top: 58%; translate: -50% -50%; color: #fff; font: 800 132px/1 var(--font-disp); letter-spacing: .04em; text-shadow: 0 0 40px #6fd2ff, 0 8px 0 #0d3f70; opacity: 0; white-space: nowrap; }
-body[data-scene="unleash"] .unleash-word { animation: word-slam 2.2s cubic-bezier(.2, 1.4, .3, 1) 1.7s both; }
-
-@keyframes aura { 0%, 100% { transform: scale(1); opacity: .55; } 50% { transform: scale(1.14); opacity: 1; } }
-@keyframes rattle { 0% { transform: translate(-3px, 1px); } 50% { transform: translate(3px, -1px); } 100% { transform: translate(-2px, 2px); } }
-@keyframes beam-rise { 0% { height: 0; opacity: 0; } 18% { opacity: 1; } 100% { height: 780px; opacity: 1; } }
-@keyframes splash-burst { 0% { width: 40px; height: 40px; opacity: 0; } 12% { opacity: 1; } 55% { width: 1500px; height: 1500px; opacity: .92; } 100% { width: 2100px; height: 2100px; opacity: 0; } }
-@keyframes word-slam { 0% { opacity: 0; scale: 2.6; } 14% { opacity: 1; scale: 1; } 78% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.1; } }
+.unleash-word { position: absolute; left: 50%; bottom: 72px; translate: -50% 0; color: #dbf8ff; font: 800 72px/1.12 var(--font-disp); text-align: center; text-shadow: 0 4px 0 #123f70, 0 0 30px #153e60; white-space: nowrap; }
+.unleash-scene[data-beat="defeated"] .unleash-word { color: #ffe4b2; font-size: 80px; text-shadow: 0 5px 0 #6b3924; }
+.victory-scene { position: absolute; inset: 0; z-index: 8; background: #091623; visibility: hidden; opacity: 0; pointer-events: none; }
+body[data-scene="victory"] .victory-scene { visibility: visible; opacity: 1; pointer-events: auto; }
+.victory-video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.victory-video[hidden] { display: none; }
+.victory-play { position: absolute; bottom: 70px; left: 50%; translate: -50% 0; padding: 18px 30px; border: 2px solid #ffd09a; border-radius: 8px; background: #603723; color: #fff4df; font: 700 24px var(--font-disp); cursor: pointer; }
+body[data-scene="victory"] .hud, body[data-scene="victory"] .banner { visibility: hidden; }
 
 .banner { position: absolute; z-index: 4; top: 54%; left: 50%; translate: -50% -50%; padding: 22px 50px 26px; border: 3px solid #9fc8f2; border-radius: 18px 5px; background: var(--ui-blue); color: #fff; font: 800 64px/1.15 var(--font-disp); white-space: nowrap; opacity: 0; pointer-events: none; box-shadow: 0 20px 60px #020e1acc; }
 .banner[data-tone="bad"] { border-color: var(--ui-orange); background: #4a2b22; color: #ffcabd; }
@@ -217,10 +214,7 @@ body.idle .fs-hint, body.fullscreen .fs-hint, body.preview .fs-hint { opacity: 0
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; }
   .arrivals li, .top5 li, .podium li, .count-scene b.tick, .prompt-shapes i, .fire-call b, .hud-chip.accent, .q-timer b, .opt-check,
-  .bottle-art, .bottle-shine { animation: none !important; }
-  /* The finale still has to read as a hit, so these keep their shape and just stop easing. */
-  body[data-scene="unleash"] .beam { animation: beam-rise 1.5s steps(3, end) .5s both; }
-  body[data-scene="unleash"] .splash { animation: splash-burst 2.4s steps(4, end) 1.9s both; }
-  body[data-scene="unleash"] .unleash-word { animation: word-slam 2.2s steps(2, end) 1.7s both; }
+  .bottle, .bottle svg { animation: none !important; }
+  body[data-scene="end"] .podium li { animation: none; opacity: 1; }
   .banner.pop { animation: toast-pop 1.8s steps(1, end) both; }
 }

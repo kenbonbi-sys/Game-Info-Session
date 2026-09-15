@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fox team victory — film renderer</title>
+<style>html,body{margin:0;background:#071523}canvas{display:block;width:100vw;max-width:1280px;height:auto}</style>
+<canvas width="1280" height="720"></canvas>
+<script type="module">
+  import { loadVictoryFilmArt, drawVictoryFilm, VICTORY_FILM_SECONDS } from '../src/victory-film.js';
+  const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d');
+  const art = await loadVictoryFilmArt();
+  window.renderVictoryFrame = seconds => { drawVictoryFilm(ctx, art, seconds); return canvas.toDataURL('image/png'); };
+  window.victoryDuration = VICTORY_FILM_SECONDS;
+  window.renderVictoryFrame(8);
+  window.victoryReady = true;
+  if (new URLSearchParams(location.search).has('play')) {
+    const start = performance.now();
+    const loop = now => { drawVictoryFilm(ctx, art, (now - start) / 1000 % VICTORY_FILM_SECONDS); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+</script>
+</html>
