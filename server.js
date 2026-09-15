@@ -64,7 +64,10 @@ function lanUrls() {
   return found.sort((a, b) => a.virtual - b.virtual).map(f => f.url);
 }
 
-const JOIN_URLS = process.env.PUBLIC_URL ? [process.env.PUBLIC_URL] : lanUrls();
+// Hosted on the internet (Render sets RENDER_EXTERNAL_URL itself) the phones reach one public
+// address, so there is nothing to choose between; on a laptop it is the LAN addresses.
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+const JOIN_URLS = PUBLIC_URL ? [PUBLIC_URL] : lanUrls();
 const JOIN_URL = JOIN_URLS[0] ?? `http://localhost:${PORT}`;
 
 // ---- Quiz ----------------------------------------------------------------------
@@ -768,11 +771,12 @@ server.on('error', err => {
 server.listen(PORT, () => {
   const unconfirmed = game.quiz.questions.filter(q => q.answerConfirmed === false).map(q => q.id);
   console.log('\n🦊 Fox Quiz đang chạy\n');
-  console.log(`  Người chơi (điện thoại, chung wifi): ${JOIN_URL}`);
+  const base = PUBLIC_URL || `http://localhost:${PORT}`;
+  console.log(`  Người chơi (điện thoại${PUBLIC_URL ? ', mạng nào cũng được' : ', chung wifi'}): ${JOIN_URL}`);
   for (const u of JOIN_URLS.slice(1)) console.log(`                                       ${u}`);
-  console.log(`  Bảng điều khiển MC (màn laptop):     http://localhost:${PORT}/host?key=${HOST_KEY}`);
-  console.log(`  Màn game cho máy chiếu:              http://localhost:${PORT}/screen?key=${HOST_KEY}`);
-  console.log(`  Bản swarm cũ để test sprite:         http://localhost:${PORT}/sandbox\n`);
+  console.log(`  Bảng điều khiển MC (màn laptop):     ${base}/host?key=${HOST_KEY}`);
+  console.log(`  Màn game cho máy chiếu:              ${base}/screen?key=${HOST_KEY}`);
+  console.log(`  Bản swarm cũ để test sprite:         ${base}/sandbox\n`);
   console.log(`  Bộ câu hỏi: ${game.quiz.questions.length} câu, ${game.quiz.time}s trả lời + ${game.quiz.fire}s bắn/câu, ${TURRET_SLOTS} ụ súng (data/questions.json)`);
   if (unconfirmed.length) console.log(`  ⚠ Đáp án cần team xác nhận: ${unconfirmed.join(', ')}`);
 });

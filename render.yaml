@@ -1,0 +1,17 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# Một web service duy nhất — trạng thái ván chơi nằm trong RAM nên KHÔNG được scale >1 instance.
+services:
+  - type: web
+    name: fox-quiz
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: "echo no build step"
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Mật khẩu cho /host và /screen. Tự đặt khi bấm Deploy (Render sẽ hỏi).
+      - key: HOST_KEY
+        sync: false

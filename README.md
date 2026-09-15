@@ -49,6 +49,30 @@ Terminal in ra các link:
 Không cần `npm install`, chỉ cần Node 18+. Muốn đổi cổng: `node server.js --port=5174`.
 Muốn cố định host key: đặt biến môi trường `HOST_KEY` trước khi chạy.
 
+## Chạy trên internet (không cần chung wifi)
+
+Chạy trên laptop thì điện thoại phải chung mạng LAN — hội trường có wifi khách tách mạng, hoặc
+mọi người dùng 4G, là vào không được. Deploy lên [Render](https://render.com) để có link https
+công khai: repo đã có sẵn `render.yaml`.
+
+1. New → **Blueprint** → chọn repo này → Render đọc `render.yaml`.
+2. Render hỏi `HOST_KEY`: tự đặt một chuỗi khó đoán (đây là mật khẩu vào `/host` và `/screen`).
+3. Deploy xong sẽ có link dạng `https://fox-quiz-xxxx.onrender.com`. Đó là link người chơi;
+   `/host?key=...` và `/screen?key=...` dùng đúng key vừa đặt.
+
+Không cần khai `PUBLIC_URL` — server tự lấy `RENDER_EXTERNAL_URL` nên QR trên màn chiếu ra đúng
+link công khai. Deploy chỗ khác (Railway, Fly.io, VPS) thì đặt `PUBLIC_URL` thủ công.
+
+Lưu ý khi chạy trên Render:
+
+- **Chỉ 1 instance.** Trạng thái ván chơi nằm trong RAM; scale lên 2 là hai nửa hội trường chơi
+  hai ván khác nhau. Free plan vốn đã 1 instance.
+- **Gói free ngủ sau 15 phút** không ai truy cập, lần đánh thức mất ~30-60 giây. Trước giờ chơi
+  mở link trước vài phút, hoặc nâng lên gói Starter ($7/tháng) cho buổi sự kiện rồi hạ lại.
+- **Deploy lại là mất ván đang chạy** (server khởi động lại, người chơi phải vào lại). Đừng push
+  code trong lúc đang chơi.
+- Region `singapore` cho ping từ VN thấp nhất (~30-60ms).
+
 ## Setup hai màn hình
 
 1. Cắm máy chiếu, chỉnh Windows sang **Extend** (Win + P → Mở rộng), không dùng Duplicate.
