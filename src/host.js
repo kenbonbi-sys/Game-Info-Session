@@ -4,7 +4,10 @@
 import { ANSWERS, shapeSvg } from './config.js';
 
 const $ = id => document.getElementById(id);
-const PHASE_NAME = { lobby: 'Phòng chờ', countdown: 'Đếm ngược', question: 'Đang trả lời', reveal: 'Hiện đáp án', fire: 'Lượt bắn', end: 'Kết thúc' };
+const PHASE_NAME = {
+  lobby: 'Phòng chờ', countdown: 'Đếm ngược', question: 'Đang trả lời', reveal: 'Hiện đáp án', fire: 'Lượt bắn',
+  final: 'Câu đố vui', finalreveal: 'Đáp án câu vui', charge: 'Tích nước', unleash: 'Đòn kết liễu', end: 'Kết thúc',
+};
 const STATUS_LABEL = { answered: 'Đã chọn', correct: 'Đúng', wrong: 'Sai', timeout: 'Hết giờ', blocked: 'Khiên đỡ' };
 
 let key = new URLSearchParams(location.search).get('key');
@@ -108,13 +111,19 @@ function renderTop() {
   $('playersNum').textContent = s.players;
 }
 
+const charged = s => !!s.charge?.full;
+
 function nextLabel(s) {
   switch (s.phase) {
     case 'lobby': return '▶ Bắt đầu game';
     case 'countdown': return 'Vào câu 1 ngay';
     case 'question': return 'Khoá & hiện đáp án';
     case 'reveal': return 'Cho cả hội trường bắn!';
-    case 'fire': return s.index + 1 >= s.total ? 'Kết thúc game' : `Sang câu ${s.index + 2}`;
+    case 'fire': return s.index + 1 >= s.total ? 'Sang câu đố vui cuối' : `Sang câu ${s.index + 2}`;
+    case 'final': return 'Khoá & hiện đáp án';
+    case 'finalreveal': return '💧 Mở màn tích nước!';
+    case 'charge': return charged(s) ? 'Đang tung đòn…' : 'Chờ hội trường tap…';
+    case 'unleash': return 'Đang tung đòn…';
     case 'end': return '↺ Chơi lại';
     default: return 'Tiếp';
   }
@@ -132,11 +141,20 @@ function renderControl() {
     fire: s.firing
       ? [`Lượt bắn câu ${n}`, `${right} người trả lời đúng đang tap bắn.`]
       : ['Ngưng bắn', s.auto ? 'Tự sang câu tiếp theo.' : 'Đang dừng chờ MC: bấm để sang câu tiếp.'],
-    end: ['Kết thúc', 'Màn chiếu đang hiện Top 5. Tải CSV để lấy danh sách trao quà.'],
+    final: ['Câu đố vui cuối', 'Không tính điểm. Đọc to câu hỏi cho cả hội trường — trả lời xong là tới màn tích nước.'],
+    finalreveal: ['Đáp án câu vui', `${right} người đoán đúng. Bấm để mở màn tích nước cho cả hội trường.`],
+    charge: charged(s)
+      ? ['Bình đã đầy!', 'Đòn kết liễu đang chạy trên màn chiếu.']
+      : ['Tích nước!', `${(s.charge?.taps ?? 0).toLocaleString('vi-VN')}/${(s.charge?.goal ?? 0).toLocaleString('vi-VN')} lượt tap. Hô hào cả hội trường tap đi — hoặc bấm "Nạp đầy" nếu muốn chốt sớm.`],
+    unleash: ['Đòn kết liễu', 'Quái Vật đang lãnh trọn bình nước. Bảng xếp hạng hiện ngay sau đó.'],
+    end: ['Kết thúc', 'Màn chiếu đang hiện Top 5 kèm lượt tap. Tải CSV để lấy danh sách trao quà.'],
   }[s.phase] ?? ['', ''];
   $('ctrlTitle').textContent = title;
   $('ctrlText').textContent = text;
+  $('fillBtn').hidden = s.phase !== 'charge' || charged(s);
   $('nextBtn').textContent = nextLabel(s);
+  // Nothing for the MC to advance while the hall is tapping or the finisher is playing.
+  $('nextBtn').disabled = s.phase === 'charge' || s.phase === 'unleash';
   $('autoBtn').setAttribute('aria-pressed', String(s.auto));
   $('autoBtn').querySelector('b').textContent = s.auto ? 'BẬT' : 'TẮT';
 }
@@ -373,6 +391,7 @@ function selectTab(logTab) {
 
 function boot() {
   $('nextBtn').addEventListener('click', next);
+  $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
   $('resetBtn').addEventListener('click', () => confirm('Reset về phòng chờ? Điểm hiện tại sẽ bị xoá.') && action('reset'));
   $('csvBtn').href = `/api/host/results.csv?${keyParam}`;

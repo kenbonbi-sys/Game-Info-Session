@@ -47,6 +47,20 @@
         <button id="fireBtn" type="button" class="fire-btn"><span class="fire-ring" aria-hidden="true"></span><b>BẮN!</b><small>Chạm liên tục</small></button>
         <div class="fire-count" aria-live="off"><b id="shotCount">0</b> phát<span id="fireBoost" class="fire-boost" hidden>×2 sát thương</span></div>
       </section>
+
+      <!-- The finale: everyone taps, right answer or not, and the hall shares one bottle. -->
+      <section id="chargeView" class="fire-view charge-view" aria-label="Tích nước đòn kết liễu" hidden>
+        <div class="charge-head">
+          <img class="charge-bottle" src="assets/source/items/binh-nuoc-cao.svg" alt="" width="96" height="96">
+          <div class="charge-info">
+            <b id="chargePct">0%</b>
+            <div class="charge-bar" role="progressbar" aria-label="Bình nước chung của hội trường" aria-valuemin="0" aria-valuemax="100"><i id="chargeBarFill"></i></div>
+            <span id="chargeHint">Cả hội trường cùng tap để đổ đầy bình!</span>
+          </div>
+        </div>
+        <button id="chargeBtn" type="button" class="fire-btn charge-btn"><span class="fire-ring" aria-hidden="true"></span><b>TAP!</b><small>Chạm hết sức</small></button>
+        <div class="fire-count" aria-live="off"><b id="chargeMine">0</b> lượt của bạn</div>
+      </section>
     </main>
 
     <footer id="items" class="items" role="group" aria-label="Vật phẩm hỗ trợ, mỗi món dùng một lần" hidden>

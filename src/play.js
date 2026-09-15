@@ -126,11 +126,19 @@ function onState(msg) {
   Object.assign(quiz, {
     phase: msg.phase, index: msg.index, total: msg.total, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
     players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss,
+    charge: msg.charge ?? quiz.charge,
   });
   document.body.dataset.phase = msg.phase;
   const changed = prev.phase !== msg.phase || prev.index !== msg.index;
   if (changed && prev.index !== msg.index) {
     Object.assign(me, { picked: null, submitting: false, error: null, result: null });
+  }
+  // The fun question is not part of the round, so it needs its own clean slate.
+  if (changed && msg.phase === 'final') Object.assign(me, { picked: null, submitting: false, error: null, result: null });
+  if (changed && msg.phase === 'charge') {
+    clearTimeout(taps.timer);
+    Object.assign(taps, { index: -1, acked: 0, inflight: 0, pending: 0, timer: 0 });
+    navigator.vibrate?.([40, 60, 40]);
   }
   if (changed && (msg.phase === 'lobby' || msg.phase === 'countdown')) Object.assign(me, { removed: null, removedIndex: -1 });
   if (changed && msg.phase === 'fire') {
@@ -144,37 +152,42 @@ function onState(msg) {
 }
 
 function onYou(msg) {
-  Object.assign(me, { score: msg.score, correct: msg.correct, rank: msg.rank, players: msg.players, turret: msg.turret, items: msg.items, armed: msg.armed });
+  Object.assign(me, { score: msg.score, correct: msg.correct, rank: msg.rank, players: msg.players, turret: msg.turret, items: msg.items, armed: msg.armed, totalShots: msg.totalShots ?? me.totalShots });
   if (msg.hint && quiz.phase === 'question') Object.assign(me, { removed: msg.hint, removedIndex: quiz.index });
   // Reconnecting after answering: the server remembers the pick.
   if (msg.picked !== null && me.picked === null) me.picked = msg.picked;
   if (msg.result) me.result = msg.result;
-  if (quiz.phase === 'fire') taps.acked = Math.max(taps.acked, msg.shots);
+  if (quiz.phase === 'fire' || quiz.phase === 'charge') taps.acked = Math.max(taps.acked, msg.shots);
   render();
   if (quiz.phase === 'end') renderEnd();
 }
 
 // ---- Actions ---------------------------------------------------------------------
 
+// Is the answer we sent still the one on screen? -1 addresses the finale, anything else a round.
+const stillOn = index => (index === -1 ? quiz.phase === 'final' : index === quiz.index);
+
 async function lock(i) {
-  if (quiz.phase !== 'question' || me.picked !== null || me.submitting || i < 0 || i >= quiz.options) return;
-  if (me.removedIndex === quiz.index && me.removed?.includes(i)) return;
-  const index = quiz.index;
+  const finale = quiz.phase === 'final';
+  if ((quiz.phase !== 'question' && !finale) || me.picked !== null || me.submitting || i < 0 || i >= quiz.options) return;
+  if (!finale && me.removedIndex === quiz.index && me.removed?.includes(i)) return;
+  // The finale's question lives outside the round, so it is addressed as index -1.
+  const index = finale ? -1 : quiz.index;
   Object.assign(me, { picked: i, submitting: true, error: null });
   navigator.vibrate?.(15);
   render();
   try {
     const r = await post('/api/answer', { pid: net.pid, index, choice: i });
-    if (index !== quiz.index) return;
+    if (!stillOn(index)) return;
     // A lost response may still have been accepted: the server never records a question twice.
     if (!r.ok && r.data.error !== 'Bạn đã trả lời câu này rồi') {
       me.error = { text: r.data.error || 'Không gửi được đáp án', retry: r.status >= 500 };
       if (r.status === 400) me.picked = null;
     }
   } catch {
-    if (index === quiz.index) me.error = { text: 'Chưa gửi được đáp án. Bấm gửi lại nhé.', retry: true };
+    if (stillOn(index)) me.error = { text: 'Chưa gửi được đáp án. Bấm gửi lại nhé.', retry: true };
   } finally {
-    if (index === quiz.index) me.submitting = false;
+    if (stillOn(index)) me.submitting = false;
     render();
   }
 }
@@ -212,13 +225,16 @@ async function useItem(item) {
 }
 
 const canFire = () => quiz.phase === 'fire' && quiz.firing && me.result?.correct && taps.index === quiz.index;
+// The finale is open to the whole hall: no right answer needed, only a bottle that is not yet full.
+const canCharge = () => quiz.phase === 'charge' && !quiz.charge?.full && taps.index === -1;
 
 function fire() {
-  if (!canFire()) return;
+  const charging = canCharge();
+  if (!charging && !canFire()) return;
   taps.pending++;
   taps.timer ||= setTimeout(flushTaps, TAP_FLUSH_MS);
   navigator.vibrate?.(8);
-  const btn = $('fireBtn');
+  const btn = $(charging ? 'chargeBtn' : 'fireBtn');
   btn.classList.remove('hit');
   void btn.offsetWidth;
   btn.classList.add('hit');
@@ -243,15 +259,22 @@ async function flushTaps() {
   try {
     const r = await post('/api/tap', { pid: net.pid, index, n });
     if (r.ok && index === taps.index) {
-      taps.acked = r.data.shots;
-      quiz.boss = r.data.boss;
-      renderBoss();
+      if (index === -1) {
+        taps.acked = r.data.mine;
+        quiz.charge = { ...quiz.charge, taps: r.data.charge, goal: r.data.goal };
+        renderCharge();
+      } else {
+        taps.acked = r.data.shots;
+        quiz.boss = r.data.boss;
+        renderBoss();
+      }
     }
   } catch {
     // A lost batch only costs those shots; the next one carries on.
   } finally {
     if (index === taps.index) taps.inflight = 0;
-    renderShots();
+    if (index === -1) renderCharge();
+    else renderShots();
     if (taps.pending) taps.timer ||= setTimeout(flushTaps, TAP_FLUSH_MS);
   }
 }
@@ -266,6 +289,10 @@ function currentView() {
     case 'question': return me.picked === null ? 'answer' : 'answered';
     case 'reveal': return 'result';
     case 'fire': return !quiz.firing ? 'ceasefire' : me.result?.correct ? 'fire' : 'stunned';
+    case 'final': return me.picked === null ? 'answer' : 'answered';
+    case 'finalreveal': return 'finalresult';
+    case 'charge': return 'charge';
+    case 'unleash': return 'unleash';
     case 'end': return 'end';
     default: return 'connecting';
   }
@@ -278,9 +305,11 @@ function render() {
   document.body.dataset.view = view;
   $('answerView').hidden = view !== 'answer';
   $('fireView').hidden = view !== 'fire';
-  $('waitView').hidden = view === 'answer' || view === 'fire';
+  $('chargeView').hidden = view !== 'charge';
+  $('waitView').hidden = view === 'answer' || view === 'fire' || view === 'charge';
   if (view === 'answer') renderTiles();
   else if (view === 'fire') renderFire();
+  else if (view === 'charge') renderCharge();
   else renderWait(view);
   renderItems();
   renderTop();
@@ -289,8 +318,8 @@ function render() {
 function renderTiles() {
   const box = $('tiles');
   const removed = me.removedIndex === quiz.index ? me.removed ?? [] : [];
-  const sig = `${quiz.index}|${quiz.options}|${removed.join(',')}`;
-  $('qMeta').textContent = `Câu ${quiz.index + 1}/${quiz.total}`;
+  const sig = `${quiz.phase === 'final' ? 'finale' : quiz.index}|${quiz.options}|${removed.join(',')}`;
+  $('qMeta').textContent = quiz.phase === 'final' ? 'CÂU ĐỐ VUI · không tính điểm' : `Câu ${quiz.index + 1}/${quiz.total}`;
   $('timer').querySelector('[role="progressbar"]').setAttribute('aria-valuemax', quiz.time);
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
@@ -384,6 +413,22 @@ function renderWait(view) {
       }
       if (quiz.answer !== null && !r?.correct) extra.push(answerChip(quiz.answer));
       break;
+    case 'finalresult': {
+      const a = quiz.answer !== null ? ANSWERS[quiz.answer] : null;
+      const right = me.picked !== null && me.picked === quiz.answer;
+      badge = { kind: right ? 'good' : 'info', content: right ? '✓' : '🎉' };
+      title = right ? 'Bạn đoán đúng!' : 'Câu này chỉ để vui thôi!';
+      text = 'Không tính điểm — nhưng sắp tới lượt cả hội trường hợp sức rồi.';
+      if (a) extra.push(answerChip(quiz.answer));
+      extra.push(Object.assign(document.createElement('span'), { className: 'cheer', textContent: 'Chuẩn bị TAP để tích nước!' }));
+      break;
+    }
+    case 'unleash':
+      art = 'boss';
+      badge = null;
+      title = 'BÙM!';
+      text = 'Cả hội trường vừa dội nguyên bình nước vào Quái Vật. Nhìn lên màn hình lớn đi!';
+      break;
     case 'stunned':
       art = 'boss';
       title = r?.blocked ? 'Khiên đã đỡ đòn!' : r ? 'Ụ của bạn bị bắn trúng!' : 'Cả hội trường đang bắn!';
@@ -439,6 +484,19 @@ function renderFire() {
   renderBoss();
 }
 
+function renderCharge() {
+  const c = quiz.charge ?? { taps: 0, goal: 1, full: false };
+  const p = Math.min(1, c.taps / Math.max(1, c.goal));
+  $('chargePct').textContent = `${Math.round(p * 100)}%`;
+  $('chargeBarFill').style.width = `${p * 100}%`;
+  $('chargeBarFill').parentElement.setAttribute('aria-valuenow', Math.round(p * 100));
+  $('chargeMine').textContent = shotCount().toLocaleString('vi-VN');
+  $('chargeHint').textContent = c.full
+    ? 'Bình đầy rồi — nhìn lên màn hình lớn!'
+    : `Cả hội trường: ${c.taps.toLocaleString('vi-VN')}/${c.goal.toLocaleString('vi-VN')} lượt tap`;
+  $('chargeView').dataset.full = String(!!c.full);
+}
+
 function renderBoss() {
   const percent = clamp(Math.round(quiz.boss), 0, 100);
   for (const el of document.querySelectorAll('#bossMiniText, [data-boss-text]')) el.textContent = `${percent}%`;
@@ -447,7 +505,9 @@ function renderBoss() {
 
 function renderItems() {
   const tray = $('items');
-  tray.hidden = !PLAY_VIEWS.includes(document.body.dataset.view);
+  // Items do nothing in the finale — that question is not scored and the charge is not a round.
+  const inFinale = ['final', 'finalreveal', 'charge', 'unleash'].includes(quiz.phase);
+  tray.hidden = inFinale || !PLAY_VIEWS.includes(document.body.dataset.view);
   if (tray.hidden) return;
   for (const btn of tray.querySelectorAll('.item')) {
     const item = btn.dataset.item;
@@ -487,7 +547,7 @@ function renderEnd() {
   $('end').hidden = false;
   $('endTitle').textContent = me.rank && me.rank <= 5 ? '🏆 Bạn lọt TOP 5!' : 'Quái Vật Dễ Sợ đã gục ngã!';
   $('endRank').textContent = me.rank ? `#${me.rank} / ${me.players}` : '';
-  $('endScore').textContent = `${me.score.toLocaleString('vi-VN')} điểm · đúng ${me.correct}/${quiz.total} câu`;
+  $('endScore').textContent = `${me.score.toLocaleString('vi-VN')} điểm · đúng ${me.correct}/${quiz.total} câu · ${(me.totalShots ?? 0).toLocaleString('vi-VN')} lượt tap`;
 }
 
 function banner(text, tone = 'info') {
@@ -597,16 +657,18 @@ async function boot() {
   for (const btn of $('items').querySelectorAll('.item')) btn.addEventListener('click', () => useItem(btn.dataset.item));
 
   // pointerdown, not click: every finger counts, and a tap registers before the finger lifts.
-  const fireBtn = $('fireBtn');
-  fireBtn.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    fire();
-  });
-  fireBtn.addEventListener('contextmenu', e => e.preventDefault());
+  for (const id of ['fireBtn', 'chargeBtn']) {
+    const btn = $(id);
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      fire();
+    });
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  }
   addEventListener('keydown', e => {
     if (e.target instanceof Element && e.target.closest('input, textarea, select') || e.repeat) return;
     const view = document.body.dataset.view;
-    if (view === 'fire' && (e.code === 'Space' || e.code === 'Enter')) {
+    if ((view === 'fire' || view === 'charge') && (e.code === 'Space' || e.code === 'Enter')) {
       e.preventDefault();
       fire();
     } else if (view === 'answer') {

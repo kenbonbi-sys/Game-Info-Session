@@ -15,8 +15,24 @@ Game quiz đánh boss cho event. Laptop của admin xuất **hai màn hình**: m
 
 Tắt **Tự chuyển** thì game dừng ở bước 2 và sau bước 3, chờ admin bấm nút trên bảng điều khiển.
 
-- **Máu Quái Vật** là chung cả phòng, tính bằng phát bắn: `số người lúc bắt đầu × số câu × 24`. Hội trường trả lời đúng và tap khoảng 4 lần/giây sẽ hạ boss gần câu cuối; nếu hết câu mà boss còn máu, cả hội trường tung **đòn kết liễu** chung trước khi hiện bảng xếp hạng.
+- **Máu Quái Vật** là chung cả phòng, tính bằng phát bắn: `số người lúc bắt đầu × số câu × 24`. Nhưng **các câu thường chỉ trừ được tối đa xuống 15% máu** — tap nhanh cỡ nào boss cũng không chết giữa game. 15% cuối dành cho màn kết.
 - Server nhận tối đa **12 tap/giây mỗi người**; điện thoại gom tap gửi 4 lần/giây. Tap không cộng điểm xếp hạng, chỉ trừ máu boss.
+
+## Màn kết: câu đố vui + kamehameha
+
+Hết 15 câu kiến thức là tới màn cuối, chạy tự động theo 4 bước:
+
+1. **Câu đố vui** (`final`): một câu đố cho vui, **không tính điểm**, đọc từ khối `finale` trong `data/questions.json`. Đáp án giữ nguyên thứ tự A/B/C/D như file (không xáo), vì câu chốt thường nằm ở một chữ cái cụ thể.
+2. **Đáp án** (`finalreveal`): màn chiếu hiện ai đoán gì, giống một reveal bình thường.
+3. **Tích nước** (`charge`): **cả hội trường** cùng tap — kể cả người trả lời sai. Mỗi tap đổ nước vào một bình chung trên màn chiếu; bình sáng dần từ dưới lên, qua 90% thì rung và phát hào quang. Mục tiêu = `max(300, số người online × 25)` lượt tap.
+4. **Đòn kết liễu** (`unleash`, 9 giây): tia nước dựng lên, nổ vào Quái Vật, boss quằn quại mấy giây rồi gục. Xong là bảng xếp hạng: Top 5 kèm **số lượt tap của từng người**, và tổng lượt tap của cả hội trường.
+
+Hai lối thoát cho MC nếu hội trường vắng hoặc tap không tới:
+
+- Bình **tự đầy sau 45 giây** (`chargeSeconds` trong `data/questions.json`).
+- Nút **💧 Nạp đầy bình ngay** trên bảng điều khiển, hiện sẵn suốt màn tích nước.
+
+Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu cũ: hết câu là vào thẳng bảng xếp hạng.
 - **Âm thanh** phát từ cửa sổ màn game (trình duyệt chỉ mở tiếng sau lần bấm phím/chuột đầu tiên trên cửa sổ đó, ví dụ lúc bấm F). Điện thoại rung nhẹ khi chạm (Android).
 
 ## Vật phẩm

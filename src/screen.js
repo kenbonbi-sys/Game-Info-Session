@@ -2,7 +2,7 @@
 // Kahoot-style question board, the shooting rounds and the final Top 5. It has no controls: the MC
 // drives the game from the dashboard at /host, which also embeds this page as a preview (?preview=1).
 import { ANSWERS, ARENA, shapeSvg } from './config.js';
-import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, finisherVolley, bossHealth } from './arena-view.js';
+import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, bossUnleash, bossHealth } from './arena-view.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 
@@ -11,7 +11,10 @@ const params = new URLSearchParams(location.search);
 // The dashboard's preview is silent, renders at a lower frame rate and doesn't count as a projector.
 const PREVIEW = params.has('preview');
 const PREVIEW_FRAME_MS = 50;
-const PHASE_LABEL = { lobby: 'Phòng chờ', countdown: 'Chuẩn bị', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!', end: 'Kết thúc' };
+const PHASE_LABEL = {
+  lobby: 'Phòng chờ', countdown: 'Chuẩn bị', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!',
+  final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'ĐÒN KẾT LIỄU', end: 'Kết thúc',
+};
 const RING = 2 * Math.PI * 52;
 // The finishing volley plays before the leaderboard covers the arena.
 const FINALE_SECONDS = 3.4;
@@ -66,6 +69,28 @@ function onMessage(msg) {
     case 'item':
       armTurret(msg.t, msg.item);
       return;
+    case 'charge':
+      renderCharge(msg);
+      return;
+  }
+}
+
+// The bottle and its meter, driven by the hall's running tap total.
+function renderCharge({ taps, goal, full }) {
+  const p = Math.min(1, taps / Math.max(1, goal));
+  $('chargeFill').style.width = `${p * 100}%`;
+  $('chargeFill').parentElement.setAttribute('aria-valuenow', Math.round(p * 100));
+  $('bottleLive').style.clipPath = `inset(${(1 - p) * 100}% 0 0 0)`;
+  $('bottleFill').style.bottom = `${p * 100}%`;
+  $('chargeNum').textContent = taps.toLocaleString('vi-VN');
+  $('chargeGoal').textContent = `/${goal.toLocaleString('vi-VN')} lượt tap`;
+  const bottle = document.querySelector('.bottle');
+  bottle.dataset.wet = String(p > 0.01 && p < 0.995);
+  bottle.dataset.near = String(p >= 0.9 && !full);
+  bottle.dataset.full = String(!!full);
+  if (full) {
+    $('chargeTitle').textContent = 'BÌNH ĐẦY RỒI!';
+    $('chargeSub').textContent = 'Buddy, bắn đi!';
   }
 }
 
@@ -89,7 +114,8 @@ function onState(s) {
   if (changed) enterPhase(s, !!prev);
   if (prev?.phase === 'fire' && s.phase === 'fire' && prev.firing && !s.firing) ceaseFire(s);
   // Follow the server's boss HP; a new game or a freshly opened page snaps instead of animating.
-  syncBoss(s.bossDmg, s.bossMax, !prev || (changed && (s.phase === 'lobby' || s.phase === 'countdown')));
+  // The finale is the exception: bossUnleash paces the last sliver so the boss suffers on cue.
+  if (s.phase !== 'unleash') syncBoss(s.bossDmg, s.bossMax, !prev || (changed && (s.phase === 'lobby' || s.phase === 'countdown')));
   render(s);
 }
 
@@ -118,10 +144,28 @@ function enterPhase(s, live) {
       if (live && s.firing) banner(right ? 'TAP TAP TAP!' : 'Quái Vật phản đòn!', right ? 'warn' : 'bad');
       break;
     }
+    case 'final':
+      buildQuestion(s);
+      $('qMeta').textContent = `CÂU ĐỐ VUI · ${s.question?.group ?? ''}`.trim();
+      if (live) banner('Câu cuối: đố vui!', 'info');
+      break;
+    case 'finalreveal':
+      revealQuestion(s);
+      $('top5').hidden = true;
+      break;
+    case 'charge':
+      $('chargeTitle').textContent = 'CẢ HỘI TRƯỜNG TAP ĐI!';
+      $('chargeSub').textContent = 'Mọi người chạm liên tục nút BẮN trên điện thoại — kể cả ai trả lời sai!';
+      renderCharge(s.charge ?? { taps: 0, goal: 300, full: false });
+      if (live) banner('TÍCH NƯỚC — TAP TAP TAP!', 'warn');
+      break;
+    case 'unleash':
+      // The beam lands at ~2s (see .beam in screen.css); the boss writhes until the splash clears.
+      bossUnleash(2, 4.6);
+      break;
     case 'end':
       if (live && s.finisher) {
-        finisherVolley();
-        banner('Cả hội trường tung đòn kết liễu!', 'warn');
+        banner('QUÁI VẬT DỄ SỢ ĐÃ BỊ HẠ GỤC!', 'warn');
         finaleAt = performance.now() + FINALE_SECONDS * 1000;
       } else {
         finaleAt = performance.now() + (live ? 1800 : 0);
@@ -226,10 +270,14 @@ function render(s) {
     $('answeredNum').textContent = s.answered;
     $('answeredOf').textContent = `/${Math.max(s.online, s.answered)} đã trả lời`;
   }
+  if (s.phase === 'final' || s.phase === 'finalreveal') {
+    $('answeredNum').textContent = s.answered ?? 0;
+    $('answeredOf').textContent = `/${Math.max(s.online ?? 0, s.answered ?? 0)} đã trả lời`;
+  }
   if (s.phase === 'end') {
     $('endTitle').textContent = 'Quái Vật Dễ Sợ đã bị hạ gục!';
-    $('podium').replaceChildren(...renderTop(s.top).children);
-    $('endStats').textContent = `${s.players} người chơi · ${s.total} câu hỏi · ${s.totalShots.toLocaleString('vi-VN')} phát bắn`;
+    $('podium').replaceChildren(...renderPodium(s.top));
+    $('endStats').textContent = `${s.players} người chơi · ${s.total} câu hỏi · cả hội trường tap ${s.totalShots.toLocaleString('vi-VN')} lượt`;
   }
 }
 
@@ -251,6 +299,21 @@ function bump(el) {
 function sceneFor(s) {
   if (s.phase === 'end') return performance.now() < finaleAt ? 'finale' : 'end';
   return s.phase;
+}
+
+// Top 5 on the victory screen: the score that ranked them, plus how much of the hall's tapping
+// was theirs — the number people actually want to hear read out.
+function renderPodium(list) {
+  return list.map((p, i) => {
+    const li = document.createElement('li');
+    li.append(
+      Object.assign(document.createElement('b'), { textContent: `#${i + 1}` }),
+      Object.assign(document.createElement('span'), { textContent: p.name }),
+      Object.assign(document.createElement('em'), { textContent: `${p.score.toLocaleString('vi-VN')} điểm` }),
+      Object.assign(document.createElement('i'), { textContent: `${(p.shots ?? 0).toLocaleString('vi-VN')} tap` }),
+    );
+    return li;
+  });
 }
 
 function tickHud() {

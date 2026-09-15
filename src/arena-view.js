@@ -32,7 +32,7 @@ let bossSheet, turretSheet, turretParts, turretEmptySheet, turretEmptyParts, map
 const seats = new Map();   // turret → { n, name, since }
 const newFx = () => ({ name: 'idle', t: 0, hit: 0, block: 0, hold: 0, angle: 0, shield: false, boost: false, ready: false, double: false, stunned: false, queue: 0, emitT: 0 });
 const fx = ARENA.slots.map(newFx);
-const boss = { hp: 1, max: 1, pending: [], anim: 'idle', animT: 0, flightT: 0, bubble: null, dead: false, deadT: 0 };
+const boss = { hp: 1, max: 1, pending: [], anim: 'idle', animT: 0, flightT: 0, bubble: null, dead: false, deadT: 0, suffer: null };
 // All positions in map px. shots: water blasts homing on the boss · bolts: boss attacks on turrets
 let shots = [], bolts = [], particles = [], texts = [];
 let hallQueue = 0, hallT = 0, hallSide = 0;
@@ -171,7 +171,7 @@ export function setArenaPhase(next) {
 export function syncBoss(dmg, max, instant = false) {
   const hp = Math.max(0, max - dmg);
   if (instant || max !== boss.max) {
-    Object.assign(boss, { max, hp, pending: [], dead: hp <= 0, deadT: hp <= 0 ? 9 : 0, anim: 'idle', animT: 0 });
+    Object.assign(boss, { max, hp, pending: [], dead: hp <= 0, deadT: hp <= 0 ? 9 : 0, anim: 'idle', animT: 0, suffer: null });
     if (!boss.dead) boss.bubble = null;
     return;
   }
@@ -214,6 +214,14 @@ export function finisherVolley() {
   if (!seats.size) hallQueue += 24;
   boss.pending = [{ at: time + 1.3, hp: 0 }];
   say('Khoan đã…!', 1.2);
+}
+
+// The finale's charged shot: the boss takes the hit, writhes for a few seconds while the water
+// keeps pouring in, and only then comes apart. `delay` is when the beam reaches it.
+export function bossUnleash(delay = 2, suffer = 4.5) {
+  boss.suffer = { until: time + delay + suffer, next: time + delay };
+  boss.pending = [{ at: time + delay + suffer, hp: 0 }];
+  say('Khoan… cái gì thế kia?!', delay);
 }
 
 export function bossHealth() {
@@ -358,6 +366,17 @@ function update(dt) {
   updateTurrets(dt);
   updateShots(dt);
   updateBolts(dt);
+  // Water keeps landing on the boss for the length of the finale, one splash after another.
+  if (boss.suffer) {
+    if (time >= boss.suffer.until) boss.suffer = null;
+    else if (time >= boss.suffer.next) {
+      boss.suffer.next = time + 0.42;
+      const target = bossTarget();
+      Object.assign(boss, { anim: 'hurt', animT: 0 });
+      burst(target.x + (Math.random() - 0.5) * 120, target.y + (Math.random() - 0.5) * 90, 34, '#8fc5ff', 150);
+      if (Math.random() < 0.4) say(['Nóng quá!', 'Thôi… thôi!', 'Sao nhiều nước thế!'][Math.floor(Math.random() * 3)], 1.1);
+    }
+  }
   while (boss.pending.length && boss.pending[0].at <= time) {
     boss.hp = Math.min(boss.hp, boss.pending.shift().hp);
     if (boss.hp <= 0 && !boss.dead) killBoss();

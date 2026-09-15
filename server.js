@@ -37,6 +37,15 @@ const PRIVATE = /^\/(data|\.claude|node_modules)(\/|$)|^\/server\.js$/i;
 // right and taps about 4 times a second brings it down near the last question; a quieter hall
 // finishes it with one shared volley when the game ends.
 const BOSS_SHOTS_PER_ANSWER = 24;
+// The quiz rounds can only wear the boss down to this much HP. However hard the hall taps, the
+// last sliver belongs to the finale: the fun question, then one charged shot from everyone.
+const BOSS_FLOOR = 0.15;
+// Taps the whole hall must land to fill the bottle: this many each, but never a goal so low that
+// a full room fills it before anyone sees it move.
+const CHARGE_PER_PLAYER = 25;
+const CHARGE_MIN = 300;
+// Seconds of aura → beam → impact → the boss coming apart, before the victory screen.
+const UNLEASH_SECONDS = 9;
 // Taps accepted per player: a steady rate with a small burst, so batching and jitter cost nothing
 // but auto-clickers gain nothing either.
 const TAP_RATE = 12;
@@ -85,11 +94,20 @@ function loadQuiz() {
     }
     return q;
   });
+  const finale = data.finale;
+  if (finale && (!Array.isArray(finale.options) || !(finale.answer >= 0 && finale.answer < finale.options.length))) {
+    throw new Error('data/questions.json: "finale" cần options và answer hợp lệ');
+  }
   return {
     time: data.timePerQuestion ?? 15,
     reveal: data.revealSeconds ?? 5,
     fire: data.fireSeconds ?? 6,
     shuffle: data.shuffleOptions !== false,
+    // The hall gets this long to fill the bottle before it tops itself up, so a quiet or
+    // half-empty room can never leave the finale hanging.
+    chargeLimit: data.chargeSeconds ?? 45,
+    // Options stay in the authored order: the joke depends on which letter the punchline lands on.
+    finale: finale ? { ...finale, group: finale.group ?? 'Câu đố vui' } : null,
     questions,
   };
 }
@@ -109,6 +127,10 @@ const game = {
   phase: 'lobby', phaseAt: 0, quiz: loadQuiz(), round: [], index: -1, startedAt: 0, endsAt: 0, timer: null, auto: true,
   // firing: the shooting window of the 'fire' phase is open (it stays in 'fire' briefly after).
   firing: false, turrets: [], boss: { max: 1, dmg: 0, finisher: false, fellAt: -1 }, roundShots: 0, totalShots: 0,
+  // The finale's shared meter: taps the hall has landed into the bottle, and what it takes to fill it.
+  charge: { taps: 0, goal: CHARGE_MIN, full: false },
+  // pid → the letter each player guessed on the fun question.
+  finalePick: {},
   joinUrl: JOIN_URL,
 };
 const players = new Map();          // pid → player
@@ -148,7 +170,7 @@ const ITEMS = ['hint', 'shield', 'boost'];
 
 function freshStats(p) {
   return Object.assign(p, {
-    score: 0, correct: 0, streak: 0, timeMs: 0, shots: 0,
+    score: 0, correct: 0, streak: 0, timeMs: 0, shots: 0, chargeTaps: 0,
     // picks[i] = { choice, ms } as submitted; results[i] is scored at the reveal, never before.
     picks: {}, results: {}, roundShots: 0, tapTokens: 0, tapAt: 0,
     // One of each item per game: hint removes 2 wrong options, shield absorbs the next miss,
@@ -167,9 +189,12 @@ function youMessage(p, rank) {
     type: 'you', score: p.score, correct: p.correct, rank, players: players.size, turret: p.turret,
     items: p.items, armed: p.armed,
     hint: game.phase === 'question' ? p.hints[i] ?? null : null,
-    picked: inRound ? p.picks[i]?.choice ?? null : null,
+    picked: inRound ? p.picks[i]?.choice ?? null
+      : ['final', 'finalreveal'].includes(game.phase) ? game.finalePick?.[p.pid] ?? null
+      : null,
     result: game.phase === 'reveal' || game.phase === 'fire' ? p.results[i] ?? null : null,
-    shots: game.phase === 'fire' ? p.roundShots : 0,
+    shots: game.phase === 'fire' ? p.roundShots : game.phase === 'charge' ? p.chargeTaps ?? 0 : 0,
+    totalShots: p.shots,
   };
 }
 
@@ -192,6 +217,8 @@ function answerCounts() {
 
 // Where a player stands on the current question, for the dashboard's roster.
 function roundStatus(p) {
+  if (game.phase === 'final') return game.finalePick?.[p.pid] !== undefined ? 'answered' : '';
+  if (game.phase === 'finalreveal') return game.finalePick?.[p.pid] === game.quiz.finale?.answer ? 'correct' : 'wrong';
   if (game.phase === 'question') return p.picks[game.index] ? 'answered' : '';
   const r = (game.phase === 'reveal' || game.phase === 'fire') && p.results[game.index];
   if (!r) return '';
@@ -217,19 +244,27 @@ function stateFor(role) {
     auto: game.auto,
     boss: bossPercent(),
   };
+  const fq = game.quiz.finale;
+  const inFinale = fq && ['final', 'finalreveal'].includes(game.phase);
   // Phones get the number of tiles only: the question itself is read off the big screen.
   if (inRound) {
     s.options = q.options.length;
     if (game.phase !== 'question') s.answer = q.answer;
   }
+  if (inFinale) {
+    s.options = fq.options.length;
+    if (game.phase !== 'final') s.answer = fq.answer;
+  }
+  if (['charge', 'unleash'].includes(game.phase)) s.charge = { ...game.charge };
   if (role === 'player') return s;
   if (inRound) s.question = { id: q.id, group: q.group, text: q.text, options: q.options };
+  if (inFinale) s.question = { id: fq.id, group: fq.group, text: fq.text, options: fq.options };
   const board = leaderboard();
-  Object.assign(s, answerCounts(), {
+  Object.assign(s, inFinale ? finaleCounts() : answerCounts(), {
     joinUrl: game.joinUrl,
     joinUrls: JOIN_URLS,
     online: board.filter(isOnline).length,
-    top: board.slice(0, 5).map(p => ({ name: p.name, score: p.score, correct: p.correct })),
+    top: board.slice(0, 5).map(p => ({ name: p.name, score: p.score, correct: p.correct, shots: p.shots })),
     bossDmg: game.boss.dmg,
     bossMax: game.boss.max,
     finisher: game.boss.finisher,
@@ -239,6 +274,8 @@ function stateFor(role) {
   if (role === 'admin') {
     // Only the dashboard knows the answer while players are still choosing.
     if (inRound) s.answerKey = q.answer;
+    if (inFinale) s.answerKey = fq.answer;
+    if (fq) s.finaleReady = true;
     Object.assign(s, {
       screens: screenStreams.size,
       bossFellAt: game.boss.fellAt,
@@ -376,6 +413,8 @@ function startGame() {
   game.boss = { max: Math.max(1, players.size) * game.round.length * BOSS_SHOTS_PER_ANSWER, dmg: 0, finisher: false, fellAt: -1 };
   game.roundShots = 0;
   game.totalShots = 0;
+  game.charge = { taps: 0, goal: CHARGE_MIN, full: false };
+  game.finalePick = {};
   broadcastScreens(seatsMessage());
   broadcastAdmins(roundMessage());
   logEvent(`Bắt đầu game: ${players.size} người chơi, ${game.round.length} câu`, 'phase');
@@ -388,13 +427,103 @@ function nextQuestion() {
   game.index++;
   game.roundShots = 0;
   if (game.index >= game.round.length) {
-    endGame();
+    startFinale();
     return;
   }
   game.startedAt = Date.now();
   logEvent(`Câu ${game.index + 1}/${game.round.length} (${game.round[game.index].id})`, 'phase');
   schedule('question', game.quiz.time, revealAnswer);
   sendRanks();
+}
+
+// ---- Finale: the fun question, then the whole hall charging one shot ---------------
+
+// The quiz is over and the boss is still standing on its last sliver. One joke question, then
+// everyone — right answer or not — taps the bottle full and it goes off in the boss's face.
+function startFinale() {
+  if (!game.quiz.finale) {
+    endGame();
+    return;
+  }
+  game.finalePick = {};
+  logEvent('Câu đố vui cuối: cả hội trường cùng chuẩn bị đòn kết liễu', 'phase');
+  schedule('final', game.quiz.time, revealFinale);
+  sendRanks();
+}
+
+function revealFinale() {
+  const { counts } = finaleCounts();
+  const q = game.quiz.finale;
+  logEvent(`Đáp án câu vui: ${LETTERS[q.answer]}. ${q.options[q.answer]} (${counts[q.answer] ?? 0} người đoán đúng)`, 'good');
+  schedule('finalreveal', game.quiz.reveal, startCharge);
+}
+
+function startCharge() {
+  const online = [...players.values()].filter(isOnline).length || players.size;
+  game.charge = { taps: 0, goal: Math.max(CHARGE_MIN, online * CHARGE_PER_PLAYER), full: false };
+  const now = Date.now();
+  for (const p of players.values()) Object.assign(p, { chargeTaps: 0, tapTokens: TAP_BURST, tapAt: now });
+  logEvent(`Tích nước: cần ${game.charge.goal.toLocaleString('vi-VN')} lượt tap từ cả hội trường`, 'phase');
+  // The timer is the safety net, not the rule: filling the bottle early cuts it short.
+  schedule('charge', game.quiz.chargeLimit, () => fillCharge('hết giờ tích nước'));
+  broadcastScreens(chargeMessage());
+}
+
+function fillCharge(why) {
+  if (game.phase !== 'charge' || game.charge.full) return;
+  game.charge.full = true;
+  game.charge.taps = Math.max(game.charge.taps, game.charge.goal);
+  Object.assign(game.boss, { dmg: game.boss.max, finisher: true });
+  bossChanged = true;
+  logEvent(`Bình nước đầy (${why}) — tung đòn kết liễu!`, 'good');
+  schedule('unleash', UNLEASH_SECONDS, endGame);
+  broadcastScreens(chargeMessage());
+}
+
+function finaleCounts() {
+  const q = game.quiz.finale;
+  const counts = new Array(q?.options.length ?? 4).fill(0);
+  let answered = 0;
+  for (const p of players.values()) {
+    const choice = game.finalePick?.[p.pid];
+    if (choice === undefined) continue;
+    counts[choice]++;
+    answered++;
+  }
+  return { counts, answered };
+}
+
+const chargeMessage = () => ({ type: 'charge', taps: game.charge.taps, goal: game.charge.goal, full: game.charge.full });
+
+// The fun question is not scored, so this only records what the hall guessed.
+function answerFinale(p, choice) {
+  if (game.phase !== 'final') return [409, { error: 'Câu này đã đóng' }];
+  const q = game.quiz.finale;
+  if (!(choice >= 0 && choice < q.options.length)) return [400, { error: 'Đáp án không hợp lệ' }];
+  if (game.finalePick[p.pid] !== undefined) return [409, { error: 'Bạn đã trả lời câu này rồi' }];
+  game.finalePick[p.pid] = choice;
+  broadcast();
+  refreshHost();
+  return [200, { recorded: true, choice }];
+}
+
+function tapCharge(p, n) {
+  if (game.phase !== 'charge' || game.charge.full) return [409, { error: 'Chưa tới lượt tích nước' }];
+  const now = Date.now();
+  p.tapTokens = Math.min(TAP_BURST, p.tapTokens + ((now - p.tapAt) / 1000) * TAP_RATE);
+  p.tapAt = now;
+  const taps = Math.min(Math.floor(p.tapTokens), clamp(Math.trunc(Number(n)) || 0, 0, TAP_BURST));
+  if (taps > 0) {
+    p.tapTokens -= taps;
+    p.chargeTaps = (p.chargeTaps ?? 0) + taps;
+    p.shots += taps;
+    game.charge.taps += taps;
+    game.totalShots += taps;
+    // No muzzle flashes here: the taps pour into the bottle, they do not shoot the boss.
+    broadcastScreens(chargeMessage());
+    if (game.charge.taps >= game.charge.goal) fillCharge('cả hội trường tap đầy');
+  }
+  return [200, { taps, charge: game.charge.taps, goal: game.charge.goal, mine: p.chargeTaps ?? 0 }];
 }
 
 function endGame() {
@@ -477,12 +606,21 @@ function hostAction(action) {
       if (game.phase === 'countdown' || game.phase === 'fire') nextQuestion();
       else if (game.phase === 'question') revealAnswer();
       else if (game.phase === 'reveal') startFire();
+      else if (game.phase === 'final') revealFinale();
+      else if (game.phase === 'finalreveal') startCharge();
+      return true;
+    // The MC's escape hatch: a half-empty hall, a dead phone battery, taps not arriving. Skips
+    // straight to the finisher instead of leaving the finale stuck on a meter nobody can fill.
+    case 'fill':
+      if (game.phase === 'charge') fillCharge('MC nạp đầy');
       return true;
     case 'reset':
       game.round = [];
       game.index = -1;
       game.boss = { max: 1, dmg: 0, finisher: false, fellAt: -1 };
       game.totalShots = 0;
+      game.charge = { taps: 0, goal: CHARGE_MIN, full: false };
+      game.finalePick = {};
       for (const p of players.values()) freshStats(p);
       logEvent('MC reset về phòng chờ', 'warn');
       broadcastAdmins(roundMessage());
@@ -554,19 +692,18 @@ function tapFire(p, index, n) {
   const taps = Math.min(Math.floor(p.tapTokens), clamp(Math.trunc(Number(n)) || 0, 0, TAP_BURST));
   if (taps > 0) {
     p.tapTokens -= taps;
-    const alive = game.boss.dmg < game.boss.max;
-    game.boss.dmg = Math.min(game.boss.max, game.boss.dmg + taps * (result.double ? 2 : 1));
+    // The quiz rounds stop at the floor: however hard the hall taps, the boss survives to the
+    // finale, where the charged shot — and only that — finishes it.
+    const cap = game.boss.max * (1 - BOSS_FLOOR);
+    const wasCapped = game.boss.dmg >= cap;
+    game.boss.dmg = Math.min(cap, game.boss.dmg + taps * (result.double ? 2 : 1));
     p.shots += taps;
     p.roundShots += taps;
     game.roundShots += taps;
     game.totalShots += taps;
     pendingShots.set(p.turret, (pendingShots.get(p.turret) ?? 0) + taps);
     bossChanged = true;
-    if (alive && game.boss.dmg >= game.boss.max) {
-      game.boss.fellAt = index;
-      logEvent(`Quái Vật Dễ Sợ gục ngã ở câu ${index + 1}!`, 'good');
-      broadcast();
-    }
+    if (!wasCapped && game.boss.dmg >= cap) logEvent(`Quái Vật chỉ còn ${Math.round(BOSS_FLOOR * 100)}% máu — chờ đòn kết liễu ở câu cuối`, 'info');
   }
   return [200, { taps, shots: p.roundShots, boss: bossPercent() }];
 }
@@ -674,8 +811,11 @@ async function handleApi(req, res, url, path) {
     const body = await readJson(req);
     const p = players.get(body.pid);
     if (!p) return json(res, 404, { error: 'Không tìm thấy người chơi, hãy vào lại' });
-    if (path === '/api/answer') return json(res, ...submitAnswer(p, body.index, body.choice));
-    if (path === '/api/tap') return json(res, ...tapFire(p, body.index, body.n));
+    // index -1 marks the finale: its question is not part of the round and is not scored.
+    if (path === '/api/answer') {
+      return json(res, ...(body.index === -1 ? answerFinale(p, body.choice) : submitAnswer(p, body.index, body.choice)));
+    }
+    if (path === '/api/tap') return json(res, ...(body.index === -1 ? tapCharge(p, body.n) : tapFire(p, body.index, body.n)));
     return json(res, ...useItem(p, body.item));
   }
 

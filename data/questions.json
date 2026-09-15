@@ -3,6 +3,15 @@
   "revealSeconds": 5,
   "fireSeconds": 6,
   "shuffleOptions": true,
+  "chargeSeconds": 45,
+  "finale": {
+    "id": "Finale",
+    "group": "Câu đố vui",
+    "answer": 3,
+    "note": "Không tính điểm. Trả lời xong là cả hội trường tap để tích nước cho đòn kết liễu.",
+    "text": "Ai đang là Head of CIO?",
+    "options": ["Anh Thuận", "Anh Khang", "Chị Phương", "Không ai cả"]
+  },
   "order": [
     "Comm-2",
     "LH-2", "LH-3", "LH-4", "LH-5", "LH-6", "LH-7",

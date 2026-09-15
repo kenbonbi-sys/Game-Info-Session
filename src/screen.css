@@ -13,17 +13,26 @@ body { color: var(--ui-text); font-family: var(--font-sans); -webkit-font-smooth
 .scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 42%, #0b1c2fd9 0%, #040b14f2 72%); transition: opacity 500ms ease; }
 body[data-scene="countdown"] .scrim { opacity: .72; }
 body[data-scene="question"] .scrim, body[data-scene="reveal"] .scrim, body[data-scene="end"] .scrim { opacity: 1; }
+body[data-scene="final"] .scrim, body[data-scene="finalreveal"] .scrim { opacity: 1; }
+body[data-scene="charge"] .scrim { opacity: .8; }
 
 /* Scenes cross-fade; hidden ones stop taking focus and clicks. */
-.lobby-card, .count-scene, .question-scene, .fire-hud, .end-scene {
+.lobby-card, .count-scene, .question-scene, .fire-hud, .end-scene, .charge-scene {
   visibility: hidden; opacity: 0;
   transition: opacity 420ms ease, transform 560ms cubic-bezier(.2, .8, .2, 1), visibility 0s linear 560ms;
 }
 body[data-scene="lobby"] .lobby-card,
 body[data-scene="countdown"] .count-scene,
 body[data-scene="question"] .question-scene, body[data-scene="reveal"] .question-scene,
+body[data-scene="final"] .question-scene, body[data-scene="finalreveal"] .question-scene,
 body[data-scene="fire"] .fire-hud,
+body[data-scene="charge"] .charge-scene,
 body[data-scene="end"] .end-scene { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+/* The fun question shows its tally the same way a real reveal does. */
+body[data-scene="finalreveal"] .opt-count { display: block; }
+body[data-scene="finalreveal"] .opt:not(.correct) { opacity: .34; filter: saturate(.55); transform: scale(.975); }
+body[data-scene="finalreveal"] .opt.correct { transform: scale(1.02); box-shadow: inset 0 -9px 0 var(--ledge), 0 0 0 6px #fff, 0 0 60px #ffffff8c; }
+body[data-scene="finalreveal"] .opt.correct .opt-check { display: block; animation: mark-pop 420ms cubic-bezier(.2, 1.6, .4, 1); }
 
 /* ---- Top bar ---------------------------------------------------------------- */
 .hud { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: 84px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding: 0 32px; background: linear-gradient(180deg, #0e1f31f7, #0b1a2be6); border-bottom: 2px solid #3d5065; box-shadow: 0 6px 24px #030a1166; }
@@ -135,6 +144,53 @@ body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0
 .podium li b { width: 76px; font-size: 26px; }
 .podium li em { font-size: 24px; }
 .end-stats { margin: 26px 0 0; color: #abbccf; font: 600 24px var(--font-sans); }
+.podium li i { flex: none; min-width: 150px; padding: 6px 14px; border-radius: 8px 3px; background: #0c2033; color: #9fd0ff; font: 600 19px var(--font-sans); text-align: right; font-variant-numeric: tabular-nums; }
+.podium li:first-child i { background: #3a201a; color: #ffc7b4; }
+
+/* ---- Finale: the shared water charge ------------------------------------------- */
+.charge-scene { position: absolute; z-index: 2; top: 176px; left: 50%; width: 1240px; margin-left: -620px; padding: 34px 56px 44px; text-align: center; background: #0a1827f2; border: 2px solid #5c7998; border-radius: 20px 6px; box-shadow: 0 30px 80px #02080e; transform: scale(.94); }
+.charge-scene h1 { margin: 6px 0 30px; font: 800 62px/1.1 var(--font-disp); color: #fff; text-wrap: balance; }
+.charge-body { display: flex; align-items: center; gap: 52px; }
+
+/* The bottle: the art is the vessel, a clipped block rises behind it as the water. */
+.bottle { position: relative; flex: none; width: 260px; height: 340px; }
+.bottle-art { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.bottle-art.ghost { z-index: 1; opacity: .3; filter: grayscale(1) brightness(.6); }
+.bottle-art.live { z-index: 2; clip-path: inset(100% 0 0 0); filter: drop-shadow(0 0 18px #5fc4ff88); transition: clip-path 180ms cubic-bezier(.2, .9, .3, 1); }
+/* The waterline itself, riding on top of the revealed part. */
+.bottle-line { position: absolute; z-index: 3; left: 8%; right: 8%; bottom: 0; height: 5px; border-radius: 3px; background: linear-gradient(90deg, #5fc4ff00, #dffaff, #5fc4ff00); box-shadow: 0 0 20px #8fe3ff; opacity: 0; transition: bottom 180ms cubic-bezier(.2, .9, .3, 1); }
+.bottle[data-wet="true"] .bottle-line { opacity: 1; }
+.bottle-shine { position: absolute; inset: -18%; z-index: 0; border-radius: 50%; opacity: 0; background: radial-gradient(circle, #7fd8ffbb 0%, #7fd8ff00 68%); }
+/* Past nine tenths the bottle starts shaking and the aura comes up. */
+.bottle[data-near="true"] .bottle-shine { opacity: 1; animation: aura 700ms ease-in-out infinite; }
+.bottle[data-near="true"] .bottle-art.live { animation: rattle 140ms steps(2, end) infinite; }
+.bottle[data-full="true"] .bottle-shine { opacity: 1; animation: aura 380ms ease-in-out infinite; }
+.bottle[data-full="true"] .bottle-art.live { filter: drop-shadow(0 0 40px #8fe3ff) brightness(1.15); }
+
+.charge-readout { flex: 1; min-width: 0; text-align: left; }
+.charge-meter { height: 42px; border: 3px solid #4a6c92; border-radius: 10px 3px; background: #071726; overflow: hidden; }
+.charge-meter i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #1C66BB, #6fd2ff); box-shadow: 0 0 24px #5fc4ff99; transition: width 180ms cubic-bezier(.2, .9, .3, 1); }
+.charge-count { margin: 18px 0 10px; display: flex; align-items: baseline; gap: 14px; }
+.charge-count b { color: #8fe3ff; font: 66px/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
+.charge-count span { color: var(--ui-muted); font: 700 28px var(--font-sans); }
+.charge-sub { margin: 0; color: #cfdced; font: 600 26px/1.4 var(--font-sans); }
+
+/* ---- Finale: the shot itself --------------------------------------------------- */
+.unleash-scene { position: absolute; inset: 0; z-index: 5; visibility: hidden; pointer-events: none; }
+body[data-scene="unleash"] .unleash-scene { visibility: visible; }
+/* A column of water thrown from the hall's turrets up into the boss. */
+.beam { position: absolute; left: 50%; bottom: 120px; width: 190px; height: 0; translate: -50% 0; border-radius: 95px 95px 0 0; background: linear-gradient(0deg, #1C66BB, #b6ecff 60%, #ffffff); box-shadow: 0 0 90px #6fd2ff, 0 0 200px #1C66BBcc; opacity: 0; }
+body[data-scene="unleash"] .beam { animation: beam-rise 1.5s cubic-bezier(.3, .7, .2, 1) .5s both; }
+.splash { position: absolute; left: 50%; top: 292px; width: 40px; height: 40px; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, #ffffff 0%, #b6ecff 32%, #1C66BB 58%, #1c66bb00 70%); opacity: 0; }
+body[data-scene="unleash"] .splash { animation: splash-burst 2.4s cubic-bezier(.2, .8, .3, 1) 1.9s both; }
+.unleash-word { position: absolute; left: 50%; top: 58%; translate: -50% -50%; color: #fff; font: 800 132px/1 var(--font-disp); letter-spacing: .04em; text-shadow: 0 0 40px #6fd2ff, 0 8px 0 #0d3f70; opacity: 0; white-space: nowrap; }
+body[data-scene="unleash"] .unleash-word { animation: word-slam 2.2s cubic-bezier(.2, 1.4, .3, 1) 1.7s both; }
+
+@keyframes aura { 0%, 100% { transform: scale(1); opacity: .55; } 50% { transform: scale(1.14); opacity: 1; } }
+@keyframes rattle { 0% { transform: translate(-3px, 1px); } 50% { transform: translate(3px, -1px); } 100% { transform: translate(-2px, 2px); } }
+@keyframes beam-rise { 0% { height: 0; opacity: 0; } 18% { opacity: 1; } 100% { height: 780px; opacity: 1; } }
+@keyframes splash-burst { 0% { width: 40px; height: 40px; opacity: 0; } 12% { opacity: 1; } 55% { width: 1500px; height: 1500px; opacity: .92; } 100% { width: 2100px; height: 2100px; opacity: 0; } }
+@keyframes word-slam { 0% { opacity: 0; scale: 2.6; } 14% { opacity: 1; scale: 1; } 78% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.1; } }
 
 .banner { position: absolute; z-index: 4; top: 54%; left: 50%; translate: -50% -50%; padding: 22px 50px 26px; border: 3px solid #9fc8f2; border-radius: 18px 5px; background: var(--ui-blue); color: #fff; font: 800 64px/1.15 var(--font-disp); white-space: nowrap; opacity: 0; pointer-events: none; box-shadow: 0 20px 60px #020e1acc; }
 .banner[data-tone="bad"] { border-color: var(--ui-orange); background: #4a2b22; color: #ffcabd; }
@@ -160,6 +216,11 @@ body.idle .fs-hint, body.fullscreen .fs-hint, body.preview .fs-hint { opacity: 0
 @keyframes toast-pop { 0% { opacity: 0; transform: translateY(14px) scale(.9); } 12%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; }
-  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .prompt-shapes i, .fire-call b, .hud-chip.accent, .q-timer b, .opt-check { animation: none !important; }
+  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .prompt-shapes i, .fire-call b, .hud-chip.accent, .q-timer b, .opt-check,
+  .bottle-art, .bottle-shine { animation: none !important; }
+  /* The finale still has to read as a hit, so these keep their shape and just stop easing. */
+  body[data-scene="unleash"] .beam { animation: beam-rise 1.5s steps(3, end) .5s both; }
+  body[data-scene="unleash"] .splash { animation: splash-burst 2.4s steps(4, end) 1.9s both; }
+  body[data-scene="unleash"] .unleash-word { animation: word-slam 2.2s steps(2, end) 1.7s both; }
   .banner.pop { animation: toast-pop 1.8s steps(1, end) both; }
 }
