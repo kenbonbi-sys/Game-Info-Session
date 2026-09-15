@@ -5,7 +5,7 @@ import { SPRITES, ITEMS, ANSWERS, SHAPE_PATHS } from './config.js';
 // Seconds per clip. The item clip demos all three items; shield and boost need room for the boss
 // to strike back and for the double shot.
 const ITEM_PHASES = [1.6, 2.2, 2.2];
-export const GUIDE_CLIP_SECONDS = [3.2, 3.4, 3.4, ITEM_PHASES.reduce((a, b) => a + b, 0)];
+export const GUIDE_CLIP_SECONDS = [4.2, 3.4, 3.4, ITEM_PHASES.reduce((a, b) => a + b, 0)];
 
 const W = 320;
 const H = 200;
@@ -179,6 +179,21 @@ function popScale(since, duration = 0.45) {
   return 0.4 + 0.6 * (1 + 2.2 * u ** 3 + 1.2 * u ** 2);
 }
 
+// The three items earned over the 7-day streak, rising out of the turret one after another.
+function rewardDrop(ctx, x, ringY, since) {
+  ITEM_KEYS.forEach((key, i) => {
+    const p = ease((since - i * 0.22) / 0.55);
+    if (p <= 0) return;
+    const icon = itemIcons[key];
+    if (!icon.complete || !icon.naturalWidth) return;
+    const cx = x + (i - 1) * 30;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, p * 2);
+    ctx.drawImage(icon, cx - 13, lerp(ringY - 18, ringY - 52, p) - 13, 26, 26);
+    ctx.restore();
+  });
+}
+
 // Join: tap "Vào chơi" and a turret on the big screen takes your name.
 function clipJoin(ctx, art, t) {
   const slots = [80, 160, 240];
@@ -201,9 +216,11 @@ function clipJoin(ctx, art, t) {
     drawTurret(ctx, sheet, frameOf(sheet, 'idle', t + i * 0.3), x, ringY, ringW);
     ctx.restore();
   });
-  namePlate(ctx, 'Lan Chi', slots[2], ringY + 16, false);
-  if (seated) namePlate(ctx, 'Tên bạn', slots[mineAt], ringY + 16, true, seg(t, seatAt + 0.1, seatAt + 0.3));
-  pill(ctx, 'Ụ súng mang tên bạn!', 160, 30, seg(t, seatAt + 0.25, seatAt + 0.5), '#E5303F');
+  namePlate(ctx, 'lan.chi', slots[2], ringY + 16, false);
+  if (seated) namePlate(ctx, 'khang.pham2', slots[mineAt], ringY + 16, true, seg(t, seatAt + 0.1, seatAt + 0.3));
+  // The reward for the 7-day streak lands on the turret the domain name just claimed.
+  if (seated) rewardDrop(ctx, slots[mineAt], ringY, t - seatAt - 0.4);
+  pill(ctx, 'Quà 7 ngày về ụ của bạn!', 160, 30, seg(t, seatAt + 0.25, seatAt + 0.5), '#E5303F');
 
   const leave = seg(t, seatAt + 0.1, seatAt + 0.5);
   if (leave < 1) {
@@ -375,6 +392,18 @@ function clipFire(ctx, art, t) {
   }
   pill(ctx, 'TAP TAP TAP!', button.x - 4, 90, seg(t, TAPS[2], TAPS[2] + 0.2), '#E5303F');
   for (const at of hits.filter((_, k) => k % 3 === 2)) popText(ctx, 'Trúng!', 170, 44, t - at);
+
+  // The point of this clip: the counter climbs with every tap, so mashing is the whole instruction.
+  const taps = TAPS.filter(at => at <= t).length;
+  if (taps) {
+    text(ctx, 'ĐIỂM', button.x, 30, { size: 7.5, weight: 700, color: '#9fb1c4' });
+    ctx.save();
+    ctx.translate(button.x, 46);
+    ctx.scale(since < 0.09 ? 1.18 : 1, since < 0.09 ? 1.18 : 1);
+    text(ctx, String(taps * 10), 0, 0, { size: 20, color: '#FFC29A' });
+    ctx.restore();
+    popText(ctx, '+10', button.x + 26, 46, since);
+  }
 }
 
 const ITEM_KEYS = ['hint', 'shield', 'boost'];

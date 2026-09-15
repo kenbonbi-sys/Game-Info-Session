@@ -5,6 +5,7 @@ import { loadSvgStrip, loadGridSheet, buildFoxSheet } from './sprites.js';
 import { SPRITES, ITEMS, ANSWERS, shapeSvg } from './config.js';
 import { paintHudPortrait, drawJoinDuel, galaxyDataUrl } from './hud-art.js';
 import { drawGuideClip, GUIDE_CLIP_SECONDS } from './guide-clips.js';
+import { drawCutscene, cutsceneLines } from './cutscene.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -43,7 +44,28 @@ async function post(path, body) {
   return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
 }
 
-async function join(name) {
+// ---- Join cutscene -----------------------------------------------------------------
+
+const cutscene = { start: 0, playing: false };
+
+// Only on a deliberate join: a reconnect or an auto-rejoin drops the player straight back in.
+function playCutscene() {
+  if (REDUCED_MOTION.matches) return;
+  const seat = me.turret >= 0 ? `Ụ số ${me.turret + 1}` : '';
+  cutscene.start = performance.now() / 1000;
+  cutscene.playing = true;
+  $('cutsceneSr').textContent = cutsceneLines(seat).join(' ');
+  $('cutscene').hidden = false;
+  $('cutsceneSkip').focus();
+}
+
+function endCutscene() {
+  if (!cutscene.playing) return;
+  cutscene.playing = false;
+  $('cutscene').hidden = true;
+}
+
+async function join(name, { cinematic = false } = {}) {
   $('joinError').textContent = '';
   $('joinBtn').disabled = true;
   $('joinBtn').textContent = 'Đang vào phòng…';
@@ -58,6 +80,7 @@ async function join(name) {
     $('nameInput').blur();
     connect();
     render();
+    if (cinematic) playCutscene();
   } catch (err) {
     $('joinError').textContent = err instanceof TypeError ? 'Không kết nối được server' : err.message;
     $('join').hidden = false;
@@ -250,6 +273,8 @@ function currentView() {
 
 function render() {
   const view = currentView();
+  // The scene is a lobby flourish: the moment the MC starts, the question wins the screen.
+  if (cutscene.playing && view !== 'lobby' && view !== 'connecting') endCutscene();
   document.body.dataset.view = view;
   $('answerView').hidden = view !== 'answer';
   $('fireView').hidden = view !== 'fire';
@@ -494,6 +519,11 @@ function frame(t) {
   }
   if (!$('join').hidden) drawJoinDuel($('joinArt'), hero, bossSheet, t, { reducedMotion: REDUCED_MOTION.matches });
   if (!$('guide').hidden) renderGuide(t);
+  if (cutscene.playing) {
+    const art = { hero, turret: turretSheet, turretEmpty: turretEmptySheet ?? turretSheet };
+    const seat = me.turret >= 0 ? `Ụ số ${me.turret + 1}` : '';
+    if (!drawCutscene($('cutsceneClip'), art, t - cutscene.start, { seatLabel: seat, name: net.name })) endCutscene();
+  }
 }
 
 // ---- Guide -------------------------------------------------------------------------
@@ -501,9 +531,9 @@ function frame(t) {
 const guideSteps = document.querySelectorAll('.guide-step');
 const guideView = { start: 0, step: 0, shown: -1 };
 const GUIDE_CAPTIONS = [
-  'Nhập tên và vào chơi: bạn có ngay một ụ súng mang tên mình trên màn hình lớn.',
+  'Nhập đúng domain của bạn (ví dụ: khang.pham2) để nhận phần thưởng đã tích được trong 7 ngày vừa qua — Buddy thông thái, Súng giọt tự tin, và Khiên nếu bạn đã tạo bảng câu hỏi.',
   `Câu hỏi hiện trên màn hình lớn. ${TOUCH ? 'Chạm' : 'Bấm'} ô cùng màu, cùng hình trên điện thoại trước khi hết giờ.`,
-  `Có đáp án rồi, ai trả lời đúng thì ${TOUCH ? 'chạm' : 'bấm'} liên tục nút BẮN. Cả hội trường cùng hạ boss!`,
+  `Trả lời đúng là mở khoá nút BẮN. ${TOUCH ? 'Chạm' : 'Bấm'} càng nhiều, điểm càng cao và boss càng mất máu — cứ bấm hết sức tới khi hết giờ!`,
   'Mỗi vật phẩm dùng 1 lần: loại 2 đáp án sai, khiên đỡ 1 đòn của boss, hoặc ×2 điểm và ×2 đạn.',
 ];
 const GUIDE_STARTS = GUIDE_CLIP_SECONDS.map((_, i) => GUIDE_CLIP_SECONDS.slice(0, i).reduce((a, b) => a + b, 0));
@@ -605,8 +635,9 @@ async function boot() {
       return;
     }
     net.pid = session.get('foxquiz.pid');
-    join(name);
+    join(name, { cinematic: true });
   });
+  $('cutsceneSkip').addEventListener('click', endCutscene);
   const savedName = local.get('foxquiz.name');
   $('joinBtn').disabled = false;
   $('joinBtn').textContent = 'Vào chơi';
@@ -623,7 +654,7 @@ async function boot() {
   });
 
   // Debug helpers for DevTools.
-  window.quiz = { state: quiz, me, taps, net, lock, fire, useItem };
+  window.quiz = { state: quiz, me, taps, net, lock, fire, useItem, cutscene, playCutscene };
 }
 
 boot();

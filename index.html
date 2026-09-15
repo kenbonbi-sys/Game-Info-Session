@@ -86,11 +86,20 @@
       </svg></div>
       <h1 id="joinTitle">Cùng <b>Buddy</b><span>đánh bay <em>“Dễ Sợ”</em></span></h1>
       <button id="guideBtn" type="button" class="guide-btn" aria-haspopup="dialog"><span class="guide-play" aria-hidden="true"></span>Hướng dẫn</button>
-      <label class="name-label" for="nameInput">Tên của bạn</label>
-      <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: Minh Anh" autocomplete="nickname" enterkeyhint="go" aria-describedby="joinError" required>
+      <label class="name-label" for="nameInput">Tên domain của bạn</label>
+      <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: khang.pham2" autocomplete="username" enterkeyhint="go" aria-describedby="nameHint joinError" required>
+      <p id="nameHint" class="name-hint">Đúng domain thì phần thưởng 7 ngày qua mới về đúng ụ súng của bạn.</p>
       <button id="joinBtn" type="submit" class="cta-ledge" disabled>Đang tải…</button>
       <p id="joinError" class="error" role="alert"></p>
     </form>
+  </section>
+
+  <section id="cutscene" class="overlay cutscene-overlay" hidden>
+    <div class="cutscene-box">
+      <canvas id="cutsceneClip" class="cutscene-clip" width="640" height="400" aria-hidden="true"></canvas>
+      <p id="cutsceneSr" class="sr-only" aria-live="polite"></p>
+      <button id="cutsceneSkip" type="button" class="cutscene-skip">Bỏ qua ›</button>
+    </div>
   </section>
 
   <section id="guide" class="overlay guide-overlay" hidden>
