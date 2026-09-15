@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buddy vs Quái Vật Dễ Sợ · Màn chiếu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👹</text></svg>">
+  <link rel="stylesheet" href="src/pixel.css">
+  <link rel="stylesheet" href="src/screen.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body data-scene="lobby">
+  <!-- The projector shows only the game: designed at 1920×1080 and scaled to fit. The MC controls it from /host. -->
+  <div id="stage" class="stage">
+    <canvas id="arena" class="arena" aria-label="Đấu trường: mỗi ụ súng mang tên một người chơi, Quái Vật Dễ Sợ bay phía trên"></canvas>
+    <div class="scrim" aria-hidden="true"></div>
+
+    <header class="hud">
+      <img class="hud-lockup" src="assets/source/learning-hub-x-research-lab.png" alt="Learning Hub x Research Lab" width="900" height="104">
+      <div class="hud-boss">
+        <canvas id="bossAvatar" class="boss-avatar" width="96" height="96" aria-hidden="true"></canvas>
+        <div class="boss-readout">
+          <div class="boss-caption"><b>Quái Vật Dễ Sợ</b><span id="bossPercent">100%</span></div>
+          <div id="bossHealth" class="boss-health" role="progressbar" aria-label="Máu Quái Vật Dễ Sợ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="bossHealthTrail"></i><i id="bossHealthFill"></i></div>
+        </div>
+      </div>
+      <div class="hud-right">
+        <span id="phaseLabel" class="hud-chip accent">Phòng chờ</span>
+        <span class="hud-chip"><b id="players">0</b> người chơi</span>
+      </div>
+    </header>
+
+    <section id="lobby" class="lobby-card" aria-labelledby="lobbyTitle">
+      <span class="eyebrow">BUDDY vs QUÁI VẬT DỄ SỢ</span>
+      <h1 id="lobbyTitle">Quét QR để vào chơi</h1>
+      <div id="qr" class="qr">Đang tạo QR…</div>
+      <div id="joinUrl" class="join-url"></div>
+      <p class="lobby-note">Điện thoại cùng wifi · Nhập tên là có ngay một ụ súng mang tên bạn</p>
+      <div class="lobby-count"><b id="lobbyCount">0</b><span>người đã vào<em id="seatCount"></em></span></div>
+      <ol id="arrivals" class="arrivals" aria-label="Người chơi mới vào"></ol>
+    </section>
+
+    <div id="countdown" class="count-scene" aria-live="assertive"><span>Chuẩn bị!</span><b id="countNum">3</b></div>
+
+    <section id="question" class="question-scene" aria-live="polite">
+      <h1 class="q-text"><span id="qMeta" class="q-meta">Câu 1/15</span><span id="qText"></span></h1>
+      <div class="q-middle">
+        <div id="qTimer" class="q-timer" aria-hidden="true">
+          <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle id="timerRing" class="ring" cx="60" cy="60" r="52"/></svg>
+          <b id="timerNum">15</b>
+        </div>
+        <div id="qPrompt" class="q-prompt"><span id="promptShapes" class="prompt-shapes"></span><b>Chọn ô cùng màu, cùng hình trên điện thoại!</b></div>
+        <div id="top5" class="top5" hidden></div>
+        <div class="q-answered"><b id="answeredNum">0</b><span id="answeredOf">/0 đã trả lời</span></div>
+      </div>
+      <div id="options" class="options"></div>
+    </section>
+
+    <section id="fireHud" class="fire-hud">
+      <div class="fire-card fire-call">
+        <b id="fireTitle">TAP TAP TAP!</b>
+        <span id="fireSub">Ai trả lời đúng: chạm liên tục nút BẮN trên điện thoại</span>
+        <div class="fire-timer"><i id="fireFill"></i></div>
+      </div>
+      <div class="fire-card fire-stats">
+        <span>Lượt này cả hội trường bắn</span>
+        <b id="roundShots">0</b>
+        <em id="shooters">0 ụ đang bắn</em>
+      </div>
+    </section>
+
+    <section id="end" class="end-scene" aria-labelledby="endTitle">
+      <span class="eyebrow">BẢNG XẾP HẠNG</span>
+      <h1 id="endTitle">Quái Vật Dễ Sợ đã bị hạ gục!</h1>
+      <ol id="podium" class="podium"></ol>
+      <p id="endStats" class="end-stats"></p>
+    </section>
+
+    <div id="banner" class="banner" role="status"></div>
+  </div>
+
+  <!-- Only shows while the mouse is over the window, so the audience never sees it. -->
+  <div id="fsHint" class="fs-hint" aria-hidden="true">Nhấn <b>F</b> hoặc double-click để toàn màn hình</div>
+  <div id="conn" class="conn" role="status" hidden>Mất kết nối server, đang thử lại…</div>
+  <script type="module" src="src/screen.js"></script>
+</body>
+</html>

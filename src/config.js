@@ -1,4 +1,4 @@
-// Character art shared by the quiz, the host screen and the sandbox.
+// Character art and arena layout shared by the server, the projector, the phones and the sandbox.
 // views = frame order of a 360° turnaround strip.
 export const SPRITES = {
   hero: { url: 'assets/source/hero-360.svg', views: ['down-right', 'right', 'up-right', 'up', 'up-left', 'left', 'down-left'] },
@@ -35,28 +35,54 @@ export const SPRITES = {
   },
 };
 
-// Portrait space arena (map pixels). Shared by the backdrop and live entities.
+// Landscape arena for the 1920×1080 projector (map px = stage px). The boss hovers over its reactor
+// at the top; the hall's turrets sit below in three banks of rows facing it, like seats facing a stage.
+const ROWS = [470, 582, 694, 806, 918, 1030];
+const BANK_LEFT = [48, 684, 1320];
+const PER_BANK = 6;
+const PITCH = 92;
+
 export const ARENA = {
-  legacyUrl: 'assets/source/map/space-arena-empty.png',
-  width: 720,
-  height: 1160,
-  // Five banks of six turrets flank a clear central walkway. Server turret i = slot i.
-  slots: [
-    [85, 410], [170, 410], [255, 410], [465, 410], [550, 410], [635, 410],
-    [85, 550], [170, 550], [255, 550], [465, 550], [550, 550], [635, 550],
-    [85, 690], [170, 690], [255, 690], [465, 690], [550, 690], [635, 690],
-    [85, 830], [170, 830], [255, 830], [465, 830], [550, 830], [635, 830],
-    [85, 970], [170, 970], [255, 970], [465, 970], [550, 970], [635, 970],
-  ],
-  ringWidth: { y0: 410, w0: 58, perPx: 0, min: 58, max: 58 },
-  floor: { top: 300, bottom: 1080, topX: [42, 678], bottomX: [42, 678] },
-  boss: { x: 360, feetY: 265, height: 145 * 1.3, flight: { radiusX: 92, radiusY: 20, period: 16 } },
-  spawn: { x: 360, y: 1050 },
+  width: 1920,
+  height: 1080,
+  rows: ROWS,
+  pitch: PITCH,
+  banks: BANK_LEFT.map(x => [x, x + PER_BANK * PITCH]),
+  aisles: [[600, 684], [1236, 1320]],
+  // Server turret i = slot i: numbered left to right, starting with the row nearest the boss.
+  slots: ROWS.flatMap(y => BANK_LEFT.flatMap(x => Array.from({ length: PER_BANK }, (_, c) => [x + PITCH / 2 + c * PITCH, y]))),
+  ringWidth: 62,
+  deckTop: 392,
+  boss: { x: 960, feetY: 318, height: 200, flight: { radiusX: 250, radiusY: 22, period: 16 } },
+  // Players who arrive after every turret is taken still shoot, from the foot of the two aisles.
+  hallLaunchers: [[642, 1080], [1278, 1080]],
 };
+
+// Seats fill from the middle of the front rows outward, so even a small hall crowds the boss.
+const seatRank = ([x, y]) => Math.hypot((x - ARENA.boss.x) / 1.4, y - 360);
+export const SEAT_ORDER = ARENA.slots.map((_, i) => i).sort((a, b) => seatRank(ARENA.slots[a]) - seatRank(ARENA.slots[b]));
+
+// Answer tiles, shared by phones and the projector. Colour plus shape, as in Kahoot, so a phone tile
+// matches its option on the big screen at a glance and without relying on colour alone.
+export const ANSWERS = [
+  { letter: 'A', shape: 'triangle', color: '#E5303F', ledge: '#8C1220' },
+  { letter: 'B', shape: 'diamond', color: '#1C66BB', ledge: '#0C3A70' },
+  { letter: 'C', shape: 'circle', color: '#C28100', ledge: '#6F4A00' },
+  { letter: 'D', shape: 'square', color: '#1F9D55', ledge: '#0D5A2E' },
+];
+
+export const SHAPE_PATHS = {
+  triangle: 'M12 2.5 22.5 20.5h-21Z',
+  diamond: 'M12 1.5 22.5 12 12 22.5 1.5 12Z',
+  circle: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20Z',
+  square: 'M3 3h18v18H3Z',
+};
+
+export const shapeSvg = shape => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SHAPE_PATHS[shape]}"/></svg>`;
 
 // Power-ups every player gets once per game. Effects are applied by the server.
 export const ITEMS = {
   hint: { name: 'Buddy thông thái', icon: 'assets/source/items/buddy-thong-thai.svg', effect: 'Loại 2 đáp án sai' },
   shield: { name: 'Khiên Research Lab', icon: 'assets/source/items/khien-research-lab.svg', effect: 'Đỡ 1 lần sai, giữ combo' },
-  boost: { name: 'Súng giọt tự tin', icon: 'assets/source/items/sung-giot-tu-tin.svg', effect: 'Câu đúng kế tiếp x2 điểm' },
+  boost: { name: 'Súng giọt tự tin', icon: 'assets/source/items/sung-giot-tu-tin.svg', effect: 'Câu đúng kế tiếp x2 điểm, x2 đạn' },
 };

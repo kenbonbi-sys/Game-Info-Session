@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js", "--port=5174"],
       "port": 5174
+    },
+    {
+      "name": "fox-quiz-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js", "--port=5175"],
+      "port": 5175
     }
   ]
 }

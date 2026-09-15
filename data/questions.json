@@ -1,6 +1,7 @@
 {
   "timePerQuestion": 15,
   "revealSeconds": 5,
+  "fireSeconds": 6,
   "shuffleOptions": true,
   "order": [
     "Comm-2",

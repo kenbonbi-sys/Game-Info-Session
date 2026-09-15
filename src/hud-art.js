@@ -1,5 +1,5 @@
-// Small UI illustrations share the playable character sheets. Decorative layers
-// are cached; the lobby only redraws its two sprites and a few pixels of dust.
+// Small UI illustrations share the playable character sheets. The platform layer
+// is cached; the lobby only redraws its two sprites.
 const duelLayers = new WeakMap();
 const spriteBounds = new WeakMap();
 
@@ -132,6 +132,54 @@ function platform(ctx, x, amber = false) {
   step(ctx, x - 41, 174, 82, 16, 5, '#091725bb');
 }
 
+// Fixed seed so the starfield is identical on every load.
+function seeded(seed) {
+  return () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+}
+
+/** A black sky with white stars thickening along a diagonal band, like a galaxy seen edge-on. */
+export function galaxyDataUrl(document, width = 600, height = 930) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const rand = seeded(20260914);
+  const glow = 0.7;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, width, height);
+  // The band runs from lower left to upper right through the centre; the haze fades across it.
+  const bandAt = x => height * 0.78 - (x / width) * height * 0.56;
+  const len = Math.hypot(width, height * 0.56);
+  const nx = ((height * 0.56) / len) * height * 0.3;
+  const ny = (width / len) * height * 0.3;
+  const haze = ctx.createLinearGradient(width / 2 - nx, height / 2 - ny, width / 2 + nx, height / 2 + ny);
+  haze.addColorStop(0, '#ffffff00');
+  haze.addColorStop(0.5, '#ffffff16');
+  haze.addColorStop(1, '#ffffff00');
+  ctx.fillStyle = haze;
+  ctx.globalAlpha = glow;
+  ctx.fillRect(0, 0, width, height);
+  for (let i = 0; i < 225; i++) {
+    const x = rand() * width;
+    // Summing two randoms clusters band stars near the centre line.
+    const y = i < 140 ? bandAt(x) + (rand() + rand() - 1) * height * 0.16 : rand() * height;
+    const size = rand() < 0.85 ? 2 : 3;
+    ctx.globalAlpha = (0.25 + rand() * 0.6) * glow;
+    block(ctx, x, y, size, size, '#ffffff');
+  }
+  ctx.globalAlpha = glow;
+  for (let i = 0; i < 3; i++) {
+    const x = rand() * width, y = rand() * height;
+    block(ctx, x - 1, y - 5, 2, 12, '#ffffff');
+    block(ctx, x - 5, y - 1, 12, 2, '#ffffff');
+  }
+  ctx.globalAlpha = 1;
+  return canvas.toDataURL('image/png');
+}
+
 function createDuelLayer(canvas) {
   const layer = canvas.ownerDocument.createElement('canvas');
   layer.width = canvas.width;
@@ -139,35 +187,8 @@ function createDuelLayer(canvas) {
   const ctx = layer.getContext('2d');
   ctx.scale(layer.width / 640, layer.height / 220);
   ctx.imageSmoothingEnabled = false;
-
-  // Soft light belongs to the environment; sprite pixels retain their colors.
-  for (const [x, color] of [[160, '#7cb4f022'], [480, '#f26d4f22']]) {
-    const light = ctx.createRadialGradient(x, 124, 10, x, 124, 118);
-    light.addColorStop(0, color);
-    light.addColorStop(1, '#14293f00');
-    ctx.fillStyle = light;
-    ctx.fillRect(x - 118, 6, 236, 208);
-  }
-
-  // Sparse, fixed stars and a lower horizon suggest the same station as the map.
-  const stars = [[44, 50, 2], [87, 22, 3], [253, 40, 2], [269, 153, 2],
-    [368, 32, 2], [394, 161, 2], [568, 31, 3], [601, 72, 2]];
-  for (const [x, y, size] of stars) block(ctx, x, y, size, size, '#8fa9c466');
-  block(ctx, 61, 112, 10, 2, '#799cc288');
-  block(ctx, 65, 108, 2, 10, '#799cc288');
-  block(ctx, 563, 104, 10, 2, '#c97c6b88');
-  block(ctx, 567, 100, 2, 10, '#c97c6b88');
-  block(ctx, 29, 205, 582, 2, '#475a6f33');
-  block(ctx, 50, 213, 240, 2, '#475a6f22');
-  block(ctx, 350, 213, 240, 2, '#475a6f22');
-
   platform(ctx, 160);
   platform(ctx, 480, true);
-  // Small segmented side marks frame the duel without obscuring the central VS.
-  block(ctx, 16, 163, 3, 22, '#67829f55');
-  block(ctx, 16, 185, 18, 3, '#67829f55');
-  block(ctx, 621, 163, 3, 22, '#a56f6355');
-  block(ctx, 606, 185, 18, 3, '#a56f6355');
   return layer;
 }
 
@@ -189,14 +210,5 @@ export function drawJoinDuel(canvas, hero, boss, time = 0, { reducedMotion = fal
   const heroBob = reducedMotion ? 0 : Math.round(Math.sin(t * 2.5) * 1.5);
   paintSprite(ctx, hero, preferredHeroFrame(hero), 160, 180 + heroBob, 138, 166);
   paintSprite(ctx, boss, idleFrame(boss, t), 480, 180, 157, 194);
-
-  for (let i = 0; i < 6; i++) {
-    const amber = i >= 3;
-    const progress = (t * 0.13 + i * 0.193) % 1;
-    const x = (amber ? 480 : 160) + [-71, 63, 47][i % 3];
-    const y = Math.round(170 - progress * 105);
-    ctx.globalAlpha = Math.sin(progress * Math.PI) * 0.55;
-    block(ctx, x, y, 2, 4, amber ? '#f5a796' : '#c3dbf5');
-  }
   ctx.restore();
 }
