@@ -391,7 +391,246 @@ function selectTab(logTab) {
   $('panelLog').hidden = !logTab;
 }
 
+// ---- Question editor ---------------------------------------------------------------------
+// Edits a working copy of data/questions.json and only writes it back on Lưu, so a half-finished
+// edit can be abandoned. The server validates again before the file is replaced.
+
+const LETTERS = 'ABCD';
+let draft = null;        // the working copy
+let picked = null;       // id of the question being edited
+
+const byId = id => draft.questions.find(q => q.id === id);
+const benchIds = () => draft.questions.filter(q => !draft.order.includes(q.id)).map(q => q.id);
+
+async function openEditor() {
+  try {
+    const res = await fetch(`/api/host/questions?${keyParam}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
+    const { data, ephemeral, live } = await res.json();
+    draft = structuredClone(data);
+    draft.finale ??= { id: 'Finale', group: 'Câu đố vui', text: '', options: ['', '', '', ''], answer: 0 };
+    picked = draft.order[0] ?? draft.questions[0]?.id ?? null;
+    // Two different warnings, and the hosted one matters more: there the file does not survive.
+    const warn = $('editorWarn');
+    const notes = [];
+    if (ephemeral) notes.push('Bản này chạy trên hosting: file sẽ trở về bản trong repo mỗi lần deploy hoặc server ngủ dậy. Sửa xong hãy bấm "Tải file JSON" và commit vào repo.');
+    if (live) notes.push('Đang giữa ván: thay đổi chỉ áp dụng từ lần "Bắt đầu / Chơi lại" kế tiếp.');
+    warn.textContent = notes.join(' ');
+    warn.hidden = !notes.length;
+    $('editorMsg').textContent = '';
+    renderEditor();
+    $('editor').hidden = false;
+    $('editorClose').focus();
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
+}
+
+function closeEditor() {
+  $('editor').hidden = true;
+  draft = null;
+  picked = null;
+}
+
+function questionRow(id, index, inOrder) {
+  const q = byId(id);
+  const li = document.createElement('li');
+  li.setAttribute('aria-selected', String(id === picked));
+  li.innerHTML = `<span class="n">${inOrder ? index + 1 : '·'}</span>
+    <span class="t">${escapeHtml(q.text || '(chưa có nội dung)')}<em>${escapeHtml(q.id)}${q.group ? ` · ${escapeHtml(q.group)}` : ''}</em></span>`;
+  if (q.answerConfirmed === false) {
+    const flag = Object.assign(document.createElement('span'), { className: 'flag', textContent: '⚠', title: 'Đáp án chưa xác nhận' });
+    li.append(flag);
+  }
+  const btns = document.createElement('span');
+  btns.className = 'row-btns';
+  if (inOrder) {
+    btns.append(
+      rowBtn('↑', 'Lên trên', index === 0, () => moveInOrder(index, -1)),
+      rowBtn('↓', 'Xuống dưới', index === draft.order.length - 1, () => moveInOrder(index, 1)),
+      rowBtn('–', 'Bỏ khỏi ván chơi', draft.order.length <= 1, () => { draft.order.splice(index, 1); renderEditor(); }),
+    );
+  } else {
+    btns.append(rowBtn('+', 'Thêm vào ván chơi', false, () => { draft.order.push(id); renderEditor(); }));
+  }
+  li.append(btns);
+  li.addEventListener('click', e => {
+    if (e.target.closest('.row-btns')) return;
+    picked = id;
+    renderEditor();
+  });
+  return li;
+}
+
+function rowBtn(label, title, disabled, onClick) {
+  const b = Object.assign(document.createElement('button'), { type: 'button', textContent: label, title, disabled });
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function moveInOrder(index, delta) {
+  const to = index + delta;
+  if (to < 0 || to >= draft.order.length) return;
+  [draft.order[index], draft.order[to]] = [draft.order[to], draft.order[index]];
+  renderEditor();
+}
+
+const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Four rows whether or not the question uses all four: blank ones are dropped when saving.
+function optionRows(host, target, onChange) {
+  host.replaceChildren(...Array.from({ length: 4 }, (_, i) => {
+    const row = document.createElement('div');
+    row.className = 'opt-row';
+    row.dataset.correct = String(target.answer === i);
+    const radio = Object.assign(document.createElement('input'), { type: 'radio', name: `${host.id}-correct`, checked: target.answer === i });
+    radio.setAttribute('aria-label', `Đáp án ${LETTERS[i]} là đáp án đúng`);
+    radio.addEventListener('change', () => { target.answer = i; onChange(); });
+    const text = Object.assign(document.createElement('input'), { type: 'text', value: target.options[i] ?? '', maxLength: 160, placeholder: `Đáp án ${LETTERS[i]}` });
+    text.setAttribute('aria-label', `Nội dung đáp án ${LETTERS[i]}`);
+    text.addEventListener('input', () => { target.options[i] = text.value; onChange(); });
+    row.append(radio, Object.assign(document.createElement('span'), { className: 'letter', textContent: LETTERS[i] }), text);
+    return row;
+  }));
+}
+
+function renderEditor() {
+  $('editorOrder').replaceChildren(...draft.order.map((id, i) => questionRow(id, i, true)));
+  $('editorBench').replaceChildren(...benchIds().map(id => questionRow(id, 0, false)));
+  const unconfirmed = draft.order.filter(id => byId(id)?.answerConfirmed === false).length;
+  $('editorCount').textContent = `${draft.order.length} câu${unconfirmed ? ` · ⚠ ${unconfirmed} chưa xác nhận` : ''}`;
+  $('editorState').textContent = `${draft.questions.length} câu trong file`;
+
+  const q = picked && byId(picked);
+  $('editorEmpty').hidden = !!q;
+  $('editorFields').hidden = !q;
+  if (q) {
+    q.options ??= [];
+    $('fId').value = q.id;
+    $('fGroup').value = q.group ?? '';
+    $('fText').value = q.text ?? '';
+    $('fConfirmed').checked = q.answerConfirmed !== false;
+    optionRows($('fOptions'), q, () => renderEditorLists());
+  }
+  const fx = draft.finale;
+  $('fxText').value = fx.text ?? '';
+  optionRows($('fxOptions'), fx, () => {});
+  $('fTime').value = draft.timePerQuestion ?? 15;
+  $('fReveal').value = draft.revealSeconds ?? 5;
+  $('fFire').value = draft.fireSeconds ?? 6;
+  $('fCharge').value = draft.chargeSeconds ?? 45;
+  $('fShuffle').checked = draft.shuffleOptions !== false;
+}
+
+// Typing in a field must not rebuild the field and steal the caret, so only the lists refresh.
+function renderEditorLists() {
+  $('editorOrder').replaceChildren(...draft.order.map((id, i) => questionRow(id, i, true)));
+  $('editorBench').replaceChildren(...benchIds().map(id => questionRow(id, 0, false)));
+  for (const [i, row] of [...$('fOptions').children].entries()) row.dataset.correct = String(byId(picked)?.answer === i);
+}
+
+function addQuestion() {
+  let n = draft.questions.length + 1;
+  while (draft.questions.some(q => q.id === `Q-${n}`)) n++;
+  const q = { id: `Q-${n}`, group: '', text: '', options: ['', '', '', ''], answer: 0, answerConfirmed: false };
+  draft.questions.push(q);
+  draft.order.push(q.id);
+  picked = q.id;
+  renderEditor();
+  $('fText').focus();
+}
+
+function deleteQuestion() {
+  const q = picked && byId(picked);
+  if (!q || !confirm(`Xoá hẳn câu "${q.id}" khỏi file?`)) return;
+  draft.questions = draft.questions.filter(x => x.id !== q.id);
+  draft.order = draft.order.filter(id => id !== q.id);
+  picked = draft.order[0] ?? draft.questions[0]?.id ?? null;
+  renderEditor();
+}
+
+// Blank option slots are dropped here, and the correct answer follows its text to the new index.
+function payload() {
+  const trim = t => ({
+    ...t,
+    options: t.options.map((o, i) => [String(o ?? '').trim(), i]).filter(([o]) => o),
+  });
+  const shrink = t => {
+    const kept = trim(t).options;
+    return { ...t, options: kept.map(([o]) => o), answer: Math.max(0, kept.findIndex(([, i]) => i === t.answer)) };
+  };
+  return {
+    timePerQuestion: Number($('fTime').value),
+    revealSeconds: Number($('fReveal').value),
+    fireSeconds: Number($('fFire').value),
+    chargeSeconds: Number($('fCharge').value),
+    shuffleOptions: $('fShuffle').checked,
+    finale: shrink(draft.finale),
+    order: [...draft.order],
+    questions: draft.questions.map(shrink),
+  };
+}
+
+async function saveEditor() {
+  const body = payload();
+  $('editorSave').disabled = true;
+  $('editorMsg').textContent = 'Đang lưu…';
+  try {
+    const res = await fetch(`/api/host/questions?${keyParam}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Lỗi ${res.status}`);
+    toast(data.applied ? `Đã lưu ${data.count} câu, áp dụng ngay` : `Đã lưu ${data.count} câu — áp dụng ở ván sau`, 'good');
+    closeEditor();
+  } catch (err) {
+    $('editorMsg').textContent = err.message;
+    toast(err.message, 'bad');
+  } finally {
+    $('editorSave').disabled = false;
+  }
+}
+
+// The escape hatch on hosting, where the written file does not survive a restart.
+function downloadDraft() {
+  const blob = new Blob([`${JSON.stringify(payload(), null, 2)}\n`], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'questions.json' });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function bindEditor() {
+  $('editBtn').addEventListener('click', openEditor);
+  $('editorClose').addEventListener('click', closeEditor);
+  $('editorCancel').addEventListener('click', closeEditor);
+  $('editorSave').addEventListener('click', saveEditor);
+  $('editorAdd').addEventListener('click', addQuestion);
+  $('fDelete').addEventListener('click', deleteQuestion);
+  $('editorDownload').addEventListener('click', downloadDraft);
+  $('fId').addEventListener('input', e => {
+    const q = byId(picked);
+    const next = e.target.value.trim();
+    if (!q || !next || draft.questions.some(x => x !== q && x.id === next)) return;
+    draft.order = draft.order.map(id => (id === q.id ? next : id));
+    q.id = next;
+    picked = next;
+    renderEditorLists();
+  });
+  $('fGroup').addEventListener('input', e => { const q = byId(picked); if (q) { q.group = e.target.value; renderEditorLists(); } });
+  $('fText').addEventListener('input', e => { const q = byId(picked); if (q) { q.text = e.target.value; renderEditorLists(); } });
+  $('fConfirmed').addEventListener('change', e => {
+    const q = byId(picked);
+    if (!q) return;
+    if (e.target.checked) delete q.answerConfirmed;
+    else q.answerConfirmed = false;
+    renderEditorLists();
+  });
+  $('fxText').addEventListener('input', e => { draft.finale.text = e.target.value; });
+  $('editor').addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(); });
+}
+
 function boot() {
+  bindEditor();
   $('nextBtn').addEventListener('click', next);
   $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
@@ -411,7 +650,9 @@ function boot() {
   setPreview(preview);
 
   addEventListener('keydown', e => {
-    // Typing in the search box or pressing a focused button must not also advance the game.
+    // Typing in the search box or pressing a focused button must not also advance the game,
+    // and neither must anything done while the question editor is open over the dashboard.
+    if (!$('editor').hidden) return;
     if (e.target instanceof Element && e.target.closest('button, a, input, select, textarea')) return;
     if (e.repeat || !['Enter', 'NumpadEnter', 'ArrowRight', 'Space'].includes(e.code)) return;
     e.preventDefault();

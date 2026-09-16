@@ -6,7 +6,7 @@
 // players who answered right tap to shoot, everyone else gets hit back.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { createReadStream, readFileSync } from 'node:fs';
+import { createReadStream, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
@@ -82,9 +82,75 @@ const JOIN_URL = JOIN_URLS[0] ?? `http://localhost:${PORT}`;
 
 // ---- Quiz ----------------------------------------------------------------------
 
+const QUESTIONS_FILE = join(root, 'data', 'questions.json');
+
+function readQuizFile() {
+  return JSON.parse(readFileSync(QUESTIONS_FILE, 'utf8').replace(/^﻿/, ''));
+}
+
+// Everything the dashboard's editor may send back, checked before it reaches the file. Throwing
+// here is the point: a malformed bank must never replace a working one minutes before an event.
+function validateQuizData(data) {
+  if (!data || typeof data !== 'object') throw new Error('Dữ liệu không hợp lệ');
+  if (!Array.isArray(data.questions) || !data.questions.length) throw new Error('Cần ít nhất 1 câu hỏi');
+  if (!Array.isArray(data.order) || !data.order.length) throw new Error('Cần ít nhất 1 câu trong thứ tự chơi');
+  const seen = new Set();
+  const clean = data.questions.map(q => {
+    const id = String(q.id ?? '').trim();
+    if (!id) throw new Error('Mỗi câu cần một ID');
+    if (seen.has(id)) throw new Error(`ID "${id}" bị trùng`);
+    seen.add(id);
+    const text = String(q.text ?? '').trim();
+    if (!text) throw new Error(`Câu "${id}" chưa có nội dung`);
+    const options = (Array.isArray(q.options) ? q.options : []).map(o => String(o ?? '').trim()).filter(Boolean);
+    if (options.length < 2 || options.length > 4) throw new Error(`Câu "${id}" cần 2–4 đáp án`);
+    const answer = Number(q.answer);
+    if (!Number.isInteger(answer) || answer < 0 || answer >= options.length) throw new Error(`Câu "${id}" có đáp án đúng không hợp lệ`);
+    const out = { id, group: String(q.group ?? '').trim() || undefined, answer, text, options };
+    if (q.answerConfirmed === false) out.answerConfirmed = false;
+    if (q.note) out.note = String(q.note);
+    return out;
+  });
+  const order = data.order.map(id => String(id));
+  for (const id of order) if (!seen.has(id)) throw new Error(`Thứ tự chơi có "${id}" nhưng không còn câu hỏi này`);
+
+  let finale;
+  if (data.finale) {
+    const f = data.finale;
+    const options = (Array.isArray(f.options) ? f.options : []).map(o => String(o ?? '').trim()).filter(Boolean);
+    const answer = Number(f.answer);
+    if (!String(f.text ?? '').trim()) throw new Error('Câu đố vui chưa có nội dung');
+    if (options.length < 2 || options.length > 4) throw new Error('Câu đố vui cần 2–4 đáp án');
+    if (!Number.isInteger(answer) || answer < 0 || answer >= options.length) throw new Error('Câu đố vui có đáp án đúng không hợp lệ');
+    finale = { id: String(f.id ?? 'Finale'), group: String(f.group ?? 'Câu đố vui'), answer, text: String(f.text).trim(), options };
+    if (f.note) finale.note = String(f.note);
+  }
+  const secs = (v, fallback, lo, hi) => {
+    const n = Number(v ?? fallback);
+    if (!Number.isFinite(n) || n < lo || n > hi) throw new Error(`Thời gian phải trong khoảng ${lo}–${hi} giây`);
+    return Math.round(n);
+  };
+  return {
+    timePerQuestion: secs(data.timePerQuestion, 15, 5, 120),
+    revealSeconds: secs(data.revealSeconds, 5, 1, 60),
+    fireSeconds: secs(data.fireSeconds, 6, 1, 60),
+    shuffleOptions: data.shuffleOptions !== false,
+    chargeSeconds: secs(data.chargeSeconds, 45, 5, 300),
+    ...(finale ? { finale } : {}),
+    order,
+    questions: clean,
+  };
+}
+
+// Written through a temp file: a crash mid-write leaves the old bank intact rather than half a file.
+function writeQuizFile(data) {
+  const tmp = `${QUESTIONS_FILE}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  renameSync(tmp, QUESTIONS_FILE);
+}
+
 function loadQuiz() {
-  const raw = readFileSync(join(root, 'data', 'questions.json'), 'utf8').replace(/^﻿/, '');
-  const data = JSON.parse(raw);
+  const data = readQuizFile();
   const byId = new Map(data.questions.map(q => [q.id, q]));
   const ids = data.order?.length ? data.order : data.questions.map(q => q.id);
   const questions = ids.map(id => {
@@ -878,6 +944,29 @@ async function handleApi(req, res, url, path) {
       });
       res.end(resultsCsv());
       return;
+    }
+    // The dashboard's question editor. Reading is safe at any time; writing never touches a game
+    // in progress — it lands in the file and takes effect on the next "Bắt đầu / Chơi lại".
+    if (action === 'questions' && req.method === 'GET') {
+      return json(res, 200, { data: readQuizFile(), ephemeral: !!PUBLIC_URL, live: !['lobby', 'end'].includes(game.phase) });
+    }
+    if (action === 'questions' && req.method === 'POST') {
+      let clean;
+      try {
+        clean = validateQuizData(await readJson(req));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+      try {
+        writeQuizFile(clean);
+      } catch (err) {
+        return json(res, 500, { error: `Không ghi được data/questions.json: ${err.message}` });
+      }
+      const applied = ['lobby', 'end'].includes(game.phase);
+      if (applied) game.quiz = loadQuiz();
+      logEvent(`MC sửa bộ câu hỏi: ${clean.order.length} câu${applied ? '' : ' (áp dụng ở ván sau)'}`, 'warn');
+      broadcastHost();
+      return json(res, 200, { ok: true, applied, count: clean.order.length });
     }
     if (action === 'joinurl' && req.method === 'POST') {
       const { url: chosen } = await readJson(req);

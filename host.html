@@ -37,6 +37,7 @@
         <button id="fillBtn" type="button" class="btn-primary fill" hidden>💧 Nạp đầy bình ngay</button>
         <div class="ctrl-row">
           <button id="autoBtn" type="button" class="btn toggle" aria-pressed="true">Tự chuyển: <b>BẬT</b></button>
+          <button id="editBtn" type="button" class="btn">✎ Sửa câu hỏi</button>
           <a id="csvBtn" class="btn" href="#">Tải CSV</a>
           <button id="resetBtn" type="button" class="btn danger">Reset</button>
         </div>
@@ -118,6 +119,74 @@
         <ol id="log" class="log"></ol>
       </div>
     </section>
+  </div>
+
+  <!-- Question editor: a full-screen workspace, because editing four options needs the room. -->
+  <div id="editor" class="editor" role="dialog" aria-modal="true" aria-labelledby="editorTitle" hidden>
+    <div class="editor-box">
+      <header class="editor-head">
+        <h2 id="editorTitle">Sửa bộ câu hỏi</h2>
+        <span id="editorState" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="editorDownload" type="button" class="btn sm">⭳ Tải file JSON</button>
+        <button id="editorClose" type="button" class="btn sm">Đóng</button>
+      </header>
+      <p id="editorWarn" class="editor-warn" hidden></p>
+
+      <div class="editor-body">
+        <aside class="editor-list">
+          <div class="editor-list-head">
+            <b>Thứ tự chơi</b><span id="editorCount" class="muted"></span>
+          </div>
+          <ol id="editorOrder" class="q-list"></ol>
+          <div class="editor-list-head"><b>Không dùng</b></div>
+          <ol id="editorBench" class="q-list bench"></ol>
+          <button id="editorAdd" type="button" class="btn sm wide">+ Thêm câu hỏi</button>
+        </aside>
+
+        <section class="editor-form">
+          <div id="editorEmpty" class="muted empty">Chọn một câu ở danh sách bên trái để sửa.</div>
+          <div id="editorFields" hidden>
+            <div class="field-row">
+              <label class="field"><span>ID</span><input id="fId" type="text" maxlength="24" autocomplete="off"></label>
+              <label class="field"><span>Nhóm</span><input id="fGroup" type="text" maxlength="40" autocomplete="off" placeholder="vd: Learning Hub"></label>
+            </div>
+            <label class="field"><span>Câu hỏi</span><textarea id="fText" rows="3" maxlength="300"></textarea></label>
+            <fieldset class="opts">
+              <legend>Đáp án <em class="muted">— chọn nút tròn ở ô đúng</em></legend>
+              <div id="fOptions" class="opt-rows"></div>
+            </fieldset>
+            <label class="check"><input id="fConfirmed" type="checkbox"><span>Đáp án đã được team xác nhận</span></label>
+            <div class="field-row end">
+              <button id="fDelete" type="button" class="btn sm danger">Xoá câu này</button>
+            </div>
+          </div>
+
+          <details class="editor-extra">
+            <summary>Câu đố vui cuối &amp; thời gian</summary>
+            <label class="field"><span>Câu đố vui</span><textarea id="fxText" rows="2" maxlength="300"></textarea></label>
+            <fieldset class="opts">
+              <legend>Đáp án <em class="muted">— thứ tự A/B/C/D giữ nguyên, không bị đảo</em></legend>
+              <div id="fxOptions" class="opt-rows"></div>
+            </fieldset>
+            <div class="field-row">
+              <label class="field"><span>Trả lời (giây)</span><input id="fTime" type="number" min="5" max="120"></label>
+              <label class="field"><span>Hiện đáp án (giây)</span><input id="fReveal" type="number" min="1" max="60"></label>
+              <label class="field"><span>Lượt bắn (giây)</span><input id="fFire" type="number" min="1" max="60"></label>
+              <label class="field"><span>Tích nước tối đa (giây)</span><input id="fCharge" type="number" min="5" max="300"></label>
+            </div>
+            <label class="check"><input id="fShuffle" type="checkbox"><span>Đảo thứ tự đáp án mỗi ván</span></label>
+          </details>
+        </section>
+      </div>
+
+      <footer class="editor-foot">
+        <span id="editorMsg" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="editorCancel" type="button" class="btn">Huỷ</button>
+        <button id="editorSave" type="button" class="btn-primary">Lưu bộ câu hỏi</button>
+      </footer>
+    </div>
   </div>
 
   <div id="conn" class="conn" role="status" hidden>Mất kết nối server, đang thử lại…</div>
