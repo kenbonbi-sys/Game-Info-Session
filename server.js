@@ -154,7 +154,9 @@ function writeQuizFile(data) {
 // nuốt mất mọi chỉnh sửa của MC. Khi có SUPABASE_URL + SUPABASE_KEY thì bản trên Supabase mới là
 // bản thật, còn file chỉ là cache sống cùng container — nhờ vậy mọi chỗ đọc file phía dưới không
 // phải đổi một dòng nào, và chạy ở nhà (không đặt biến) vẫn y như cũ.
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+// Trang Data API của Supabase hiện endpoint kèm sẵn /rest/v1/, dán nguyên cụm là chuyện thường —
+// cắt đi, thay vì để server gọi /rest/v1/rest/v1/ rồi báo 404 khó hiểu ngay trước giờ diễn.
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'quiz_bank';
 const SUPABASE_ROW = process.env.SUPABASE_ROW || 'default';
