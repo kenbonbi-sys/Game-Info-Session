@@ -2,7 +2,7 @@
 // counter-attacks the server reports. Everything is in map px (the 1920×1080 stage); the canvas
 // backing store follows the stage's on-screen size so the art stays crisp on any projector.
 import { loadGridSheet, splitGridSheet } from './sprites.js';
-import { SPRITES, ARENA } from './config.js';
+import { SPRITES, ARENA, REACTIONS } from './config.js';
 import { createArenaBackdrop, drawArenaAmbience } from './arena-scene.js';
 import { playShotSfx } from './audio.js';
 import { drawBottle } from './bottle.js';
@@ -39,6 +39,12 @@ const boss = { hp: 1, max: 1, pending: [], anim: 'idle', animT: 0, flightT: 0, b
 let shots = [], bolts = [], particles = [], texts = [];
 let hallQueue = 0, hallT = 0, hallSide = 0;
 let finale = null;
+// Icon phòng chờ, nhảy lên ngay trên ụ của người thả: { turret, icon, life, max, drift }
+let stickers = [];
+const reactArt = [];
+const REACT_LIFE = 1.9;
+const REACT_MAX_ON_STAGE = 28;
+const REACT_SIZE = 62;
 
 // ---- Geometry ------------------------------------------------------------------
 
@@ -210,6 +216,22 @@ export function bossAttack({ ready = [], double = [], hit = [], blocked = [], re
 
 export function armTurret(t, item) {
   if (fx[t] && (item === 'shield' || item === 'boost')) fx[t][item] = true;
+}
+
+// Ai thả icon thì icon đó nhảy lên ngay trên ụ mang tên người ta — MC nhìn khung xem trước là
+// biết góc nào của hội trường đang nghịch. Ảnh chỉ tải lần đầu có người thả.
+export function reactAt(turret, icon) {
+  if (!(turret >= 0 && turret < fx.length) || !REACTIONS[icon]) return;
+  if (!reactArt.length) {
+    for (const r of REACTIONS) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = r.icon;
+      reactArt.push(img);
+    }
+  }
+  if (stickers.length >= REACT_MAX_ON_STAGE) stickers.shift();
+  stickers.push({ turret, icon, life: REACT_LIFE, max: REACT_LIFE, drift: rand(-18, 18) });
 }
 
 // The whole hall fires together at the end; the boss falls as the volley lands.
@@ -400,6 +422,10 @@ function killBoss() {
 
 function update(dt) {
   time += dt;
+  if (stickers.length) {
+    for (const s of stickers) s.life -= dt;
+    stickers = stickers.filter(s => s.life > 0);
+  }
   if (!boss.dead && !finale && !REDUCED_MOTION.matches) boss.flightT = (boss.flightT + dt) % ARENA.boss.flight.period;
   updateTurrets(dt);
   updateShots(dt);
@@ -789,6 +815,18 @@ function render(t) {
   // Slots run row by row from the boss outward, which is already back-to-front.
   for (let i = 0; i < fx.length; i++) drawTurret(i, t);
   for (let i = 0; i < fx.length; i++) drawPlate(i);
+  for (const s of stickers) {
+    const img = reactArt[s.icon];
+    if (!img?.complete || !img.naturalWidth) continue;
+    const p = slotPos(s.turret);
+    const k = 1 - s.life / s.max;                       // 0 lúc vừa thả → 1 lúc tan
+    const rise = 26 + k * 78;
+    const pop = k < 0.12 ? 0.55 + (k / 0.12) * 0.55 : 1 - k * 0.16;
+    const size = REACT_SIZE * pop;
+    ctx.globalAlpha = Math.min(1, k / 0.1) * Math.min(1, (1 - k) / 0.28);
+    ctx.drawImage(img, Math.round(p.x - size / 2 + s.drift * k), Math.round(p.y - rise - size), size, size);
+  }
+  ctx.globalAlpha = 1;
   const orbs = [
     ...shots.map(s => [s, s.double ? '#ff8a1f' : '#2f94ff', s.double ? '#FFC37A' : '#8fc5ff', '#ffffff', 5 + s.size * 2]),
     ...bolts.filter(b => !(b.delay > 0)).map(b => [b, '#c22d0c', '#ff481f', '#ffbeb0', 7]),

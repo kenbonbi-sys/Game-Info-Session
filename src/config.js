@@ -80,6 +80,16 @@ export const SHAPE_PATHS = {
 
 export const shapeSvg = shape => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SHAPE_PATHS[shape]}"/></svg>`;
 
+// Icon người chơi thả cho nhau trong phòng chờ. Server đẩy đi **chỉ số** trong mảng này, nên
+// thêm thì thêm vào cuối — đảo chỗ là điện thoại thả một con, màn chiếu hiện một con khác.
+export const REACTIONS = [
+  { id: 'dance', label: 'quẩy', icon: 'assets/source/reactions/fox-dance.png' },
+  { id: 'love', label: 'thương quá', icon: 'assets/source/reactions/fox-love.png' },
+  { id: 'wow', label: 'xuất sắc', icon: 'assets/source/reactions/fox-wow.png' },
+  { id: 'leu', label: 'lêu lêu', icon: 'assets/source/reactions/fox-leu.png' },
+  { id: 'wink', label: 'nháy mắt', icon: 'assets/source/reactions/fox-wink.png' },
+];
+
 // Power-ups every player gets once per game. Effects are applied by the server.
 export const ITEMS = {
   hint: { name: 'Buddy thông thái', icon: 'assets/source/items/buddy-thong-thai.png', effect: 'Loại 2 đáp án sai' },

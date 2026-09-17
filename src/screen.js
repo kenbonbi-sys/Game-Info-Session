@@ -2,7 +2,7 @@
 // Kahoot-style question board, the shooting rounds and the final Top 5. It has no controls: the MC
 // drives the game from the dashboard at /host, which also embeds this page as a preview (?preview=1).
 import { ANSWERS, ARENA, shapeSvg } from './config.js';
-import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, bossUnleash, bossHealth } from './arena-view.js';
+import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossUnleash, bossHealth } from './arena-view.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
@@ -124,6 +124,9 @@ function onMessage(msg) {
       return;
     case 'item':
       armTurret(msg.t, msg.item);
+      return;
+    case 'react':
+      for (const [turret, icon] of msg.seats ?? []) reactAt(turret, icon);
       return;
     case 'charge':
       renderCharge(msg);

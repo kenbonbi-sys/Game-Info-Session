@@ -2,7 +2,7 @@
 // with a name (which seats a turret on the big screen), answers on four Kahoot-style tiles, and
 // after the reveal, if the answer was right, taps as fast as it can while the whole hall shoots.
 import { loadSvgStrip, loadGridSheet, buildFoxSheet } from './sprites.js';
-import { SPRITES, ITEMS, ANSWERS, shapeSvg } from './config.js';
+import { SPRITES, ITEMS, ANSWERS, REACTIONS, shapeSvg } from './config.js';
 import { paintHudPortrait, drawJoinDuel, galaxyDataUrl } from './hud-art.js';
 import { drawGuideClip, GUIDE_CLIP_SECONDS } from './guide-clips.js';
 import { drawCutscene, cutsceneLines } from './cutscene.js';
@@ -77,10 +77,7 @@ const cutscene = { start: 0, playing: false, pending: false };
 
 // Only on a deliberate join: a reconnect or an auto-rejoin drops the player straight back in.
 async function playCutscene() {
-  if (REDUCED_MOTION.matches) {
-    openOnboarding();
-    return;
-  }
+  if (REDUCED_MOTION.matches) return;
   const seat = me.turret >= 0 ? `Ụ số ${me.turret + 1}` : '';
   $('cutsceneSr').textContent = cutsceneLines(seat).join(' ');
   $('cutscene').hidden = false;
@@ -105,7 +102,6 @@ function endCutscene() {
   cutscene.pending = false;
   $('cutscene').hidden = true;
   $('cutsceneLoading').hidden = true;
-  openOnboarding();
 }
 
 async function join(name, { cinematic = false } = {}) {
@@ -123,10 +119,7 @@ async function join(name, { cinematic = false } = {}) {
     $('nameInput').blur();
     connect();
     render();
-    if (cinematic) {
-      onboarding.due = true;
-      playCutscene();
-    }
+    if (cinematic) playCutscene();
   } catch (err) {
     $('joinError').textContent = err instanceof TypeError ? 'Không kết nối được server' : err.message;
     $('join').hidden = false;
@@ -646,13 +639,6 @@ function frame(t) {
 // ---- Icon thả chơi lúc chờ ---------------------------------------------------------
 // Phòng chờ là quãng im lặng dài nhất của buổi diễn. Ai thả icon thì cả hội trường thấy icon
 // đó bay lên trên máy mình — đủ để người ta nghịch với nhau trong lúc đợi MC bấm bắt đầu.
-const REACTIONS = [
-  { id: 'dance', label: 'quẩy', src: 'assets/source/reactions/fox-dance.png' },
-  { id: 'love', label: 'thương quá', src: 'assets/source/reactions/fox-love.png' },
-  { id: 'wow', label: 'xuất sắc', src: 'assets/source/reactions/fox-wow.png' },
-  { id: 'leu', label: 'lêu lêu', src: 'assets/source/reactions/fox-leu.png' },
-  { id: 'wink', label: 'nháy mắt', src: 'assets/source/reactions/fox-wink.png' },
-];
 // Máy yếu trong hội trường đông: thà cắt icon còn hơn rớt khung hình.
 const REACT_MAX_FLOATS = 18;
 const REACT_EVERY_MS = 400;
@@ -667,7 +653,7 @@ function buildReactBar() {
     btn.className = 'react-btn';
     btn.setAttribute('aria-label', `Thả icon ${r.label}`);
     const img = document.createElement('img');
-    Object.assign(img, { src: r.src, alt: '', width: 192, height: 192, decoding: 'async' });
+    Object.assign(img, { src: r.icon, alt: '', width: 192, height: 192, decoding: 'async' });
     btn.append(img);
     btn.addEventListener('click', () => sendReaction(r.id));
     return btn;
@@ -697,7 +683,7 @@ function floatReaction(id, count = 1) {
   for (let i = 0; i < count; i++) {
     if (sky.childElementCount >= REACT_MAX_FLOATS) sky.firstElementChild?.remove();
     const img = document.createElement('img');
-    Object.assign(img, { className: 'react-float', src: art.src, alt: '', decoding: 'async' });
+    Object.assign(img, { className: 'react-float', src: art.icon, alt: '', decoding: 'async' });
     img.style.setProperty('--x', `${6 + Math.random() * 86}%`);
     img.style.setProperty('--drift', `${Math.round((Math.random() * 2 - 1) * 46)}px`);
     img.style.setProperty('--spin', `${Math.round((Math.random() * 2 - 1) * 20)}deg`);
@@ -709,9 +695,9 @@ function floatReaction(id, count = 1) {
 
 // ---- Guide -------------------------------------------------------------------------
 
-// Lần đầu vào phòng ai cũng được dắt qua hướng dẫn ngay sau đoạn phim; nút trên màn nhập tên
-// từ đó chỉ còn để xem lại.
-const onboarding = { due: false };
+// Quét mã xong là hướng dẫn mở ngay, trước cả ô nhập tên: đọc xong mới gõ tên vào phòng. Nút
+// trên màn nhập tên từ đó chỉ còn để xem lại.
+const onboarding = { due: true };
 
 function showGuide(open) {
   if (open) playGuideStep(0);
@@ -719,11 +705,11 @@ function showGuide(open) {
   $(open ? 'guideClose' : 'guideBtn').focus();
 }
 
+// Chỉ ở màn nhập tên. Máy nào vào lại giữa ván (mất mạng, lỡ tắt trình duyệt) thì thôi —
+// người ta đang cần chọn đáp án, không cần xem lại hướng dẫn.
 function openOnboarding() {
-  if (!onboarding.due) return;
+  if (!onboarding.due || currentView() !== 'join') return;
   onboarding.due = false;
-  // MC bấm bắt đầu ngay lúc người ta đang xem phim: câu hỏi quan trọng hơn hướng dẫn.
-  if (currentView() !== 'lobby') return;
   showGuide(true);
 }
 
@@ -745,17 +731,18 @@ function playGuideStep(step) {
 
 // Clips auto-advance and loop; with reduced motion each step holds its key frame until tapped.
 function renderGuide(t) {
-  // Hướng dẫn mở ngay sau khi vào phòng nên có thể tới trước cả sprite.
+  // Hướng dẫn mở ngay lúc quét mã nên gần như luôn tới trước sprite. Chữ đọc được ngay;
+  // chỉ ô hình chờ, và đồng hồ chưa chạy để không ai lỡ mất bước nào trong lúc tải.
   const waiting = !spritesDone();
   $('guideLoading').hidden = !waiting;
   $('guideClip').style.visibility = waiting ? 'hidden' : '';
-  if (waiting) return;
-  const still = REDUCED_MOTION.matches;
+  if (waiting) guideView.start = t;
+  const still = REDUCED_MOTION.matches || waiting;
   const elapsed = Math.max(0, t - guideView.start) % GUIDE_TOTAL;
   const step = still ? guideView.step : GUIDE_STARTS.findLastIndex(start => elapsed >= start);
   const duration = GUIDE_CLIP_SECONDS[step];
   const clipTime = still ? duration * 0.8 : elapsed - GUIDE_STARTS[step];
-  drawGuideClip($('guideClip'), { hero, boss: bossSheet, turret: turretSheet, turretEmpty: turretEmptySheet ?? turretSheet }, step, clipTime);
+  if (!waiting) drawGuideClip($('guideClip'), { hero, boss: bossSheet, turret: turretSheet, turretEmpty: turretEmptySheet ?? turretSheet }, step, clipTime);
   guideSteps.forEach((btn, i) => {
     btn.style.setProperty('--p', i < step ? 1 : i > step ? 0 : still ? 1 : clipTime / duration);
     if (i === step) btn.setAttribute('aria-current', 'step');
@@ -845,7 +832,9 @@ async function boot() {
   });
   $('cutsceneSkip').addEventListener('click', endCutscene);
   const savedName = local.get('foxquiz.name');
+  const rejoining = !!(savedName && session.get('foxquiz.pid'));
   $('nameInput').value = savedName ?? '';
+  if (!rejoining) openOnboarding();
 
   requestAnimationFrame(function loop(now) {
     // Schedule first so one bad frame can't freeze the pad mid-event.
@@ -856,7 +845,7 @@ async function boot() {
   hero = await heroLoad;
   $('joinBtn').disabled = false;
   $('joinBtn').textContent = 'Vào chơi';
-  if (savedName && session.get('foxquiz.pid')) {
+  if (rejoining) {
     net.pid = session.get('foxquiz.pid');
     join(savedName);
   }

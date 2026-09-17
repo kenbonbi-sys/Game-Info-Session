@@ -11,7 +11,7 @@ import { networkInterfaces } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO } from './src/config.js';
+import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO, REACTIONS } from './src/config.js';
 import { FINALE } from './src/finale-config.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
@@ -309,11 +309,11 @@ function freshStats(p) {
 // Phòng chờ là quãng im lặng dài nhất của buổi diễn: ai vào sớm ngồi nhìn màn hình đứng yên.
 // Cho cả hội trường thả icon cho nhau xem, nhưng gom lại rồi đẩy mỗi nửa giây một
 // lượt — 100 điện thoại tap loạn mà bắn thẳng từng cái là tự làm nghẽn chính mình.
-const REACTIONS = ['dance', 'love', 'wow', 'leu', 'wink'];
 const REACT_EVERY_MS = 600;   // mỗi người, giữa hai lần thả
 const REACT_FLUSH_MS = 500;
 const REACT_MAX_PER_FLUSH = 40;
 const reactBuffer = new Map();  // chỉ số icon → số lượt trong cửa sổ hiện tại
+const reactSeats = [];          // [ụ súng, chỉ số icon] để màn chiếu thả icon đúng chỗ người đó ngồi
 let reactTimer = null;
 
 // Chỉ mở ở phòng chờ. Màn tổng kết cũng là lúc chờ nhưng bảng xếp hạng phủ kín điện thoại,
@@ -322,21 +322,28 @@ const reactionsOpen = () => game.phase === 'lobby';
 
 function flushReactions() {
   reactTimer = null;
-  if (!reactBuffer.size) return;
-  const icons = [...reactBuffer.entries()];
+  if (!reactBuffer.size && !reactSeats.length) return;
+  // Điện thoại chỉ cần biết icon nào bao nhiêu cái; màn chiếu và khung xem trước của MC cần biết
+  // ụ nào thả, để icon nhảy lên đúng ụ mang tên người đó.
+  if (reactBuffer.size) broadcastPlayers({ type: 'react', icons: [...reactBuffer.entries()] });
+  if (reactSeats.length) broadcastScreens({ type: 'react', seats: [...reactSeats] });
   reactBuffer.clear();
-  broadcastPlayers({ type: 'react', icons });
+  reactSeats.length = 0;
 }
 
 function react(p, icon) {
   if (!reactionsOpen()) return [409, { error: 'Chưa tới lúc thả icon' }];
-  const i = REACTIONS.indexOf(String(icon));
+  const i = REACTIONS.findIndex(r => r.id === String(icon));
   if (i < 0) return [400, { error: 'Icon không hợp lệ' }];
   const now = Date.now();
   if (now - (p.reactAt ?? 0) < REACT_EVERY_MS) return [200, { ok: true, dropped: true }];
   p.reactAt = now;
   const total = [...reactBuffer.values()].reduce((a, b) => a + b, 0);
-  if (total < REACT_MAX_PER_FLUSH) reactBuffer.set(i, (reactBuffer.get(i) ?? 0) + 1);
+  if (total < REACT_MAX_PER_FLUSH) {
+    reactBuffer.set(i, (reactBuffer.get(i) ?? 0) + 1);
+    // Người vào sau khi hết 108 ụ vẫn thả được icon cho cả phòng, chỉ là không có ụ để nhảy lên.
+    if (p.turret >= 0) reactSeats.push([p.turret, i]);
+  }
   reactTimer ??= setTimeout(flushReactions, REACT_FLUSH_MS);
   return [200, { ok: true }];
 }

@@ -37,18 +37,22 @@ Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu c�
 
 ## Điện thoại vào phòng
 
-1. Quét QR → màn nhập tên. Nút **Vào chơi** mở khoá ngay khi con Buddy tải xong (45 KB); ba tấm
-   sprite nặng hơn tải tiếp ở nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang
-   chạy chứ không treo.
-2. Nhập tên → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra).
-3. Hết phim là **bảng hướng dẫn 4 bước tự mở**, không phải bấm gì. Bấm "Đã hiểu" là xong; nút trên
-   màn nhập tên đổi thành **Xem lại hướng dẫn** cho ai muốn coi lại.
+1. Quét QR → **bảng hướng dẫn 4 bước tự mở ngay**, không phải bấm gì. Đọc xong bấm "Đã hiểu" là
+   tới ô nhập tên; nút trên đó đổi thành **Xem lại hướng dẫn** cho ai muốn coi lại. Máy vào lại
+   giữa ván (mất mạng, lỡ tắt trình duyệt) thì không bị chặn bởi bảng này.
+2. Nút **Vào chơi** mở khoá ngay khi con Buddy tải xong (45 KB); ba tấm sprite nặng hơn tải tiếp ở
+   nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang chạy chứ không treo. Hướng dẫn
+   mở trước khi hình về tới thì chữ vẫn đọc được, chỉ ô hình chờ và đồng hồ chưa chạy.
+3. Nhập tên → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra).
 4. Trong lúc chờ MC bấm bắt đầu, dưới màn hình có **hàng 5 icon cáo** — thả cái nào thì cả hội
-   trường thấy cáo đó bay lên trên máy mình. Chỉ mở ở phòng chờ; game bắt đầu là hàng icon biến
-   mất để không ai bấm nhầm lúc đang cần chọn đáp án.
+   trường thấy cáo đó bay lên trên máy mình, **và icon đó nhảy lên ngay trên ụ súng mang tên
+   người thả** ở màn chiếu lẫn khung xem trước của MC. Chỉ mở ở phòng chờ; game bắt đầu là hàng
+   icon biến mất để không ai bấm nhầm lúc đang cần chọn đáp án.
 
 Server gom icon nửa giây một lượt rồi mới đẩy đi, mỗi người tối đa ~1,6 icon/giây, nên cả trăm
-điện thoại cùng nghịch cũng không làm nghẽn đường truyền của chính buổi chơi.
+điện thoại cùng nghịch cũng không làm nghẽn đường truyền của chính buổi chơi. Thứ tự icon nằm ở
+`REACTIONS` trong [src/config.js](src/config.js) — server đẩy đi chỉ số trong mảng đó, thêm thì
+thêm vào cuối.
 
 ## Vật phẩm
 
