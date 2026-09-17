@@ -406,14 +406,15 @@ async function openEditor() {
   try {
     const res = await fetch(`/api/host/questions?${keyParam}`);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
-    const { data, ephemeral, live } = await res.json();
+    const { data, ephemeral, remote, live } = await res.json();
     draft = structuredClone(data);
     draft.finale ??= { id: 'Finale', group: 'Câu đố vui', text: '', options: ['', '', '', ''], answer: 0 };
     picked = draft.order[0] ?? draft.questions[0]?.id ?? null;
     // Two different warnings, and the hosted one matters more: there the file does not survive.
     const warn = $('editorWarn');
     const notes = [];
-    if (ephemeral) notes.push('Bản này chạy trên hosting: file sẽ trở về bản trong repo mỗi lần deploy hoặc server ngủ dậy. Sửa xong hãy bấm "Tải file JSON" và commit vào repo.');
+    if (ephemeral) notes.push('Bản này chạy trên hosting nhưng chưa nối Supabase: file sẽ trở về bản trong repo mỗi lần deploy hoặc server ngủ dậy. Sửa xong hãy bấm "Tải file JSON" và commit vào repo.');
+    if (remote) notes.push('Đã nối Supabase: bấm Lưu là bộ câu hỏi nằm lại trên đó, server ngủ dậy hay deploy lại vẫn còn nguyên.');
     if (live) notes.push('Đang giữa ván: thay đổi chỉ áp dụng từ lần "Bắt đầu / Chơi lại" kế tiếp.');
     warn.textContent = notes.join(' ');
     warn.hidden = !notes.length;

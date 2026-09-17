@@ -15,3 +15,9 @@ services:
       # Mật khẩu cho /host và /screen. Tự đặt khi bấm Deploy (Render sẽ hỏi).
       - key: HOST_KEY
         sync: false
+      # Bộ câu hỏi MC sửa trên /host. Ổ đĩa của Render là tạm, nên không có hai biến này thì mọi
+      # chỉnh sửa biến mất khi service ngủ dậy. Lấy ở Supabase → Project Settings → API.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

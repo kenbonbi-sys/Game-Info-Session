@@ -149,6 +149,63 @@ function writeQuizFile(data) {
   renameSync(tmp, QUESTIONS_FILE);
 }
 
+// ---- Bộ câu hỏi trên Supabase --------------------------------------------------
+// Hosting miễn phí có ổ đĩa tạm: container ngủ dậy là data/questions.json quay về bản trong repo,
+// nuốt mất mọi chỉnh sửa của MC. Khi có SUPABASE_URL + SUPABASE_KEY thì bản trên Supabase mới là
+// bản thật, còn file chỉ là cache sống cùng container — nhờ vậy mọi chỗ đọc file phía dưới không
+// phải đổi một dòng nào, và chạy ở nhà (không đặt biến) vẫn y như cũ.
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'quiz_bank';
+const SUPABASE_ROW = process.env.SUPABASE_ROW || 'default';
+const REMOTE_QUIZ = !!(SUPABASE_URL && SUPABASE_KEY);
+
+async function supabaseFetch(path, init = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status} — ${(await res.text()).slice(0, 200)}`);
+  return res;
+}
+
+async function supabaseLoadQuiz() {
+  const res = await supabaseFetch(`${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_ROW)}&select=data`);
+  const rows = await res.json();
+  return rows[0]?.data ?? null;
+}
+
+async function supabaseSaveQuiz(data) {
+  await supabaseFetch(`${SUPABASE_TABLE}?on_conflict=id`, {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id: SUPABASE_ROW, data, updated_at: new Date().toISOString() }),
+  });
+}
+
+// Chạy một lần lúc khởi động: kéo bản trên Supabase về file, hoặc đẩy bản trong repo lên làm bản
+// đầu tiên. Mạng hỏng ở đây không được giết server — sự kiện vẫn phải chạy được với bản trong repo.
+async function hydrateQuizFromSupabase() {
+  if (!REMOTE_QUIZ) return 'off';
+  try {
+    const remote = await supabaseLoadQuiz();
+    if (remote) {
+      writeQuizFile(validateQuizData(remote));
+      return 'pulled';
+    }
+    await supabaseSaveQuiz(validateQuizData(readQuizFile()));
+    return 'seeded';
+  } catch (err) {
+    console.error(`⚠ Supabase không đọc được (${err.message}) — dùng tạm bộ câu hỏi trong repo.`);
+    return 'error';
+  }
+}
+
 function loadQuiz() {
   const data = readQuizFile();
   const byId = new Map(data.questions.map(q => [q.id, q]));
@@ -948,7 +1005,12 @@ async function handleApi(req, res, url, path) {
     // The dashboard's question editor. Reading is safe at any time; writing never touches a game
     // in progress — it lands in the file and takes effect on the next "Bắt đầu / Chơi lại".
     if (action === 'questions' && req.method === 'GET') {
-      return json(res, 200, { data: readQuizFile(), ephemeral: !!PUBLIC_URL, live: !['lobby', 'end'].includes(game.phase) });
+      return json(res, 200, {
+        data: readQuizFile(),
+        ephemeral: !!PUBLIC_URL && !REMOTE_QUIZ,
+        remote: REMOTE_QUIZ,
+        live: !['lobby', 'end'].includes(game.phase),
+      });
     }
     if (action === 'questions' && req.method === 'POST') {
       let clean;
@@ -956,6 +1018,13 @@ async function handleApi(req, res, url, path) {
         clean = validateQuizData(await readJson(req));
       } catch (err) {
         return json(res, 400, { error: err.message });
+      }
+      if (REMOTE_QUIZ) {
+        try {
+          await supabaseSaveQuiz(clean);
+        } catch (err) {
+          return json(res, 500, { error: `Không lưu lên Supabase được nên chưa đổi gì: ${err.message}` });
+        }
       }
       try {
         writeQuizFile(clean);
@@ -966,7 +1035,7 @@ async function handleApi(req, res, url, path) {
       if (applied) game.quiz = loadQuiz();
       logEvent(`MC sửa bộ câu hỏi: ${clean.order.length} câu${applied ? '' : ' (áp dụng ở ván sau)'}`, 'warn');
       broadcastHost();
-      return json(res, 200, { ok: true, applied, count: clean.order.length });
+      return json(res, 200, { ok: true, applied, remote: REMOTE_QUIZ, count: clean.order.length });
     }
     if (action === 'joinurl' && req.method === 'POST') {
       const { url: chosen } = await readJson(req);
@@ -1056,6 +1125,9 @@ server.on('error', err => {
   process.exit(1);
 });
 
+const quizSource = await hydrateQuizFromSupabase();
+if (quizSource === 'pulled') game.quiz = loadQuiz();
+
 server.listen(PORT, () => {
   const unconfirmed = game.quiz.questions.filter(q => q.answerConfirmed === false).map(q => q.id);
   console.log('\n🦊 Fox Quiz đang chạy\n');
@@ -1065,6 +1137,13 @@ server.listen(PORT, () => {
   console.log(`  Bảng điều khiển MC (màn laptop):     ${base}/host?key=${HOST_KEY}`);
   console.log(`  Màn game cho máy chiếu:              ${base}/screen?key=${HOST_KEY}`);
   console.log(`  Bản swarm cũ để test sprite:         ${base}/sandbox\n`);
-  console.log(`  Bộ câu hỏi: ${game.quiz.questions.length} câu, ${game.quiz.time}s trả lời + ${game.quiz.fire}s bắn/câu, ${TURRET_SLOTS} ụ súng (data/questions.json)`);
+  const store = {
+    pulled: 'Supabase (bản MC sửa lần trước)',
+    seeded: 'Supabase (vừa đẩy bản trong repo lên làm bản đầu)',
+    error: '⚠ data/questions.json — Supabase lỗi, sửa xong sẽ mất khi server ngủ dậy',
+    off: 'data/questions.json (máy này thôi)',
+  }[quizSource];
+  console.log(`  Bộ câu hỏi: ${game.quiz.questions.length} câu, ${game.quiz.time}s trả lời + ${game.quiz.fire}s bắn/câu, ${TURRET_SLOTS} ụ súng`);
+  console.log(`  Lưu ở: ${store}`);
   if (unconfirmed.length) console.log(`  ⚠ Đáp án cần team xác nhận: ${unconfirmed.join(', ')}`);
 });

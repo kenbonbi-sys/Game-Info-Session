@@ -87,7 +87,43 @@ Lưu ý khi chạy trên Render:
   mở link trước vài phút, hoặc nâng lên gói Starter ($7/tháng) cho buổi sự kiện rồi hạ lại.
 - **Deploy lại là mất ván đang chạy** (server khởi động lại, người chơi phải vào lại). Đừng push
   code trong lúc đang chơi.
+- **Ổ đĩa là tạm.** Câu hỏi MC sửa trên `/host` ghi vào `data/questions.json` trong container;
+  container ngủ dậy hay deploy lại là file về đúng bản trong repo. Muốn sửa xong là còn mãi thì
+  nối Supabase ở mục dưới.
 - Region `singapore` cho ping từ VN thấp nhất (~30-60ms).
+
+## Giữ bộ câu hỏi bằng Supabase
+
+Chỉ cần khi chạy trên hosting và muốn sửa câu hỏi trực tiếp trên `/host`. Không đặt hai biến
+dưới đây thì mọi thứ chạy y như cũ, đọc ghi thẳng `data/questions.json`.
+
+1. [supabase.com](https://supabase.com) → **New project** (free), region Singapore.
+2. Vào **SQL Editor**, chạy:
+
+   ```sql
+   create table if not exists quiz_bank (
+     id text primary key,
+     data jsonb not null,
+     updated_at timestamptz not null default now()
+   );
+   alter table quiz_bank enable row level security;
+   ```
+
+   Bật RLS mà không thêm policy nào là đúng ý: chỉ service key (bỏ qua RLS) đọc ghi được, khoá
+   `anon` công khai không đụng tới bảng này được.
+
+3. **Project Settings → API Keys**, lấy:
+   - Project URL → `SUPABASE_URL` (dạng `https://xxxx.supabase.co`)
+   - `service_role` secret → `SUPABASE_KEY`
+4. Trên Render: **Environment** → thêm hai biến đó → service tự deploy lại.
+
+Từ đây bấm **Lưu** trong bảng điều khiển là bộ câu hỏi nằm trên Supabase. Server khởi động sẽ kéo
+bản đó về; lần đầu bảng còn trống thì nó đẩy bản trong repo lên làm bản gốc. Supabase lỗi lúc lưu
+thì server báo lỗi và **không đổi gì cả** — bộ câu hỏi đang chạy vẫn nguyên vẹn. Supabase chết lúc
+khởi động thì server vẫn lên, chạy tạm bản trong repo và in cảnh báo.
+
+`SUPABASE_KEY` là service key, bỏ qua mọi RLS — chỉ để trong biến môi trường, đừng commit và
+đừng để lọt vào code chạy ở trình duyệt.
 
 ## Setup hai màn hình
 
@@ -127,7 +163,10 @@ Người chơi trên laptop: phím 1–4 chọn đáp án, Space/Enter để b�
 
 ## Sửa câu hỏi
 
-Tất cả trong [data/questions.json](data/questions.json). Sửa xong bấm **Bắt đầu / Chơi lại** là áp dụng, không cần tắt server.
+Hai cách: sửa file [data/questions.json](data/questions.json), hoặc bấm **Sửa câu hỏi** trong bảng
+điều khiển `/host`. Sửa xong bấm **Bắt đầu / Chơi lại** là áp dụng, không cần tắt server. Chạy trên
+hosting thì xem mục [Giữ bộ câu hỏi bằng Supabase](#giữ-bộ-câu-hỏi-bằng-supabase) để bản sửa không
+mất khi server ngủ dậy.
 
 - `order`: danh sách ID câu hỏi theo thứ tự sẽ chơi.
 - `answer`: vị trí đáp án đúng, **đếm từ 0** (A = 0, B = 1, C = 2, D = 3) theo thứ tự `options` trong file. Mỗi câu 2–4 đáp án.
