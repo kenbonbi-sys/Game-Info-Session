@@ -82,7 +82,7 @@ export const shapeSvg = shape => `<svg viewBox="0 0 24 24" aria-hidden="true"><p
 
 // Power-ups every player gets once per game. Effects are applied by the server.
 export const ITEMS = {
-  hint: { name: 'Buddy thông thái', icon: 'assets/source/items/buddy-thong-thai.svg', effect: 'Loại 2 đáp án sai' },
-  shield: { name: 'Khiên Research Lab', icon: 'assets/source/items/khien-research-lab.svg', effect: 'Đỡ 1 lần sai, giữ combo' },
-  boost: { name: 'Súng giọt tự tin', icon: 'assets/source/items/sung-giot-tu-tin.svg', effect: 'Câu đúng kế tiếp x2 điểm, x2 đạn' },
+  hint: { name: 'Buddy thông thái', icon: 'assets/source/items/buddy-thong-thai.png', effect: 'Loại 2 đáp án sai' },
+  shield: { name: 'Khiên Research Lab', icon: 'assets/source/items/khien-research-lab.png', effect: 'Đỡ 1 lần sai, giữ combo' },
+  boost: { name: 'Súng giọt tự tin', icon: 'assets/source/items/sung-giot-tu-tin.png', effect: 'Câu đúng kế tiếp x2 điểm, x2 đạn' },
 };

@@ -51,7 +51,7 @@
       <!-- The finale: everyone taps, right answer or not, and the hall shares one bottle. -->
       <section id="chargeView" class="fire-view charge-view" aria-label="Tích nước đòn kết liễu" hidden>
         <div class="charge-head">
-          <img class="charge-bottle" src="assets/source/items/binh-nuoc-cao.svg" alt="" width="96" height="96">
+          <img class="charge-bottle" src="assets/source/items/binh-nuoc-cao.png" alt="" width="96" height="96" loading="lazy" decoding="async">
           <div class="charge-info">
             <b id="chargePct">0%</b>
             <div class="charge-bar" role="progressbar" aria-label="Bình nước chung của hội trường" aria-valuemin="0" aria-valuemax="100"><i id="chargeBarFill"></i></div>
@@ -61,17 +61,19 @@
         <button id="chargeBtn" type="button" class="fire-btn charge-btn"><span class="fire-ring" aria-hidden="true"></span><b>TAP!</b><small>Chạm hết sức</small></button>
         <div class="fire-count" aria-live="off"><b id="chargeMine">0</b> lượt của bạn</div>
       </section>
+      <div id="reactSky" class="react-sky" aria-hidden="true"></div>
+      <div id="reactBar" class="react-bar" role="group" aria-label="Thả icon cho cả hội trường cùng xem" hidden></div>
     </main>
 
     <footer id="items" class="items" role="group" aria-label="Vật phẩm hỗ trợ, mỗi món dùng một lần" hidden>
       <button type="button" class="item" data-item="hint">
-        <img src="assets/source/items/buddy-thong-thai.svg" alt=""><span>Loại 2 sai</span><small>Buddy thông thái</small><b class="count">1</b>
+        <img src="assets/source/items/buddy-thong-thai.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Loại 2 sai</span><small>Buddy thông thái</small><b class="count">1</b>
       </button>
       <button type="button" class="item" data-item="shield">
-        <img src="assets/source/items/khien-research-lab.svg" alt=""><span>Đỡ 1 đòn</span><small>Khiên Research Lab</small><b class="count">1</b>
+        <img src="assets/source/items/khien-research-lab.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Đỡ 1 đòn</span><small>Khiên Research Lab</small><b class="count">1</b>
       </button>
       <button type="button" class="item" data-item="boost">
-        <img src="assets/source/items/sung-giot-tu-tin.svg" alt=""><span>×2 điểm</span><small>Súng giọt tự tin</small><b class="count">1</b>
+        <img src="assets/source/items/sung-giot-tu-tin.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>×2 điểm</span><small>Súng giọt tự tin</small><b class="count">1</b>
       </button>
     </footer>
   </div>
@@ -99,11 +101,12 @@
         <use href="#vsGlyph" fill="url(#vsFill)"/>
       </svg></div>
       <h1 id="joinTitle">Cùng <b>Buddy</b><span>đánh bay <em>“Dễ Sợ”</em></span></h1>
-      <button id="guideBtn" type="button" class="guide-btn" aria-haspopup="dialog"><span class="guide-play" aria-hidden="true"></span>Hướng dẫn</button>
+      <button id="guideBtn" type="button" class="guide-btn" aria-haspopup="dialog"><span class="guide-play" aria-hidden="true"></span>Xem lại hướng dẫn</button>
       <label class="name-label" for="nameInput">Tên domain của bạn</label>
       <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: khang.pham2" autocomplete="username" enterkeyhint="go" aria-describedby="nameHint joinError" required>
       <p id="nameHint" class="name-hint">Đúng domain thì phần thưởng 7 ngày qua mới về đúng ụ súng của bạn.</p>
       <button id="joinBtn" type="submit" class="cta-ledge" disabled>Đang tải…</button>
+      <p id="loadState" class="load-state" role="status"><i class="load-bar"><b id="loadFill"></b></i><span id="loadText">Đang tải hình ảnh…</span></p>
       <p id="joinError" class="error" role="alert"></p>
     </form>
   </section>
@@ -112,6 +115,7 @@
     <div class="cutscene-box">
       <canvas id="cutsceneClip" class="cutscene-clip" width="640" height="400" aria-hidden="true"></canvas>
       <p id="cutsceneSr" class="sr-only" aria-live="polite"></p>
+      <p id="cutsceneLoading" class="guide-loading" hidden>Đang tải hình minh hoạ…</p>
       <button id="cutsceneSkip" type="button" class="cutscene-skip">Bỏ qua ›</button>
     </div>
   </section>
@@ -125,7 +129,7 @@
         <button type="button" class="guide-step" data-step="2"><i></i>3. TAP để bắn</button>
         <button type="button" class="guide-step" data-step="3"><i></i>4. Vật phẩm</button>
       </div>
-      <canvas id="guideClip" class="guide-clip" width="640" height="400" aria-hidden="true"></canvas>
+      <div class="guide-stage"><canvas id="guideClip" class="guide-clip" width="640" height="400" aria-hidden="true"></canvas><p id="guideLoading" class="guide-loading" hidden>Đang tải hình minh hoạ…</p></div>
       <p id="guideCaption" class="guide-caption" aria-live="polite"></p>
       <button id="guideClose" type="button" class="cta-ledge">Đã hiểu</button>
     </div>

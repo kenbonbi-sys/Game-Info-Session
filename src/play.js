@@ -27,6 +27,12 @@ const me = {
 // Shots this round: acked by the server, in flight, and tapped but not yet sent.
 const taps = { index: -1, acked: 0, inflight: 0, pending: 0, timer: 0 };
 let hero, bossSheet, turretSheet, turretEmptySheet;
+// Màn nhập tên chỉ cần Buddy (45 KB); ba tấm sheet nặng hơn tải tiếp ở nền để hội trường vào
+// phòng ngay thay vì ngồi nhìn nút "Đang tải…". Đoạn phim và hướng dẫn tự đợi phần của nó.
+const loading = { total: 0, done: 0, sprites: false };
+let spritesReady = Promise.resolve();
+// "Đã xong", không phải "đã có": một tấm tải lỗi thì vẽ thiếu còn hơn kẹt ở chữ "đang tải".
+const spritesDone = () => loading.sprites;
 
 const session = {
   get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -44,25 +50,62 @@ async function post(path, body) {
   return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
 }
 
+// ---- Tải hình ----------------------------------------------------------------------
+
+function trackLoad(p) {
+  loading.total++;
+  const tick = () => {
+    loading.done++;
+    paintLoading();
+  };
+  p.then(tick, tick);
+  return p;
+}
+
+function paintLoading() {
+  const done = loading.done >= loading.total;
+  const pct = loading.total ? Math.round((loading.done / loading.total) * 100) : 100;
+  $('loadFill').style.width = `${pct}%`;
+  $('loadText').textContent = done ? 'Đã tải xong' : `Đang tải hình ảnh… ${loading.done}/${loading.total}`;
+  $('loadState').hidden = done;
+}
+
 // ---- Join cutscene -----------------------------------------------------------------
 
-const cutscene = { start: 0, playing: false };
+// pending: đã bấm vào phòng nhưng sprite của đoạn phim chưa về tới.
+const cutscene = { start: 0, playing: false, pending: false };
 
 // Only on a deliberate join: a reconnect or an auto-rejoin drops the player straight back in.
-function playCutscene() {
-  if (REDUCED_MOTION.matches) return;
+async function playCutscene() {
+  if (REDUCED_MOTION.matches) {
+    openOnboarding();
+    return;
+  }
   const seat = me.turret >= 0 ? `Ụ số ${me.turret + 1}` : '';
-  cutscene.start = performance.now() / 1000;
-  cutscene.playing = true;
   $('cutsceneSr').textContent = cutsceneLines(seat).join(' ');
   $('cutscene').hidden = false;
   $('cutsceneSkip').focus();
+  // Máy yếu hay wifi hội trường chậm: giữ màn hình có chữ, đừng dựng phim lên khung đen.
+  if (!spritesDone()) {
+    cutscene.pending = true;
+    $('cutsceneLoading').hidden = false;
+    await spritesReady;
+    $('cutsceneLoading').hidden = true;
+    // Bỏ qua trong lúc chờ, hoặc MC đã bấm bắt đầu: thôi không chiếu nữa.
+    if (!cutscene.pending) return;
+    cutscene.pending = false;
+  }
+  cutscene.start = performance.now() / 1000;
+  cutscene.playing = true;
 }
 
 function endCutscene() {
-  if (!cutscene.playing) return;
+  if (!cutscene.playing && !cutscene.pending) return;
   cutscene.playing = false;
+  cutscene.pending = false;
   $('cutscene').hidden = true;
+  $('cutsceneLoading').hidden = true;
+  openOnboarding();
 }
 
 async function join(name, { cinematic = false } = {}) {
@@ -80,7 +123,10 @@ async function join(name, { cinematic = false } = {}) {
     $('nameInput').blur();
     connect();
     render();
-    if (cinematic) playCutscene();
+    if (cinematic) {
+      onboarding.due = true;
+      playCutscene();
+    }
   } catch (err) {
     $('joinError').textContent = err instanceof TypeError ? 'Không kết nối được server' : err.message;
     $('join').hidden = false;
@@ -117,6 +163,10 @@ function onMessage(msg) {
       quiz.boss = msg.boss;
       renderBoss();
       return;
+    case 'react':
+      // Server đã gom nửa giây một lượt; vẫn cắt thêm lần nữa ở đây cho máy yếu.
+      for (const [i, n] of msg.icons ?? []) floatReaction(REACTIONS[i]?.id, Math.min(n, 4));
+      return;
   }
 }
 
@@ -125,7 +175,7 @@ function onState(msg) {
   const prev = { phase: quiz.phase, index: quiz.index };
   Object.assign(quiz, {
     phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
-    players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss,
+    players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss, react: !!msg.react,
     charge: msg.charge ?? quiz.charge,
   });
   document.body.dataset.phase = msg.phase;
@@ -312,6 +362,7 @@ function render() {
   else if (view === 'fire') renderFire();
   else if (view === 'charge') renderCharge();
   else renderWait(view);
+  renderReactBar(view);
   renderItems();
   renderTop();
 }
@@ -583,7 +634,7 @@ function frame(t) {
   } else if (view === 'fire') {
     $('fireFill').style.width = `${clamp(left / quiz.fire, 0, 1) * 100}%`;
   }
-  if (!$('join').hidden) drawJoinDuel($('joinArt'), hero, bossSheet, t, { reducedMotion: REDUCED_MOTION.matches });
+  if (!$('join').hidden && hero) drawJoinDuel($('joinArt'), hero, bossSheet, t, { reducedMotion: REDUCED_MOTION.matches });
   if (!$('guide').hidden) renderGuide(t);
   if (cutscene.playing) {
     const art = { hero, turret: turretSheet, turretEmpty: turretEmptySheet ?? turretSheet };
@@ -592,7 +643,89 @@ function frame(t) {
   }
 }
 
+// ---- Icon thả chơi lúc chờ ---------------------------------------------------------
+// Phòng chờ là quãng im lặng dài nhất của buổi diễn. Ai thả icon thì cả hội trường thấy icon
+// đó bay lên trên máy mình — đủ để người ta nghịch với nhau trong lúc đợi MC bấm bắt đầu.
+const REACTIONS = [
+  { id: 'dance', label: 'quẩy', src: 'assets/source/reactions/fox-dance.png' },
+  { id: 'love', label: 'thương quá', src: 'assets/source/reactions/fox-love.png' },
+  { id: 'wow', label: 'xuất sắc', src: 'assets/source/reactions/fox-wow.png' },
+  { id: 'leu', label: 'lêu lêu', src: 'assets/source/reactions/fox-leu.png' },
+  { id: 'wink', label: 'nháy mắt', src: 'assets/source/reactions/fox-wink.png' },
+];
+// Máy yếu trong hội trường đông: thà cắt icon còn hơn rớt khung hình.
+const REACT_MAX_FLOATS = 18;
+const REACT_EVERY_MS = 400;
+const reactions = { built: false, at: 0 };
+
+function buildReactBar() {
+  if (reactions.built) return;
+  reactions.built = true;
+  $('reactBar').replaceChildren(...REACTIONS.map(r => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'react-btn';
+    btn.setAttribute('aria-label', `Thả icon ${r.label}`);
+    const img = document.createElement('img');
+    Object.assign(img, { src: r.src, alt: '', width: 192, height: 192, decoding: 'async' });
+    btn.append(img);
+    btn.addEventListener('click', () => sendReaction(r.id));
+    return btn;
+  }));
+}
+
+function renderReactBar(view) {
+  const open = !!quiz.react && view === 'lobby';
+  if (open) buildReactBar();
+  $('reactBar').hidden = !open;
+  if (!open) $('reactSky').replaceChildren();
+}
+
+function sendReaction(id) {
+  const now = performance.now();
+  if (now - reactions.at < REACT_EVERY_MS) return;
+  reactions.at = now;
+  // Icon của mình bay lên ngay, không đợi server: chạm phải thấy phản hồi tức thì.
+  floatReaction(id);
+  post('/api/react', { pid: net.pid, icon: id }).catch(() => {});
+}
+
+function floatReaction(id, count = 1) {
+  const art = REACTIONS.find(r => r.id === id);
+  if (!art) return;
+  const sky = $('reactSky');
+  for (let i = 0; i < count; i++) {
+    if (sky.childElementCount >= REACT_MAX_FLOATS) sky.firstElementChild?.remove();
+    const img = document.createElement('img');
+    Object.assign(img, { className: 'react-float', src: art.src, alt: '', decoding: 'async' });
+    img.style.setProperty('--x', `${6 + Math.random() * 86}%`);
+    img.style.setProperty('--drift', `${Math.round((Math.random() * 2 - 1) * 46)}px`);
+    img.style.setProperty('--spin', `${Math.round((Math.random() * 2 - 1) * 20)}deg`);
+    img.style.setProperty('--delay', `${i * 90}ms`);
+    img.addEventListener('animationend', () => img.remove());
+    sky.append(img);
+  }
+}
+
 // ---- Guide -------------------------------------------------------------------------
+
+// Lần đầu vào phòng ai cũng được dắt qua hướng dẫn ngay sau đoạn phim; nút trên màn nhập tên
+// từ đó chỉ còn để xem lại.
+const onboarding = { due: false };
+
+function showGuide(open) {
+  if (open) playGuideStep(0);
+  $('guide').hidden = !open;
+  $(open ? 'guideClose' : 'guideBtn').focus();
+}
+
+function openOnboarding() {
+  if (!onboarding.due) return;
+  onboarding.due = false;
+  // MC bấm bắt đầu ngay lúc người ta đang xem phim: câu hỏi quan trọng hơn hướng dẫn.
+  if (currentView() !== 'lobby') return;
+  showGuide(true);
+}
 
 const guideSteps = document.querySelectorAll('.guide-step');
 const guideView = { start: 0, step: 0, shown: -1 };
@@ -612,6 +745,11 @@ function playGuideStep(step) {
 
 // Clips auto-advance and loop; with reduced motion each step holds its key frame until tapped.
 function renderGuide(t) {
+  // Hướng dẫn mở ngay sau khi vào phòng nên có thể tới trước cả sprite.
+  const waiting = !spritesDone();
+  $('guideLoading').hidden = !waiting;
+  $('guideClip').style.visibility = waiting ? 'hidden' : '';
+  if (waiting) return;
   const still = REDUCED_MOTION.matches;
   const elapsed = Math.max(0, t - guideView.start) % GUIDE_TOTAL;
   const step = still ? guideView.step : GUIDE_STARTS.findLastIndex(start => elapsed >= start);
@@ -650,11 +788,6 @@ async function boot() {
   $('nameInput').addEventListener('blur', resize);
 
   const guide = $('guide');
-  const showGuide = open => {
-    if (open) playGuideStep(0);
-    guide.hidden = !open;
-    $(open ? 'guideClose' : 'guideBtn').focus();
-  };
   $('guideBtn').addEventListener('click', () => showGuide(true));
   $('guideClose').addEventListener('click', () => showGuide(false));
   guide.addEventListener('click', e => { if (e.target === guide) showGuide(false); });
@@ -684,15 +817,20 @@ async function boot() {
   });
 
   render();
-  [hero, bossSheet, turretSheet, turretEmptySheet] = await Promise.all([
-    loadSvgStrip(SPRITES.hero.url, SPRITES.hero).catch(err => { console.warn(err); return buildFoxSheet(); }),
-    loadGridSheet(SPRITES.boss.url, SPRITES.boss).catch(err => { console.warn(err); return null; }),
-    loadGridSheet(SPRITES.turret.url, SPRITES.turret).catch(err => { console.warn(err); return null; }),
-    loadGridSheet(SPRITES.turret.emptyUrl, SPRITES.turret).catch(err => { console.warn(err); return null; }),
-  ]);
-  paintHudPortrait($('seatAvatar'), turretSheet, { kind: 'turret' });
-  paintHudPortrait($('turretArt'), turretSheet, { kind: 'turret' });
-  paintHudPortrait($('bossArt'), bossSheet, { kind: 'boss' });
+  // Bốn tấm cùng khởi hành, nhưng chỉ Buddy chặn nút "Vào chơi": ba tấm còn lại chỉ cần có mặt
+  // trước đoạn phim và bảng hướng dẫn, nên cứ để chúng về sau trong lúc người ta gõ tên.
+  const heroLoad = trackLoad(loadSvgStrip(SPRITES.hero.url, SPRITES.hero).catch(err => { console.warn(err); return buildFoxSheet(); }));
+  const bossLoad = trackLoad(loadGridSheet(SPRITES.boss.url, SPRITES.boss).catch(err => { console.warn(err); return null; }));
+  const turretLoad = trackLoad(loadGridSheet(SPRITES.turret.url, SPRITES.turret).catch(err => { console.warn(err); return null; }));
+  const emptyLoad = trackLoad(loadGridSheet(SPRITES.turret.emptyUrl, SPRITES.turret).catch(err => { console.warn(err); return null; }));
+  paintLoading();
+  spritesReady = Promise.all([bossLoad, turretLoad, emptyLoad]).then(([boss, turret, empty]) => {
+    [bossSheet, turretSheet, turretEmptySheet] = [boss, turret, empty];
+    loading.sprites = true;
+    paintHudPortrait($('seatAvatar'), turretSheet, { kind: 'turret' });
+    paintHudPortrait($('turretArt'), turretSheet, { kind: 'turret' });
+    paintHudPortrait($('bossArt'), bossSheet, { kind: 'boss' });
+  });
 
   $('joinForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -707,19 +845,21 @@ async function boot() {
   });
   $('cutsceneSkip').addEventListener('click', endCutscene);
   const savedName = local.get('foxquiz.name');
-  $('joinBtn').disabled = false;
-  $('joinBtn').textContent = 'Vào chơi';
   $('nameInput').value = savedName ?? '';
-  if (savedName && session.get('foxquiz.pid')) {
-    net.pid = session.get('foxquiz.pid');
-    join(savedName);
-  }
 
   requestAnimationFrame(function loop(now) {
     // Schedule first so one bad frame can't freeze the pad mid-event.
     requestAnimationFrame(loop);
     frame(now / 1000);
   });
+
+  hero = await heroLoad;
+  $('joinBtn').disabled = false;
+  $('joinBtn').textContent = 'Vào chơi';
+  if (savedName && session.get('foxquiz.pid')) {
+    net.pid = session.get('foxquiz.pid');
+    join(savedName);
+  }
 
   // Debug helpers for DevTools.
   window.quiz = { state: quiz, me, taps, net, lock, fire, useItem, cutscene, playCutscene };

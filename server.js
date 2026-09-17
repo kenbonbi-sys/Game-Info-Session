@@ -298,11 +298,47 @@ function freshStats(p) {
   return Object.assign(p, {
     score: 0, correct: 0, streak: 0, timeMs: 0, shots: 0, chargeTaps: 0,
     // picks[i] = { choice, ms } as submitted; results[i] is scored at the reveal, never before.
-    picks: {}, results: {}, roundShots: 0, tapTokens: 0, tapAt: 0,
+    picks: {}, results: {}, roundShots: 0, tapTokens: 0, tapAt: 0, reactAt: 0,
     // One of each item per game: hint removes 2 wrong options, shield absorbs the next miss,
     // boost doubles the next correct answer's points and shots.
     items: { hint: 1, shield: 1, boost: 1 }, armed: { shield: false, boost: false }, hints: {},
   });
+}
+
+// ---- Icon vui trong lúc chờ ------------------------------------------------------
+// Phòng chờ là quãng im lặng dài nhất của buổi diễn: ai vào sớm ngồi nhìn màn hình đứng yên.
+// Cho cả hội trường thả icon cho nhau xem, nhưng gom lại rồi đẩy mỗi nửa giây một
+// lượt — 100 điện thoại tap loạn mà bắn thẳng từng cái là tự làm nghẽn chính mình.
+const REACTIONS = ['dance', 'love', 'wow', 'leu', 'wink'];
+const REACT_EVERY_MS = 600;   // mỗi người, giữa hai lần thả
+const REACT_FLUSH_MS = 500;
+const REACT_MAX_PER_FLUSH = 40;
+const reactBuffer = new Map();  // chỉ số icon → số lượt trong cửa sổ hiện tại
+let reactTimer = null;
+
+// Chỉ mở ở phòng chờ. Màn tổng kết cũng là lúc chờ nhưng bảng xếp hạng phủ kín điện thoại,
+// icon thả lên sẽ nằm khuất phía sau — mở ở đó chỉ là nút bấm không ai thấy kết quả.
+const reactionsOpen = () => game.phase === 'lobby';
+
+function flushReactions() {
+  reactTimer = null;
+  if (!reactBuffer.size) return;
+  const icons = [...reactBuffer.entries()];
+  reactBuffer.clear();
+  broadcastPlayers({ type: 'react', icons });
+}
+
+function react(p, icon) {
+  if (!reactionsOpen()) return [409, { error: 'Chưa tới lúc thả icon' }];
+  const i = REACTIONS.indexOf(String(icon));
+  if (i < 0) return [400, { error: 'Icon không hợp lệ' }];
+  const now = Date.now();
+  if (now - (p.reactAt ?? 0) < REACT_EVERY_MS) return [200, { ok: true, dropped: true }];
+  p.reactAt = now;
+  const total = [...reactBuffer.values()].reduce((a, b) => a + b, 0);
+  if (total < REACT_MAX_PER_FLUSH) reactBuffer.set(i, (reactBuffer.get(i) ?? 0) + 1);
+  reactTimer ??= setTimeout(flushReactions, REACT_FLUSH_MS);
+  return [200, { ok: true }];
 }
 
 const isOnline = p => (playerStreams.get(p.pid)?.size ?? 0) > 0;
@@ -367,6 +403,7 @@ function stateFor(role) {
     endsAt: game.endsAt,
     now: Date.now(),
     players: players.size,
+    react: reactionsOpen(),
     firing: game.firing,
     auto: game.auto,
     boss: bossPercent(),
@@ -959,7 +996,7 @@ function openHostStream(req, res, view) {
 async function handleApi(req, res, url, path) {
   if (path === '/api/join' && req.method === 'POST') return json(res, ...joinPlayer(await readJson(req)));
 
-  const playerRoutes = { '/api/answer': 'answer', '/api/tap': 'tap', '/api/item': 'item' };
+  const playerRoutes = { '/api/answer': 'answer', '/api/tap': 'tap', '/api/item': 'item', '/api/react': 'react' };
   if (playerRoutes[path] && req.method === 'POST') {
     const body = await readJson(req);
     const p = players.get(body.pid);
@@ -969,6 +1006,7 @@ async function handleApi(req, res, url, path) {
       return json(res, ...(body.index === -1 ? answerFinale(p, body.choice) : submitAnswer(p, body.index, body.choice)));
     }
     if (path === '/api/tap') return json(res, ...(body.index === -1 ? tapCharge(p, body.n) : tapFire(p, body.index, body.n)));
+    if (path === '/api/react') return json(res, ...react(p, body.icon));
     return json(res, ...useItem(p, body.item));
   }
 

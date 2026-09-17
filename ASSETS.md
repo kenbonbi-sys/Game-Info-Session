@@ -8,6 +8,24 @@
 | Logo lockup | `assets/source/learning-hub-x-research-lab.png` | Hiện trên thẻ vào phòng. Chữ đã đảo sang trắng để đọc được trên nền tối; con cáo, chữ "Learning" cam và vòng tròn xanh giữ nguyên màu gốc |
 | Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 168×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần) |
 
+| Vật phẩm | `assets/source/items/*.png` | 128×128, hiện ở thanh vật phẩm và trong clip hướng dẫn |
+| Icon thả chơi | `assets/source/reactions/*.png` | 192×192, 5 con cáo người chơi thả cho nhau xem lúc chờ |
+
+## Nặng bao nhiêu thì điện thoại chịu được
+
+Cả hội trường vào cùng lúc bằng 4G hoặc wifi khách, nên mỗi KB đều tính. Bộ ảnh đã ép lại:
+turret/boss giảm màu (và turret thu còn 50% vì `loadGridSheet` hạ xuống ô 92px trước khi dùng),
+còn các icon SVG nhúng ảnh raster thì dựng lại thành PNG bảng màu — tổng cộng **5.4 MB → ~430 KB**.
+
+Sửa hay thêm ảnh xong thì chạy lại:
+
+```bash
+python tools/optimize-assets.py
+```
+
+File gốc nằm trong `assets/source/**/raw/` và không được deploy tới điện thoại; script đọc từ đó
+ghi đè bản đã ép. Đừng sửa tay bản đã ép — lần chạy script sau sẽ đè mất.
+
 Boss dùng sheet PNG dạng lưới (`loadGridSheet`) như ụ súng: nền trong suốt, mỗi hàng là một animation.
 Nếu file gốc có nền checkerboard vẽ chết, phải tách nền (flood fill từ viền) trước khi đưa vào `assets/source/`.
 

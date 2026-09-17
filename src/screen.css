@@ -78,8 +78,9 @@ body[data-scene="fire"][data-firing="true"] .hud-chip.accent { background: var(-
 .count-scene b.tick { animation: count-pop 650ms cubic-bezier(.2, 1.5, .4, 1); }
 
 /* ---- Question: Kahoot-style board ------------------------------------------- */
-.question-scene { position: absolute; z-index: 2; top: 110px; right: 64px; bottom: 40px; left: 64px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 22px; transform: translateY(70px) scale(.97); }
-.q-text { margin: 0; padding: 22px 48px 30px; border-radius: 16px 5px; background: #F4F8FC; color: #0B1A2B; font: 800 50px/1.22 var(--font-disp); text-align: center; text-wrap: balance; box-shadow: 0 8px 0 #0a1522, 0 24px 60px #02080e99; }
+/* Thanh HUD biến mất trong lúc chọn đáp án nên khung câu hỏi lấy luôn phần trên của màn chiếu. */
+.question-scene { position: absolute; z-index: 2; top: 48px; right: 64px; bottom: 40px; left: 64px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 22px; transform: translateY(70px) scale(.97); }
+.q-text { align-self: center; margin: 0; padding: 22px 48px 30px; border-radius: 16px 5px; background: #F4F8FC; color: #0B1A2B; font: 800 50px/1.22 var(--font-disp); text-align: center; text-wrap: balance; box-shadow: 0 8px 0 #0a1522, 0 24px 60px #02080e99; }
 .q-meta { display: block; margin-bottom: 8px; color: #45607c; font: 800 22px/1.3 var(--font-disp); letter-spacing: .04em; text-transform: uppercase; }
 .q-middle { display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; align-items: center; gap: 30px; min-height: 0; }
 .q-timer { position: relative; width: 190px; height: 190px; justify-self: start; }
@@ -188,11 +189,19 @@ body[data-scene="victory"] .victory-scene { visibility: visible; opacity: 1; poi
 .victory-video[hidden] { display: none; }
 .victory-play { position: absolute; bottom: 70px; left: 50%; translate: -50% 0; padding: 18px 30px; border: 2px solid #ffd09a; border-radius: 8px; background: #603723; color: #fff4df; font: 700 24px var(--font-disp); cursor: pointer; }
 body[data-scene="victory"] .hud, body[data-scene="victory"] .banner { visibility: hidden; }
+/* Máu boss chỉ có nghĩa lúc cả hội trường đang bắn. Trong lúc chọn đáp án nó chỉ tranh chỗ với
+   câu hỏi — và "Câu 1/15" đã nằm ngay trên câu hỏi rồi. */
+body[data-scene="question"] .hud, body[data-scene="reveal"] .hud,
+body[data-scene="final"] .hud, body[data-scene="finalreveal"] .hud { visibility: hidden; }
 
 .banner { position: absolute; z-index: 4; top: 54%; left: 50%; translate: -50% -50%; padding: 22px 50px 26px; border: 3px solid #9fc8f2; border-radius: 18px 5px; background: var(--ui-blue); color: #fff; font: 800 64px/1.15 var(--font-disp); white-space: nowrap; opacity: 0; pointer-events: none; box-shadow: 0 20px 60px #020e1acc; }
 .banner[data-tone="bad"] { border-color: var(--ui-orange); background: #4a2b22; color: #ffcabd; }
 .banner[data-tone="warn"] { border-color: #ffd0c2; background: linear-gradient(180deg, #FF7034, #AC000E); text-shadow: 0 4px 0 #6b0009; }
 .banner.pop { animation: toast-pop 1.8s ease both; }
+/* Câu hỏi giờ nằm giữa màn hình, còn thanh HUD thì trốn: đẩy toast lên chỗ vừa trống ra, chứ
+   không để nó đè lên đúng dòng chữ cả hội trường đang đọc. */
+body[data-scene="question"] .banner, body[data-scene="reveal"] .banner,
+body[data-scene="final"] .banner, body[data-scene="finalreveal"] .banner { top: 13%; }
 
 /* ---- Outside the stage: nothing here is part of the show ------------------------------ */
 /* The cursor and the fullscreen tip only appear while someone moves the mouse over the window. */

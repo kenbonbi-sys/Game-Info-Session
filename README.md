@@ -35,6 +35,21 @@ Hai lối thoát cho MC nếu hội trường vắng hoặc tap không tới:
 Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu cũ: hết câu là vào thẳng bảng xếp hạng.
 - **Âm thanh** phát từ cửa sổ màn game (trình duyệt chỉ mở tiếng sau lần bấm phím/chuột đầu tiên trên cửa sổ đó, ví dụ lúc bấm F). Điện thoại rung nhẹ khi chạm (Android).
 
+## Điện thoại vào phòng
+
+1. Quét QR → màn nhập tên. Nút **Vào chơi** mở khoá ngay khi con Buddy tải xong (45 KB); ba tấm
+   sprite nặng hơn tải tiếp ở nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang
+   chạy chứ không treo.
+2. Nhập tên → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra).
+3. Hết phim là **bảng hướng dẫn 4 bước tự mở**, không phải bấm gì. Bấm "Đã hiểu" là xong; nút trên
+   màn nhập tên đổi thành **Xem lại hướng dẫn** cho ai muốn coi lại.
+4. Trong lúc chờ MC bấm bắt đầu, dưới màn hình có **hàng 5 icon cáo** — thả cái nào thì cả hội
+   trường thấy cáo đó bay lên trên máy mình. Chỉ mở ở phòng chờ; game bắt đầu là hàng icon biến
+   mất để không ai bấm nhầm lúc đang cần chọn đáp án.
+
+Server gom icon nửa giây một lượt rồi mới đẩy đi, mỗi người tối đa ~1,6 icon/giây, nên cả trăm
+điện thoại cùng nghịch cũng không làm nghẽn đường truyền của chính buổi chơi.
+
 ## Vật phẩm
 
 Mỗi người có 1 bộ 3 món khi game bắt đầu, mỗi món dùng 1 lần, khay nằm dưới màn điện thoại (ẩn khi đang bắn). Server chấm hiệu ứng.
