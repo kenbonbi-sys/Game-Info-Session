@@ -13,11 +13,6 @@
 <body data-phase="connecting">
   <!-- Mở màn chương trình: điện thoại là bàn phím, chữ mọi người gõ hiện trên màn chiếu. -->
   <div class="pad fear-pad">
-    <header class="pad-top">
-      <div class="pad-who"><b>Nỗi sợ của bạn</b><span id="crowd">Đang kết nối…</span></div>
-      <div class="pad-score"><b id="mineCount">0</b><span>bạn đã gửi</span></div>
-    </header>
-
     <main class="pad-main fear-main">
       <section id="waitView" class="wait-card" aria-live="polite">
         <div class="fear-eye" aria-hidden="true">👀</div>
@@ -29,10 +24,9 @@
         <h1 class="fear-q">Điều gì làm bạn <em>sợ</em> khi làm nghiên cứu?</h1>
         <form id="fearForm" class="fear-form">
           <input id="fearInput" name="fear" maxlength="32" placeholder="Ví dụ: sợ hỏi sai câu"
-                 autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-describedby="fearHint fearError" required>
+                 autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-describedby="fearError" required>
           <button id="fearSend" type="submit" class="cta-ledge">Gửi lên màn chiếu</button>
         </form>
-        <p id="fearHint" class="fear-hint">Gõ ngắn thôi — vài chữ là đủ. Gửi được bao nhiêu lần tuỳ bạn.</p>
         <p id="fearError" class="error" role="alert"></p>
         <ul id="mine" class="fear-mine" aria-label="Những điều bạn đã gửi"></ul>
       </section>

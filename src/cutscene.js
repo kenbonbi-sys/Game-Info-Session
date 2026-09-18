@@ -19,9 +19,11 @@ const LINES = [
 export const CUTSCENE_SECONDS = LINES.at(-1).until + 0.4;
 
 const GROUND = 170;
-const TURRET = { x: 214, ringY: 152, ringW: 62 };
-const START_X = -34;
-const JUMP_X = 128;
+// Ụ súng đứng ngay giữa khung: đây là thứ cả đoạn phim nói về, nên nó phải nằm ở tâm màn hình
+// chứ không nép sang một bên. Buddy chạy từ mép trái vào rồi nhảy lên đúng chỗ đó.
+const TURRET = { x: W / 2, ringY: 152, ringW: 62 };
+const START_X = -38;
+const JUMP_X = 76;
 
 function frameOfView(sheet, view) {
   return sheet?.anims?.[view]?.frames?.[0] ?? 0;

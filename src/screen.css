@@ -10,6 +10,9 @@ body { color: var(--ui-text); font-family: var(--font-sans); -webkit-font-smooth
 
 .stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; translate: -50% -50%; scale: var(--k, 1); overflow: hidden; background: #091522; }
 .arena { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* Trước khi server nói đang ở cảnh nào thì không vẽ gì cả. Mọi cảnh khác đã mặc định ẩn rồi. */
+body[data-scene="boot"] .arena, body[data-scene="boot"] .hud { visibility: hidden; }
+body[data-scene="boot"] .stage { background: #04070c; }
 .scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 42%, #0b1c2fd9 0%, #040b14f2 72%); transition: opacity 500ms ease; }
 body[data-scene="countdown"] .scrim { opacity: .72; }
 body[data-scene="question"] .scrim, body[data-scene="reveal"] .scrim, body[data-scene="end"] .scrim { opacity: 1; }
@@ -37,6 +40,8 @@ body[data-scene="end"] .end-scene { visibility: visible; opacity: 1; transform: 
 body[data-scene^="fear"] .arena, body[data-scene^="fear"] .hud { visibility: hidden; }
 body[data-scene^="fear"] .scrim { opacity: 1; }
 body[data-scene^="fear"] .stage { background: radial-gradient(ellipse at 50% 42%, #14243a 0%, #060c15 68%); }
+/* Câu hỏi đọng lại sau đoạn phim: tối hẳn, chỉ còn Quái Vật và một câu. */
+body[data-scene="fearoutro"] .stage { background: #04070c; }
 body[data-scene^="fear"] .fear-canvas { visibility: visible; }
 body[data-scene="fearjoin"] .fear-join,
 body[data-scene="fearcloud"] .fear-bar { visibility: visible; opacity: 1; }

@@ -27,6 +27,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fear-state { padding: 3px 8px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--panel-2); color: var(--muted); font: 700 11px var(--font-disp); }
 .fear-card[data-phase="open"] .fear-state { border-color: var(--good); color: var(--good); }
 .fear-card[data-phase="storm"] .fear-state { border-color: var(--warn); color: var(--warn); }
+/* Máy chiếu đang đứng ở câu hỏi cuối đoạn mở màn và chờ MC: nút dưới nó mở luôn phòng chờ game. */
+.fear-card[data-phase="outro"] .fear-state { border-color: var(--orange); color: var(--orange); }
 .fear-note { margin: 0; color: var(--muted); font: 500 12px/1.5 var(--font-sans); }
 .fear-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .fear-nums div { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px 3px; background: var(--panel-2); }

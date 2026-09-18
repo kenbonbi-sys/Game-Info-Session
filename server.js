@@ -362,7 +362,9 @@ const STORM_SECONDS = 15;       // dài bằng đoạn phim triệu hồi ở sr
 const FEAR_FALLBACK = ['Sợ làm sai', 'Sợ bị đánh giá', 'Sợ không kịp deadline'];
 
 const fear = {
-  // done → wait (đang quét mã) → open (gõ) → storm (triệu hồi) → done.
+  // done → wait (đang quét mã) → open (gõ) → storm (triệu hồi) → outro (câu hỏi đọng lại) → done.
+  // Chỉ mỗi 'storm' tự hết giờ. 'outro' đứng yên chờ MC: sau nó là phòng chờ của game, mà phòng
+  // chờ đã là đấu trường với mấy chục ụ súng — tự nhảy sang là lộ mất đoạn cuối buổi.
   // Mặc định là 'done', không phải 'wait': gói hosting miễn phí ngủ dậy là dựng lại từ đầu, mà
   // game nằm cuối buổi — máy chiếu bật lên phải là phòng chờ của game, không phải màn mở đầu đã
   // diễn xong từ một tiếng trước. MC bấm một nút để mở đoạn này.
@@ -430,7 +432,7 @@ function setFearPhase(next) {
     const list = [...fear.words.values()].sort((a, b) => b.count - a.count || a.at - b.at);
     fear.top = (list.length ? list.slice(0, 3) : FEAR_FALLBACK.map(text => ({ text, count: 0 })))
       .map(w => ({ text: w.text, count: w.count }));
-    fear.timer = setTimeout(() => setFearPhase('done'), STORM_SECONDS * 1000);
+    fear.timer = setTimeout(() => setFearPhase('outro'), STORM_SECONDS * 1000);
   }
   broadcastFear();
 }
@@ -928,6 +930,10 @@ function hostAction(action) {
       fear.top = [];
       setFearPhase('wait');
       logEvent('Xoá sạch nỗi sợ, về lại màn quét mã', 'warn');
+      return true;
+    case 'fear-done':
+      setFearPhase('done');
+      logEvent('Hết đoạn mở màn, máy chiếu về phòng chờ của game', 'phase');
       return true;
     case 'fear-skip':
       setFearPhase('done');

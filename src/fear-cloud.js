@@ -34,6 +34,20 @@ const T = {
 const LINE = 'TA LÀ NỖI SỢ CỦA CÁC NGƯƠI!';
 const LAUGH = 'HA HA HA HA!';
 
+// Đoạn đọng lại sau đoạn phim. Quái Vật bay đi, màn chiếu tối hẳn một lúc — rồi nó hiện lại
+// trong bóng tối, lần này không phải để doạ mà để đặt câu hỏi cho cả buổi. Cảnh này đứng yên
+// cho tới khi MC bấm; nó tuyệt đối không được tự nhảy về phòng chờ của game, vì phòng chờ đã
+// là đấu trường và mấy chục ụ súng — nhìn thấy trước là hỏng cả đoạn cuối buổi.
+const O = {
+  dark: 1.0,      // tối hẳn: khoảng lặng cho hội trường kịp thở
+  eyes: 1.2,      // hai đốm mắt nhen lên trong bóng tối
+  boss: 2.0,      // Quái Vật hiện dần ra từ đúng chỗ hai đốm mắt
+  ask: 3.2,       // câu hỏi của cả buổi
+  tease: 4.4,
+};
+const ASK = 'TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY?';
+const TEASE = 'Hãy cùng đón xem nhé!';
+
 const CENTER = { x: W / 2, y: H / 2 - 20 };
 const MAX_DRAWN = 110;            // chữ nhỏ hơn nữa thì ngồi cuối hội trường cũng không đọc nổi
 const SIZE_MIN = 26;
@@ -50,6 +64,7 @@ let bossSheet = null;
 let fontReady = false;
 const words = new Map();          // chữ → { text, count, x, y, size, tx, ty, tsize, tone, born }
 let storm = null;
+let outro = null;
 let time = 0;
 
 const font = size => `800 ${Math.round(size)}px "MoMo Trusts Display", "MoMo Trusts Sans", sans-serif`;
@@ -137,6 +152,16 @@ export function setFearWords(list) {
 // khung cuối của cơn bão thay vì vẽ lại đám mây chữ.
 export function endStorm() {
   storm = null;
+  outro = null;
+}
+
+// elapsed: như startStorm — máy chiếu mở muộn hay vừa reload vẫn vào đúng khúc.
+export function startOutro(elapsed = 0) {
+  storm = null;
+  outro = {
+    e: Math.max(0, elapsed),
+    puffs: Array.from({ length: 14 }, () => ({ a: rand(0, TAU), r: rand(50, 190), size: rand(70, 150), speed: rand(0.5, 1.6), tone: rand(0, 1) })),
+  };
 }
 
 // ---- Đoạn phim triệu hồi ------------------------------------------------------------
@@ -144,6 +169,7 @@ export function endStorm() {
 // elapsed: đã chạy được bao lâu tính theo đồng hồ server, để màn chiếu mở muộn hoặc vừa reload
 // vẫn nhảy vào đúng khúc thay vì chiếu lại từ đầu.
 export function startStorm(top, elapsed = 0) {
+  outro = null;
   storm = {
     e: Math.max(0, elapsed),
     top: (top ?? []).slice(0, 3).map((w, i) => ({
@@ -366,9 +392,61 @@ function drawStorm(e) {
   }
 }
 
+function drawOutro(e) {
+  const motion = REDUCED_MOTION.matches ? 0.25 : 1;
+  ctx.fillStyle = '#04070c';
+  ctx.fillRect(0, 0, W, H);
+
+  const bossIn = clamp((e - O.boss) / 1.2, 0, 1);
+  // Hai đốm mắt trong bóng tối, tắt dần khi cả hình đã rõ: có thứ gì đó vẫn ở đây.
+  const eyes = clamp((e - O.eyes) / 0.55, 0, 1) * (1 - bossIn);
+  if (eyes > 0.01) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = eyes * (0.6 + 0.4 * Math.sin(e * 3.2 * motion));
+    for (const dx of [-52, 52]) {
+      const g = ctx.createRadialGradient(CENTER.x + dx, CENTER.y - 140, 0, CENTER.x + dx, CENTER.y - 140, 70);
+      g.addColorStop(0, '#ffc7a4');
+      g.addColorStop(0.3, '#ff5d38');
+      g.addColorStop(1, 'rgba(255, 93, 56, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(CENTER.x + dx - 76, CENTER.y - 216, 152, 152);
+    }
+    ctx.restore();
+  }
+
+  if (bossIn > 0) {
+    // Khói vẫn bốc dưới chân: nó bước ra từ đó, không phải dán lên một nền đen.
+    ctx.save();
+    ctx.globalAlpha = bossIn * 0.34;
+    for (const p of outro.puffs) {
+      const a = p.a + e * 0.3 * p.speed * motion;
+      puff(CENTER.x + Math.cos(a) * p.r * 1.7, CENTER.y + 230 + Math.sin(a) * p.r * 0.2, p.size, p.tone > 0.7, 0.42);
+    }
+    ctx.restore();
+    const rise = (1 - easeOut(bossIn)) * 60;
+    drawBoss(530 + easeOut(bossIn) * 70, bossIn, {
+      y: CENTER.y + 30 + rise - Math.sin(e * 1.4 * motion) * 12,
+      frame: Math.floor(e * 6) % 7,
+    });
+  }
+
+  // Câu hỏi ở trên, lời hẹn ở dưới, con boss đứng giữa: một tấm poster đứng yên chờ MC nói tiếp.
+  const ask = clamp((e - O.ask) / 0.7, 0, 1);
+  if (ask > 0.01) {
+    const size = fitSize(ASK, 78, W - 260);
+    text(ASK, CENTER.x, 186 - (1 - easeOut(ask)) * 26, size, '#ffffff', { alpha: ask, outline: 10 });
+  }
+  const tease = clamp((e - O.tease) / 0.7, 0, 1);
+  if (tease > 0.01) {
+    text(TEASE, CENTER.x, H - 122 + (1 - easeOut(tease)) * 22, 52, '#FF5D38', { alpha: tease, outline: 9 });
+  }
+}
+
 // ---- Vòng vẽ -------------------------------------------------------------------------
 
-export function fearFrame(dt, stormElapsed = null) {
+// filmElapsed: đồng hồ của server cho đoạn phim đang chạy (cơn bão, hoặc đoạn đọng lại sau nó).
+export function fearFrame(dt, filmElapsed = null) {
   if (!ctx) return;
   time += dt;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
@@ -383,7 +461,11 @@ export function fearFrame(dt, stormElapsed = null) {
     w.size += (w.tsize - w.size) * ease;
   }
 
-  if (storm && stormElapsed !== null) storm.e = stormElapsed;
-  if (storm) drawStorm(storm.e);
+  if (filmElapsed !== null) {
+    if (storm) storm.e = filmElapsed;
+    if (outro) outro.e = filmElapsed;
+  }
+  if (outro) drawOutro(outro.e);
+  else if (storm) drawStorm(storm.e);
   else drawCloud();
 }

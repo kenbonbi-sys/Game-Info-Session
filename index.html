@@ -12,11 +12,20 @@
 <body data-phase="join" data-view="join">
   <!-- The phone is the controller: the question and the arena are on the big screen. -->
   <div id="pad" class="pad">
-    <header class="pad-top" aria-label="Thông tin của bạn">
-      <canvas id="seatAvatar" class="pad-avatar" width="96" height="96" aria-hidden="true"></canvas>
-      <div class="pad-who"><b id="playerName">Buddy</b><span id="seatLabel">Đang vào phòng…</span></div>
-      <div class="pad-score"><b id="hudScore">0 điểm</b><span id="hudRank" hidden></span></div>
-    </header>
+    <section id="items" class="items" role="group" aria-label="Vật phẩm hỗ trợ, mỗi món dùng một lần" hidden>
+      <p class="items-cap"><b>VẬT PHẨM CỦA BẠN</b><span>chạm để dùng · mỗi món 1 lần</span></p>
+      <div class="items-row">
+        <button type="button" class="item" data-item="hint">
+          <img src="assets/source/items/buddy-thong-thai.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Loại 2 sai</span><small>Buddy thông thái</small><b class="count">1</b>
+        </button>
+        <button type="button" class="item" data-item="shield">
+          <img src="assets/source/items/khien-research-lab.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Đỡ 1 đòn</span><small>Khiên Research Lab</small><b class="count">1</b>
+        </button>
+        <button type="button" class="item" data-item="boost">
+          <img src="assets/source/items/sung-giot-tu-tin.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>×2 điểm</span><small>Súng giọt tự tin</small><b class="count">1</b>
+        </button>
+      </div>
+    </section>
 
     <main class="pad-main">
       <section id="waitView" class="wait-card" aria-live="polite">
@@ -65,16 +74,10 @@
       <div id="reactBar" class="react-bar" role="group" aria-label="Thả icon cho cả hội trường cùng xem" hidden></div>
     </main>
 
-    <footer id="items" class="items" role="group" aria-label="Vật phẩm hỗ trợ, mỗi món dùng một lần" hidden>
-      <button type="button" class="item" data-item="hint">
-        <img src="assets/source/items/buddy-thong-thai.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Loại 2 sai</span><small>Buddy thông thái</small><b class="count">1</b>
-      </button>
-      <button type="button" class="item" data-item="shield">
-        <img src="assets/source/items/khien-research-lab.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>Đỡ 1 đòn</span><small>Khiên Research Lab</small><b class="count">1</b>
-      </button>
-      <button type="button" class="item" data-item="boost">
-        <img src="assets/source/items/sung-giot-tu-tin.png" alt="" width="128" height="128" loading="lazy" decoding="async"><span>×2 điểm</span><small>Súng giọt tự tin</small><b class="count">1</b>
-      </button>
+    <footer class="pad-top" aria-label="Thông tin của bạn">
+      <canvas id="seatAvatar" class="pad-avatar" width="96" height="96" aria-hidden="true"></canvas>
+      <div class="pad-who"><b id="playerName">Buddy</b><span id="seatLabel">Đang vào phòng…</span></div>
+      <div class="pad-score"><b id="hudScore">0 điểm</b><span id="hudRank" hidden></span></div>
     </footer>
   </div>
 

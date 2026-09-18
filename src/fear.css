@@ -1,7 +1,11 @@
 /* Đoạn mở màn trên điện thoại: một câu hỏi, một ô gõ, và danh sách những gì bạn đã gửi.
    Dùng chung khung .pad của play.css nên chỉ cần phần riêng của màn này. */
 
-.fear-main { align-content: center; }
+/* Không còn thanh trên: cả màn hình chỉ có một câu hỏi và một ô gõ. */
+.fear-pad { grid-template-rows: minmax(0, 1fr); }
+/* safe center + cuộn: bàn phím bật lên làm nội dung cao hơn khung thì nó trượt xuống,
+   chứ không bị cắt cụt cả đầu lẫn đuôi như khi căn giữa cứng. */
+.fear-main { align-content: safe center; overflow-y: auto; overscroll-behavior: contain; }
 
 .fear-eye { font-size: 62px; line-height: 1; animation: fear-breathe 3.4s ease-in-out infinite; }
 .fear-eye.storm { animation: fear-spin 2.2s linear infinite; }
@@ -21,7 +25,6 @@
 .fear-form input::placeholder { color: #6d8299; }
 .fear-form .cta-ledge { width: 100%; }
 
-.fear-hint { margin: 0; color: #9fb1c4; font: 550 12px/1.5 var(--font-sans); text-align: center; }
 .fear-type .error { margin: 0; color: #f4a897; font-size: 12.5px; text-align: center; }
 .fear-type .error:empty { display: none; }
 
@@ -38,9 +41,13 @@
 /* Lời xác nhận rơi xuống dưới ô gõ, không đè lên chính câu hỏi người ta đang đọc. */
 body:has(.fear-pad) #banner { top: auto; bottom: 16%; translate: -50% 0; }
 
-.fear-pad .pad-score { text-align: right; }
-.fear-pad .pad-score b { color: var(--ui-orange); font: 800 20px/1 var(--font-disp); }
-.fear-pad .pad-score span { color: var(--ui-muted); font: 600 10.5px var(--font-sans); }
+/* Bàn phím đang che: câu hỏi và ô gõ dính lên đỉnh màn hình, những chữ đã gửi tạm lui.
+   Ô gõ luôn nằm ngay dưới câu hỏi, không bị đẩy xuống dưới bàn phím. */
+body[data-keyboard="true"] .fear-main { align-content: start; padding-top: 10px; }
+body[data-keyboard="true"] .fear-q { font-size: 19px; }
+body[data-keyboard="true"] .fear-form input { min-height: 48px; }
+body[data-keyboard="true"] .fear-mine { max-height: 30px; overflow: hidden; }
+body[data-keyboard="true"] #banner { bottom: auto; top: 12px; translate: -50% 0; }
 
 @media (max-height: 700px) {
   .fear-q { font-size: 21px; }

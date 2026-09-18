@@ -3,7 +3,7 @@
 const $ = id => document.getElementById(id);
 
 const net = { pid: null, es: null };
-const state = { phase: 'connecting', people: 0, total: 0, kinds: 0 };
+const state = { phase: 'connecting' };
 const mine = [];
 
 const session = {
@@ -46,7 +46,7 @@ function connect() {
 
 function onMessage(msg) {
   if (msg.type !== 'fear') return;
-  Object.assign(state, { phase: msg.phase, people: msg.people, total: msg.total, kinds: msg.kinds });
+  state.phase = msg.phase;
   render();
 }
 
@@ -78,7 +78,6 @@ async function send(text) {
 
 function addMine(text) {
   mine.unshift(text);
-  $('mineCount').textContent = String(mine.length);
   const li = document.createElement('li');
   li.textContent = text;
   $('mine').prepend(li);
@@ -100,14 +99,13 @@ function toast(text) {
 // ---- Vẽ ---------------------------------------------------------------------------
 
 function render() {
-  const view = state.phase === 'open' ? 'type' : state.phase === 'storm' || state.phase === 'done' ? 'storm' : 'wait';
+  const view = state.phase === 'open' ? 'type'
+    : ['storm', 'outro', 'done'].includes(state.phase) ? 'storm'
+    : 'wait';
   document.body.dataset.phase = state.phase;
   $('waitView').hidden = view !== 'wait';
   $('typeView').hidden = view !== 'type';
   $('stormView').hidden = view !== 'storm';
-  $('crowd').textContent = state.total
-    ? `Cả phòng đã gửi ${state.total.toLocaleString('vi-VN')} điều`
-    : `${state.people} người đã sẵn sàng`;
   if (view === 'wait') {
     $('waitTitle').textContent = state.phase === 'connecting' ? 'Đang kết nối…' : 'Chờ MC một chút…';
   }
@@ -119,11 +117,15 @@ function boot() {
     const height = viewport && Math.abs(viewport.scale - 1) < 0.05 ? viewport.height : innerHeight;
     document.documentElement.style.setProperty('--app-height', `${height}px`);
     document.documentElement.style.setProperty('--viewport-top', `${viewport?.offsetTop ?? 0}px`);
+    // Bàn phím ăn mất nửa màn hình: nói cho CSS biết để thu gọn câu hỏi thay vì đẩy chữ ra ngoài.
+    document.body.dataset.keyboard = String(document.activeElement === $('fearInput') && height < innerHeight - 100);
   };
   setHeight();
   addEventListener('resize', setHeight);
   window.visualViewport?.addEventListener('resize', setHeight);
   window.visualViewport?.addEventListener('scroll', setHeight);
+  $('fearInput').addEventListener('focus', setHeight);
+  $('fearInput').addEventListener('blur', setHeight);
 
   $('fearForm').addEventListener('submit', e => {
     e.preventDefault();

@@ -20,10 +20,17 @@ cùng bắn không còn là một con quái vật vô danh — nó là nỗi s�
 | 1 | ▶ Bắt đầu đoạn mở màn | QR to giữa màn hình | — |
 | 2 | Mở bàn phím cho hội trường | Đám mây chữ, QR lùi xuống thanh dưới | Ô gõ, gửi bao nhiêu lần cũng được |
 | 3 | 🌪️ Triệu hồi Quái Vật | Đoạn phim 15 giây | "Nhìn lên màn hình lớn!" |
-| — | (tự động sau 15s) | Về phòng chờ của game | — |
+| — | (tự động sau 15s) | Màn đen, Quái Vật hiện lại kèm câu hỏi của cả buổi — **đứng yên ở đây** | — |
+| 4 | Xong phần nội dung · mở phòng chờ game | Phòng chờ của game | — |
 
 Đoạn phim: chữ bị hút vào một xoáy khói → **3 nỗi sợ nhiều người gõ nhất** bay vào thật to kèm số
 người đã gõ → bị nuốt nốt → Quái Vật bước ra, nói *"TA LÀ NỖI SỢ CỦA CÁC NGƯƠI!"*, cười, rồi bay đi.
+
+Phim xong, máy chiếu **không tự về phòng chờ**: nó tối hẳn, Quái Vật hiện lại trong bóng tối và
+màn hình hỏi *"TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY? — Hãy cùng đón xem nhé!"*. Đó là tấm nền
+để MC dẫn sang phần nội dung, và nó nằm yên đó cho tới khi MC bấm bước 4. Phòng chờ của game đã là
+đấu trường với mấy chục ụ súng, thấy trước là lộ mất đoạn cuối buổi — nên bước 4 hỏi lại một câu
+trước khi mở.
 
 - **QR của đoạn này khác QR vào game**: `…/fear` là bàn phím, `…/` là tay cầm. Cùng một server.
 - Máy chiếu mở muộn hay reload giữa đoạn phim vẫn **nhảy vào đúng khúc** chứ không chiếu lại từ đầu.
@@ -83,7 +90,7 @@ thêm vào cuối.
 
 ## Vật phẩm
 
-Mỗi người có 1 bộ 3 món khi game bắt đầu, mỗi món dùng 1 lần, khay nằm dưới màn điện thoại (ẩn khi đang bắn). Server chấm hiệu ứng.
+Mỗi người có 1 bộ 3 món khi game bắt đầu, mỗi món dùng 1 lần, khay nằm **trên đầu màn điện thoại** ngay tầm mắt trước khi chọn đáp án (ẩn khi đang bắn); tên và điểm của mình lùi xuống đáy. Món nào còn dùng được thì viền cam. Server chấm hiệu ứng.
 
 | Vật phẩm | Dùng lúc | Tác dụng |
 |---|---|---|

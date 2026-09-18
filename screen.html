@@ -9,7 +9,9 @@
   <link rel="stylesheet" href="src/screen.css">
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
-<body data-scene="lobby">
+<!-- data-scene="boot" cho tới khi server trả lời: máy chiếu reload giữa đoạn mở màn thì hiện
+     nền đen, không được nháy qua phòng chờ — nhìn thấy đấu trường trước là lộ mất đoạn cuối buổi. -->
+<body data-scene="boot">
   <!-- The projector shows only the game: designed at 1920×1080 and scaled to fit. The MC controls it from /host. -->
   <div id="stage" class="stage">
     <canvas id="arena" class="arena" aria-label="Đấu trường: mỗi ụ súng mang tên một người chơi, Quái Vật Dễ Sợ bay phía trên"></canvas>

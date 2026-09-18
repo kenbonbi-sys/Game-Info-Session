@@ -3,7 +3,7 @@
 // drives the game from the dashboard at /host, which also embeds this page as a preview (?preview=1).
 import { ANSWERS, ARENA, shapeSvg } from './config.js';
 import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossUnleash, bossHealth } from './arena-view.js';
-import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, endStorm } from './fear-cloud.js';
+import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, startOutro, endStorm } from './fear-cloud.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
@@ -372,6 +372,8 @@ function sceneFor(s) {
   if (fear.phase === 'wait') return 'fearjoin';
   if (fear.phase === 'open') return 'fearcloud';
   if (fear.phase === 'storm') return 'fearstorm';
+  // Câu hỏi đọng lại sau đoạn phim: giữ máy chiếu ở đây cho tới khi MC bấm, đừng để lộ đấu trường.
+  if (fear.phase === 'outro') return 'fearoutro';
   if (s.phase === 'end' && victoryPlayback.active && !victoryPlayback.complete) return 'victory';
   return s.phase;
 }
@@ -381,11 +383,14 @@ function sceneFor(s) {
 const fear = { phase: 'done', phaseAt: 0, people: 0, total: 0, kinds: 0, top: [] };
 
 function onFear(msg) {
-  const wasStorm = fear.phase === 'storm';
+  const was = fear.phase;
   Object.assign(fear, { phase: msg.phase, phaseAt: msg.phaseAt, people: msg.people, total: msg.total, kinds: msg.kinds, top: msg.top ?? [] });
   setFearWords(msg.words);
-  if (msg.phase === 'storm' && !wasStorm) startStorm(fear.top, Math.max(0, (Date.now() + offset - msg.phaseAt) / 1000));
-  else if (msg.phase !== 'storm') endStorm();
+  const since = Math.max(0, (Date.now() + offset - msg.phaseAt) / 1000);
+  if (msg.phase === was) { /* chỉ là số đếm đổi: đoạn phim cứ chạy tiếp */ }
+  else if (msg.phase === 'storm') startStorm(fear.top, since);
+  else if (msg.phase === 'outro') startOutro(since);
+  else endStorm();
   $('fearPeople').textContent = String(fear.people);
   $('fearTotal').textContent = fear.total.toLocaleString('vi-VN');
   $('fearKinds').textContent = `điều · ${fear.kinds} nỗi sợ khác nhau`;
@@ -527,7 +532,8 @@ async function boot() {
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
     if (document.body.dataset.scene?.startsWith('fear')) {
-      fearFrame(dt, fear.phase === 'storm' ? (Date.now() + offset - fear.phaseAt) / 1000 : null);
+      const film = fear.phase === 'storm' || fear.phase === 'outro';
+      fearFrame(dt, film ? (Date.now() + offset - fear.phaseAt) / 1000 : null);
     } else {
       arenaFrame(dt, now / 1000);
     }

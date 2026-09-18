@@ -93,9 +93,17 @@ const FEAR_UI = {
   },
   storm: {
     state: 'đang triệu hồi',
-    note: 'Đoạn phim đang chạy trên máy chiếu (~15 giây). Xong là về phòng chờ của game.',
+    note: 'Đoạn phim đang chạy trên máy chiếu (~15 giây). Xong là máy chiếu dừng ở câu hỏi của cả buổi.',
     button: 'Đang chiếu…',
     action: null,
+  },
+  // Máy chiếu đứng yên ở đây cho tới khi MC bấm. Đừng bấm sớm: ngay sau nút này là phòng chờ của
+  // game, tức là đấu trường và mấy chục ụ súng — hội trường thấy trước là lộ mất đoạn cuối buổi.
+  outro: {
+    state: 'câu hỏi đọng lại',
+    note: 'Máy chiếu đang để Quái Vật và câu hỏi "Ta nên làm gì để chiến đấu với nỗi sợ đây?". Cứ để đó mà dẫn phần nội dung; cuối buổi mới bấm nút dưới để mở phòng chờ của game.',
+    button: 'Xong phần nội dung · mở phòng chờ game',
+    action: 'fear-done',
   },
   done: {
     state: 'chưa chạy',
@@ -697,6 +705,7 @@ function boot() {
     if (!fearAction) return;
     // Triệu hồi là đường một chiều giữa lúc đang diễn: hỏi lại một câu trước khi cả hội trường thấy.
     if (fearAction === 'fear-storm' && !confirm('Triệu hồi Quái Vật từ những nỗi sợ này? Bàn phím của hội trường sẽ đóng lại.')) return;
+    if (fearAction === 'fear-done' && !confirm('Mở phòng chờ của game lên máy chiếu? Hội trường sẽ thấy đấu trường và mã QR vào chơi.')) return;
     action(fearAction);
   });
   $('fearSkipBtn').addEventListener('click', () => confirm('Bỏ qua đoạn nỗi sợ, về thẳng phòng chờ của game?') && action('fear-skip'));
