@@ -7,6 +7,7 @@ import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, st
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
+import { finaleBeat } from './finale-scene.js';
 import { FINALE } from './finale-config.js';
 import { loadVictoryArt, drawVictoryFilm } from './victory-film.js';
 
@@ -224,6 +225,7 @@ function enterPhase(s, live) {
       if (live) banner('TÍCH NƯỚC — TAP TAP TAP!', 'warn');
       break;
     case 'unleash': {
+      $('unleash').removeAttribute('data-beat');
       renderCharge({ ...(s.charge || {}), taps: s.charge?.goal || 300, goal: s.charge?.goal || 300, full: true });
       const rect = $('chargeBottle').getBoundingClientRect();
       const stage = $('stage').getBoundingClientRect();
@@ -428,8 +430,13 @@ function tickHud() {
   const left = Math.max(0, s.endsAt - (Date.now() + offset)) / 1000;
   if (s.phase === 'unleash') {
     const t = phaseElapsed(s);
-    $('unleashWord').textContent = t < FINALE.throwAt ? 'BÌNH ĐẦY RỒI!' : t < FINALE.impactAt ? 'CÙNG NHAU… NÉM!' : t < FINALE.defeatAt ? 'TRÚNG RỒI!' : 'QUÁI VẬT ĐÃ BỊ HẠ GỤC!';
-    $('unleash').dataset.beat = t < FINALE.impactAt ? 'throw' : t < FINALE.defeatAt ? 'impact' : 'defeated';
+    const beat = finaleBeat(t);
+    if ($('unleash').dataset.beat !== beat.name) {
+      $('unleash').dataset.beat = beat.name;
+      $('unleashLabel').textContent = beat.label;
+      $('unleashWord').textContent = beat.title;
+      $('unleashSub').textContent = beat.sub;
+    }
   }
   if (s.phase === 'countdown') {
     const n = Math.max(1, Math.ceil(left));

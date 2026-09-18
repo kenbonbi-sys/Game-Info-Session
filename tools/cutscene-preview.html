@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="../">
+  <title>Cutscene preview · Buddy vs Quái Vật Dễ Sợ</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="src/pixel.css">
+  <link rel="stylesheet" href="src/screen.css">
+  <style>
+    body { display: flex; flex-direction: column; background: #050a10; }
+    .preview-toolbar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 62px; padding: 12px 20px; border-bottom: 1px solid #263747; background: #0d1823; font: 13px/1.4 var(--font-sans); }
+    .preview-toolbar > b { margin-right: 10px; font-size: 14px; color: #eaf4ff; }
+    .preview-toolbar button, .preview-toolbar select { min-height: 34px; padding: 6px 11px; border: 1px solid #405469; border-radius: 5px; color: #edf6ff; background: #192b3d; font: inherit; cursor: pointer; }
+    .preview-toolbar button:hover, .preview-toolbar select:hover { background: #24405a; }
+    .preview-toolbar button:disabled, .preview-toolbar select:disabled { opacity: .45; cursor: wait; }
+    .preview-toolbar :focus-visible { outline: 2px solid #91d9ff; outline-offset: 3px; }
+    .preview-timeline { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 190px; }
+    .preview-timeline input { width: 100%; min-width: 90px; accent-color: #86d9fb; }
+    .preview-timeline output { flex: none; width: 96px; color: #bdcee0; font-variant-numeric: tabular-nums; }
+    .preview-viewport { flex: 1; min-height: 0; position: relative; }
+    .preview-status { position: absolute; inset: 0; display: grid; place-items: center; padding: 32px; color: #b7cde0; text-align: center; }
+    .preview-toolbar .preview-meta { margin-left: auto; color: #7f99b1; }
+    @media (max-width: 700px) {
+      .preview-toolbar { padding: 10px; gap: 8px; }
+      .preview-toolbar > b, .preview-meta { display: none; }
+      .preview-timeline { flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body data-scene="boot">
+  <header class="preview-toolbar" aria-label="Điều khiển xem thử cutscene">
+    <b>CUTSCENE PREVIEW</b>
+    <select id="scene" aria-label="Chọn cutscene" disabled>
+      <option value="storm">Wordcloud → Quái Vật</option>
+      <option value="bottle">Bình nước → Boss</option>
+      <option value="outro">Quái Vật · Câu hỏi đọng lại</option>
+    </select>
+    <button id="play" type="button" disabled>Phát</button>
+    <button id="restart" type="button" disabled>Về đầu</button>
+    <label class="preview-timeline">
+      <input id="timeline" type="range" min="0" max="15" step="0.01" value="0" aria-label="Thời gian cutscene, giây" disabled>
+      <output id="time" for="timeline">0.00 / 15.00 s</output>
+    </label>
+    <span class="preview-meta">1920 × 1080 · production renderer</span>
+  </header>
+  <main id="viewport" class="preview-viewport">
+    <div id="stage" class="stage">
+      <canvas id="arena" class="arena" width="1920" height="1080" aria-label="Cutscene ném bình nước vào Quái Vật"></canvas>
+      <div class="scrim" aria-hidden="true"></div>
+      <canvas id="fearCanvas" class="fear-canvas" width="1920" height="1080" aria-label="Cutscene đám mây nỗi sợ biến thành Quái Vật"></canvas>
+      <div id="unleash" class="unleash-scene" aria-live="off">
+        <div class="unleash-chapter" aria-hidden="true"><span>ĐÒN KẾT LIỄU</span><i></i><span>CÙNG NHAU VƯỢT QUA NỖI SỢ</span></div>
+        <div class="unleash-caption">
+          <span id="unleashLabel" class="unleash-label"></span>
+          <b id="unleashWord" class="unleash-word"></b>
+          <span id="unleashSub" class="unleash-sub"></span>
+        </div>
+      </div>
+    </div>
+    <div id="status" class="preview-status" role="status">Đang tải hình ảnh và phông chữ…</div>
+  </main>
+  <script type="module">
+    import { ARENA, SEAT_ORDER } from './src/config.js';
+    import { FINALE } from './src/finale-config.js';
+    import { finaleBeat } from './src/finale-scene.js';
+    import { initFearCloud, resizeFearCloud, setFearWords, startStorm, startOutro, endStorm, fearFrame } from './src/fear-cloud.js';
+    import { initArena, resizeArena, setSeats, setArenaPhase, syncBoss, bossUnleash, arenaFrame } from './src/arena-view.js';
+
+    const $ = id => document.getElementById(id);
+    const sampleWords = [
+      ['Không biết bắt đầu từ đâu', 32], ['Người dùng im lặng', 26],
+      ['Sợ đặt câu hỏi sai và không hiểu điều người dùng thật sự cần', 22],
+      ['Thiếu thời gian', 20], ['Bị đánh giá', 18], ['Không đủ dữ liệu', 17],
+      ['Thiên kiến', 16], ['Chọn sai phương pháp', 14], ['Phỏng vấn', 13],
+      ['Hỏi câu dẫn dắt', 12], ['Không có insight', 12], ['Sếp không tin', 11],
+      ['Tuyển sai người', 10], ['Ngân sách', 10], ['Bị từ chối', 9],
+      ['Không ai trả lời', 9], ['Nói trước đám đông', 8], ['Deadline', 8],
+      ['Làm sai', 7], ['Không hiểu khách hàng', 7], ['Quá nhiều dữ liệu', 6],
+      ['Câu hỏi khó', 6], ['Quên ghi âm', 5], ['Phân tích', 5],
+      ['Bỏ sót chi tiết', 4], ['Ngại hỏi', 4], ['Im lặng', 3], ['Mất tự tin', 3],
+    ];
+    const topWords = sampleWords.slice(0, 3).map(([text, count]) => ({ text, count }));
+    const params = new URLSearchParams(location.search);
+    const normalizeScene = scene => ['bottle', 'outro'].includes(scene) ? scene : 'storm';
+    let selectedScene = normalizeScene(params.get('scene'));
+    let elapsed = 0;
+    let playing = false;
+    let previousFrame = 0;
+    let ready = false;
+    const duration = () => selectedScene === 'bottle' ? FINALE.unleashSeconds : selectedScene === 'outro' ? 8 : 15;
+    const clampTime = value => Math.max(0, Math.min(duration(), Number(value) || 0));
+
+    // Give fresh/reloaded screenshots the same cloud and particle choices without
+    // replacing the game's random function outside this isolated preview call.
+    function seededDraw(callback) {
+      const original = Math.random;
+      let seed = 20260918;
+      Math.random = () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+      try { return callback(); }
+      finally { Math.random = original; }
+    }
+
+    function resize() {
+      const rect = $('viewport').getBoundingClientRect();
+      const scale = Math.min(rect.width / ARENA.width, rect.height / ARENA.height);
+      $('stage').style.setProperty('--k', scale);
+      // Keep the actual frame at stage resolution for useful screenshot exports.
+      resizeFearCloud(1);
+      resizeArena(1);
+    }
+
+    function updateControls() {
+      $('scene').value = selectedScene;
+      $('timeline').max = duration();
+      $('timeline').value = elapsed;
+      $('time').value = `${elapsed.toFixed(2)} / ${duration().toFixed(2)} s`;
+      $('play').textContent = playing ? 'Tạm dừng' : 'Phát';
+      $('play').setAttribute('aria-pressed', String(playing));
+      $('unleash').hidden = selectedScene !== 'bottle';
+      if (selectedScene !== 'bottle') return;
+      const beat = finaleBeat(elapsed);
+      $('unleashLabel').textContent = beat.label;
+      $('unleashWord').textContent = beat.title;
+      $('unleashSub').textContent = beat.sub;
+      $('unleash').dataset.beat = beat.name;
+    }
+
+    function pause() {
+      playing = false;
+      updateControls();
+      return elapsed;
+    }
+
+    function seek(seconds, scene = selectedScene) {
+      if (!ready) throw new Error('Await cutscenePreview.ready before seeking.');
+      selectedScene = normalizeScene(scene);
+      elapsed = clampTime(seconds);
+      playing = false;
+      document.body.dataset.scene = selectedScene === 'bottle' ? 'unleash' : selectedScene === 'outro' ? 'fearoutro' : 'fearstorm';
+      seededDraw(() => {
+        if (selectedScene !== 'bottle') {
+          endStorm();
+          setFearWords(sampleWords);
+          fearFrame(3); // Let the sample cloud finish growing before its first frame.
+          if (selectedScene === 'outro') startOutro(elapsed);
+          else startStorm(topWords, elapsed);
+          fearFrame(0, elapsed);
+        } else {
+          setArenaPhase('lobby');
+          syncBoss(0, 100, true);
+          // A complete flight cycle clears transient effects without shifting the boss.
+          arenaFrame(ARENA.boss.flight.period, performance.now() / 1000);
+          syncBoss(85, 100, true);
+          setArenaPhase('unleash');
+          bossUnleash({ elapsed, from: { x: 562, y: 523, width: 252, height: 392 } });
+          arenaFrame(0, performance.now() / 1000);
+        }
+      });
+      updateControls();
+      return { scene: selectedScene, time: elapsed, duration: duration() };
+    }
+
+    function play() {
+      if (!ready) return;
+      // Refresh the absolute finale clock after any time spent paused.
+      seek(elapsed >= duration() ? 0 : elapsed);
+      playing = true;
+      previousFrame = performance.now();
+      updateControls();
+    }
+
+    $('scene').addEventListener('change', event => seek(0, event.target.value));
+    $('timeline').addEventListener('input', event => seek(event.target.value));
+    $('restart').addEventListener('click', () => seek(0));
+    $('play').addEventListener('click', () => playing ? pause() : play());
+    window.addEventListener('resize', resize);
+
+    const preview = window.cutscenePreview = {
+      seek, play, pause,
+      get scene() { return selectedScene; },
+      get time() { return elapsed; },
+      get duration() { return duration(); },
+      get playing() { return playing; },
+      timings: FINALE,
+      sampleWords,
+    };
+    preview.ready = (async () => {
+      await Promise.all([
+        document.fonts.load('800 72px "MoMo Trusts Display"'),
+        document.fonts.load('700 28px "MoMo Trusts Sans"'),
+        initFearCloud($('fearCanvas')),
+        initArena($('arena')),
+      ]);
+      await document.fonts.ready;
+      seededDraw(() => setSeats(SEAT_ORDER.slice(0, 36).map((slot, index) => [slot, index + 1, `Buddy ${index + 1}`])));
+      resize();
+      ready = true;
+      $('status').hidden = true;
+      for (const control of document.querySelectorAll('.preview-toolbar [disabled]')) control.disabled = false;
+      seek(params.get('t') || 0, selectedScene);
+      window.cutscenePreviewReady = true;
+      if (params.has('play')) play();
+      return preview;
+    })().catch(error => {
+      $('status').textContent = `Không tải được preview: ${error.message}`;
+      console.error(error);
+      throw error;
+    });
+
+    requestAnimationFrame(function frame(now) {
+      if (ready && playing) {
+        const delta = Math.max(0, (now - previousFrame) / 1000);
+        elapsed = Math.min(duration(), elapsed + delta);
+        if (selectedScene !== 'bottle') fearFrame(Math.min(delta, 0.05), elapsed);
+        else arenaFrame(Math.min(delta, 0.05), now / 1000);
+        if (elapsed >= duration()) playing = false;
+        updateControls();
+      }
+      previousFrame = now;
+      requestAnimationFrame(frame);
+    });
+  </script>
+</body>
+</html>

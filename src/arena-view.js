@@ -5,8 +5,8 @@ import { loadGridSheet, splitGridSheet } from './sprites.js';
 import { SPRITES, ARENA, REACTIONS } from './config.js';
 import { createArenaBackdrop, drawArenaAmbience } from './arena-scene.js';
 import { playShotSfx } from './audio.js';
-import { drawBottle } from './bottle.js';
 import { FINALE } from './finale-config.js';
+import { FINALE_BOSS, FINALE_TARGET, finaleCamera, drawFinaleBackdrop, drawFinaleAction, drawFinaleFrame } from './finale-scene.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -68,6 +68,7 @@ function barrelHinge(i) {
 
 // One pose keeps the sprite, shadow, speech and homing projectiles together as the boss flies.
 function bossPose() {
+  if (finale) return FINALE_BOSS;
   const B = ARENA.boss;
   const a = boss.flightT * Math.PI * 2 / B.flight.period;
   return { ...B, x: B.x + Math.sin(a) * B.flight.radiusX, feetY: B.feetY + Math.sin(a * 2) * B.flight.radiusY };
@@ -245,14 +246,14 @@ export function finisherVolley() {
 // The entire bottle flies on an arc. Absolute elapsed time keeps the hit and defeat
 // aligned with the server even after a background tab or a projector reconnect.
 export function bossUnleash({ elapsed = 0, from = { x: 500, y: 560, width: 260, height: 390 } } = {}) {
-  shots = []; bolts = []; hallQueue = 0;
+  shots = []; bolts = []; particles = []; texts = []; hallQueue = 0;
   for (const f of fx) f.queue = 0;
   boss.pending = [];
   boss.suffer = null;
-  finale = { start: performance.now() / 1000 - elapsed, elapsed, from, target: bossTarget(), hp: Math.max(boss.hp, boss.max * 0.15), hit: elapsed >= FINALE.impactAt, defeated: elapsed >= FINALE.defeatAt, nextSplash: elapsed };
+  finale = { start: performance.now() / 1000 - elapsed, elapsed, from, target: FINALE_TARGET, hp: Math.max(boss.hp, boss.max * 0.15), hit: elapsed >= FINALE.impactAt, defeated: elapsed >= FINALE.defeatAt, nextSplash: elapsed };
+  boss.bubble = null;
   if (elapsed >= FINALE.defeatAt) Object.assign(boss, { hp: 0, dead: true, deadT: elapsed - FINALE.defeatAt, bubble: null });
   else Object.assign(boss, { dead: false, deadT: 0, hp: finale.hp });
-  if (elapsed < FINALE.impactAt) say('Khoan… cái bình đó?!', FINALE.impactAt - elapsed);
 }
 
 export function bossHealth() {
@@ -479,17 +480,17 @@ function drawBoss(t) {
   const sinceHit = finale ? finale.elapsed - FINALE.impactAt : -1;
   const suffering = sinceHit >= 0 && !boss.dead;
   if (suffering) {
-    const motion = REDUCED_MOTION.matches ? 0.15 : 1;
+    const motion = REDUCED_MOTION.matches ? 0 : 1;
     ctx.translate(B.x, B.feetY - B.height * 0.5);
     ctx.rotate(Math.sin(sinceHit * 19) * 0.085 * motion);
-    ctx.translate(-B.x + Math.sin(sinceHit * 65) * 7 * motion, -(B.feetY - B.height * 0.5) - Math.sin(Math.min(1, sinceHit / 0.6) * Math.PI) * 30);
+    ctx.translate(-B.x + Math.sin(sinceHit * 65) * 7 * motion, -(B.feetY - B.height * 0.5) - Math.sin(Math.min(1, sinceHit / 0.6) * Math.PI) * 30 * motion);
   }
   if (!(boss.dead && boss.deadT > 1.6)) {
     const f = frames[bossFrame()];
-    if (boss.dead) ctx.globalAlpha = Math.max(0, 1 - boss.deadT / 1.6) * (Math.floor(t * 20) % 2 ? 1 : 0.4);
+    if (boss.dead) ctx.globalAlpha = Math.max(0, 1 - boss.deadT / 1.6);
     ellipse(B.x, B.feetY + 12, B.height * 0.31, B.height * 0.065, 'rgba(7, 13, 26, 0.32)');
     ctx.imageSmoothingEnabled = false;
-    const hitImage = suffering && Math.floor(sinceHit * 7) % 2 === 0 ? bossSheet.hurtImage : bossSheet.image;
+    const hitImage = suffering && !REDUCED_MOTION.matches && sinceHit < .18 ? bossSheet.hurtImage : bossSheet.image;
     const fall = boss.dead ? Math.min(1, boss.deadT / 1.6) : 0;
     ctx.drawImage(hitImage || bossSheet.image, f.x, f.y, f.w, f.h, B.x - pivot.x * k, B.feetY - pivot.y * k + fall * 90, f.w * k, f.h * k * (1 - fall * 0.3));
     ctx.globalAlpha = 1;
@@ -505,49 +506,6 @@ function drawBoss(t) {
     }
   }
   ctx.restore();
-}
-
-function drawFinale() {
-  if (!finale) return;
-  const { elapsed: t, from, target } = finale;
-  if (t < FINALE.impactAt) {
-    const p = clamp((t - FINALE.throwAt) / (FINALE.impactAt - FINALE.throwAt), 0, 1);
-    const size = 1 - p * 0.48;
-    const x = from.x + (target.x - from.x) * p;
-    const y = from.y + (target.y - from.y) * p - Math.sin(p * Math.PI) * 215;
-    if (p > 0) {
-      // Discrete droplets describe the trajectory without turning it into a beam.
-      for (let i = 1; i <= 8; i++) {
-        const q = Math.max(0, p - i * 0.023);
-        ctx.globalAlpha = (1 - i / 9) * 0.55;
-        ellipse(from.x + (target.x - from.x) * q, from.y + (target.y - from.y) * q - Math.sin(q * Math.PI) * 215, 5 + (8 - i), 3 + (8 - i) * 0.5, '#9beaff');
-      }
-      ctx.globalAlpha = 1;
-    }
-    const windup = t < FINALE.throwAt ? -Math.sin(t / FINALE.throwAt * Math.PI) * 0.15 : 0;
-    const spin = REDUCED_MOTION.matches ? p * -0.3 : p * Math.PI * 2;
-    drawBottle(ctx, x - from.width * size / 2, y - from.height * size / 2, from.width * size, from.height * size, 1, spin + windup);
-  }
-  const since = t - FINALE.impactAt;
-  if (since >= 0 && since < 1.2) {
-    const u = since / 1.2;
-    ctx.save();
-    ctx.globalAlpha = (1 - u) * 0.85;
-    ctx.strokeStyle = '#bcf3ff';
-    ctx.lineWidth = 14 * (1 - u) + 1;
-    ctx.beginPath();
-    ctx.ellipse(target.x, target.y, 50 + u * 310, 35 + u * 180, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-  // The now-empty bottle tumbles out of the splash and off the stage.
-  if (since >= 0 && since < 1.3) {
-    const p = since / 1.3;
-    ctx.save();
-    ctx.globalAlpha = 1 - p;
-    drawBottle(ctx, target.x - 60 + p * 200, target.y - 100 + p * p * 380, 115, 175, 0, 1.5 + p * 4);
-    ctx.restore();
-  }
 }
 
 // Soft floor lighting, cached per colour. Its footprint extends beyond the opaque cannon base.
@@ -810,6 +768,25 @@ function render(t) {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.imageSmoothingEnabled = false;
   if (mapImage) ctx.drawImage(mapImage, 0, 0, ARENA.width, ARENA.height);
+  if (finale) {
+    const elapsed = finale.elapsed;
+    const reduced = REDUCED_MOTION.matches;
+    const camera = finaleCamera(elapsed, reduced);
+    ctx.save();
+    ctx.translate(ARENA.width / 2, ARENA.height / 2);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
+    drawFinaleBackdrop(ctx, elapsed, finale.from, reduced);
+    ctx.save();
+    // The boss waits in shadow until the bottle leaves its spotlight.
+    ctx.globalAlpha = .28 + .72 * clamp((elapsed - FINALE.throwAt + .45) / .8, 0, 1);
+    drawBoss(t);
+    ctx.restore();
+    drawFinaleAction(ctx, elapsed, finale.from, reduced);
+    ctx.restore();
+    drawFinaleFrame(ctx, elapsed);
+    return;
+  }
   drawArenaAmbience(ctx, t, { reducedMotion: REDUCED_MOTION.matches });
   drawBoss(t);
   // Slots run row by row from the boss outward, which is already back-to-front.
@@ -844,7 +821,6 @@ function render(t) {
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
   }
   ctx.globalAlpha = 1;
-  drawFinale();
   for (const tx of texts) {
     ctx.globalAlpha = Math.min(1, tx.life / 0.3);
     if (/^[-+\d\s]+$/.test(tx.text)) drawPixelText(tx.text, tx.x, tx.y, tx.color, 18);
