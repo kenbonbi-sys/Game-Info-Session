@@ -6,6 +6,33 @@ Game quiz đánh boss cho event. Laptop của admin xuất **hai màn hình**: m
 - **Màn game (`/screen`, máy chiếu):** không có nút nào. Thiết kế cố định **1920 × 1080**, tự co giãn vừa mọi màn hình (dư thì viền đen). Đấu trường ngang: Quái Vật Dễ Sợ bay trên lò phản ứng ở trên, bên dưới là **108 ụ súng** (6 hàng × 3 dãy, mỗi dãy 6 ụ, có 2 lối đi). Mỗi ụ có bảng tên người chơi. Nền pixel vẽ một lần trong [src/arena-scene.js](src/arena-scene.js); toạ độ ụ, lối đi, boss nằm trong `ARENA` ở [src/config.js](src/config.js).
 - **Điện thoại (`/`):** nhập tên là có ngay một ụ (xếp từ giữa các hàng gần boss ra ngoài). Khi có câu hỏi, điện thoại chỉ hiện **4 ô màu + hình (A ▲ đỏ, B ◆ xanh dương, C ● vàng, D ■ xanh lá)**, không có chữ; câu hỏi và nội dung đáp án đọc trên màn hình lớn. Tối đa 108 người có ụ; người thứ 109 trở đi vẫn chơi, có điểm và bắn từ chân lối đi.
 
+## Mở màn: Quái Vật được sinh ra từ đâu
+
+Game đánh boss nằm cuối buổi. Đoạn này chạy ngay **đầu chương trình**, cách đó cả tiếng, và là chỗ
+con boss có nguồn gốc: cả hội trường gõ điều mình sợ khi làm nghiên cứu, chữ hiện lên máy chiếu
+thành đám mây, rồi MC bấm một nút để đám mây xoáy lại thành Quái Vật. Tới cuối buổi, thứ mọi người
+cùng bắn không còn là một con quái vật vô danh — nó là nỗi sợ của chính họ.
+
+Điều khiển nằm ở thẻ **Mở màn · Nỗi sợ** trên `/host`, một nút cho mỗi bước:
+
+| Bước | MC bấm | Máy chiếu | Điện thoại (`/fear`) |
+|---|---|---|---|
+| 1 | ▶ Bắt đầu đoạn mở màn | QR to giữa màn hình | — |
+| 2 | Mở bàn phím cho hội trường | Đám mây chữ, QR lùi xuống thanh dưới | Ô gõ, gửi bao nhiêu lần cũng được |
+| 3 | 🌪️ Triệu hồi Quái Vật | Đoạn phim 15 giây | "Nhìn lên màn hình lớn!" |
+| — | (tự động sau 15s) | Về phòng chờ của game | — |
+
+Đoạn phim: chữ bị hút vào một xoáy khói → **3 nỗi sợ nhiều người gõ nhất** bay vào thật to kèm số
+người đã gõ → bị nuốt nốt → Quái Vật bước ra, nói *"TA LÀ NỖI SỢ CỦA CÁC NGƯƠI!"*, cười, rồi bay đi.
+
+- **QR của đoạn này khác QR vào game**: `…/fear` là bàn phím, `…/` là tay cầm. Cùng một server.
+- Máy chiếu mở muộn hay reload giữa đoạn phim vẫn **nhảy vào đúng khúc** chứ không chiếu lại từ đầu.
+- Chữ gõ giống nhau được gom về một (`Sợ sai`, `sợ sai!`, `Sợ  sai` là một), giữ chữ người gõ đầu tiên.
+- Mặc định đoạn này **tắt**: server khởi động lại giữa buổi (gói free ngủ dậy) thì máy chiếu về
+  phòng chờ của game, không nhảy ngược về màn mở đầu đã diễn xong.
+- Chữ nằm trong RAM. Server ngủ dậy là mất — không sao, vì lúc đó đoạn này đã chạy xong rồi.
+- **Bỏ qua đoạn này** để về thẳng phòng chờ, **Xoá hết chữ** để tập lại từ đầu.
+
 ## Luồng mỗi câu
 
 1. **Câu hỏi** (15s): màn chiếu hiện câu hỏi, 4 đáp án màu, đồng hồ và số người đã trả lời. Mọi người chọn trên điện thoại. **Chưa ai biết đúng sai**: điện thoại chỉ báo "Đã chọn". Khi mọi người đang kết nối đều đã chọn, câu hỏi đóng sau 1,5 giây.
@@ -202,6 +229,8 @@ data/questions.json  bộ câu hỏi + đáp án
 host.html            bảng điều khiển admin (màn laptop) → src/host.js, src/host.css
 screen.html          màn game 1920×1080 (máy chiếu)    → src/screen.js, src/screen.css
 index.html           tay cầm điện thoại                → src/play.js, src/play.css
+fear.html            bàn phím gõ nỗi sợ (mở màn)       → src/fear.js, src/fear.css
+src/fear-cloud.js    đám mây chữ + đoạn phim triệu hồi Quái Vật (vẽ trên máy chiếu)
 sandbox.html         bản swarm cũ         → src/main.js
 src/arena-view.js    vẽ đấu trường trên máy chiếu: ụ súng, bảng tên, boss, đạn, phản đòn
 src/arena-scene.js   nền pixel của đấu trường, vẽ Canvas một lần

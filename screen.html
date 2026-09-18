@@ -15,6 +15,22 @@
     <canvas id="arena" class="arena" aria-label="Đấu trường: mỗi ụ súng mang tên một người chơi, Quái Vật Dễ Sợ bay phía trên"></canvas>
     <div class="scrim" aria-hidden="true"></div>
 
+    <!-- Mở màn chương trình: nỗi sợ cả hội trường gõ vào, rồi xoáy lại thành Quái Vật. -->
+    <canvas id="fearCanvas" class="fear-canvas" aria-label="Đám mây nỗi sợ của cả hội trường"></canvas>
+    <section id="fearJoin" class="fear-join" aria-labelledby="fearJoinTitle">
+      <span class="eyebrow">TRƯỚC KHI BẮT ĐẦU</span>
+      <h1 id="fearJoinTitle">Điều gì làm bạn <em>sợ</em><span>khi làm nghiên cứu người dùng?</span></h1>
+      <div id="fearQr" class="qr">Đang tạo QR…</div>
+      <div id="fearUrl" class="join-url"></div>
+      <p class="lobby-note">Quét mã, rồi chờ MC mở bàn phím · Gõ bao nhiêu lần cũng được</p>
+      <div class="lobby-count"><b id="fearPeople">0</b><span>người đã sẵn sàng</span></div>
+    </section>
+    <div id="fearBar" class="fear-bar">
+      <div class="fear-bar-q"><b>Điều gì làm bạn sợ khi làm nghiên cứu?</b><span>Gõ trên điện thoại — bao nhiêu lần cũng được</span></div>
+      <div id="fearMiniQr" class="fear-mini-qr" aria-hidden="true"></div>
+      <div class="fear-bar-count"><b id="fearTotal">0</b><span id="fearKinds">nỗi sợ</span></div>
+    </div>
+
     <header class="hud">
       <img class="hud-lockup" src="assets/source/learning-hub-x-research-lab.png" alt="Learning Hub x Research Lab" width="900" height="104">
       <div class="hud-boss">

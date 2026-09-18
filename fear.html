@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101e31">
+  <title>Nỗi sợ của bạn · Buddy vs Quái Vật Dễ Sợ</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😨</text></svg>">
+  <link rel="stylesheet" href="src/pixel.css">
+  <link rel="stylesheet" href="src/play.css">
+  <link rel="stylesheet" href="src/fear.css">
+</head>
+<body data-phase="connecting">
+  <!-- Mở màn chương trình: điện thoại là bàn phím, chữ mọi người gõ hiện trên màn chiếu. -->
+  <div class="pad fear-pad">
+    <header class="pad-top">
+      <div class="pad-who"><b>Nỗi sợ của bạn</b><span id="crowd">Đang kết nối…</span></div>
+      <div class="pad-score"><b id="mineCount">0</b><span>bạn đã gửi</span></div>
+    </header>
+
+    <main class="pad-main fear-main">
+      <section id="waitView" class="wait-card" aria-live="polite">
+        <div class="fear-eye" aria-hidden="true">👀</div>
+        <h1 id="waitTitle">Chờ MC một chút…</h1>
+        <p id="waitText">Lát nữa bạn sẽ gõ điều làm mình sợ nhất khi làm nghiên cứu người dùng.</p>
+      </section>
+
+      <section id="typeView" class="fear-type" hidden>
+        <h1 class="fear-q">Điều gì làm bạn <em>sợ</em> khi làm nghiên cứu?</h1>
+        <form id="fearForm" class="fear-form">
+          <input id="fearInput" name="fear" maxlength="32" placeholder="Ví dụ: sợ hỏi sai câu"
+                 autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-describedby="fearHint fearError" required>
+          <button id="fearSend" type="submit" class="cta-ledge">Gửi lên màn chiếu</button>
+        </form>
+        <p id="fearHint" class="fear-hint">Gõ ngắn thôi — vài chữ là đủ. Gửi được bao nhiêu lần tuỳ bạn.</p>
+        <p id="fearError" class="error" role="alert"></p>
+        <ul id="mine" class="fear-mine" aria-label="Những điều bạn đã gửi"></ul>
+      </section>
+
+      <section id="stormView" class="wait-card" hidden aria-live="polite">
+        <div class="fear-eye storm" aria-hidden="true">🌪️</div>
+        <h1>Nhìn lên màn hình lớn!</h1>
+        <p>Nỗi sợ của cả hội trường đang tụ lại thành một thứ gì đó…</p>
+      </section>
+    </main>
+  </div>
+
+  <div id="banner" class="px tier-card" role="status"></div>
+  <div id="conn" class="px tier-card" role="status" hidden>Mất kết nối, đang thử lại…</div>
+
+  <script type="module" src="src/fear.js"></script>
+</body>
+</html>

@@ -28,6 +28,23 @@
     <nav id="timeline" class="timeline" aria-label="Tiến trình câu hỏi"></nav>
 
     <section class="col col-left">
+      <!-- Đoạn mở màn, chạy trước game cả tiếng: hội trường gõ nỗi sợ, MC triệu hồi Quái Vật từ đó. -->
+      <article id="fearCard" class="card fear-card">
+        <h2>Mở màn · Nỗi sợ <span id="fearState" class="fear-state">chờ quét mã</span></h2>
+        <p id="fearNote" class="fear-note">Máy chiếu đang hiện mã QR. Chờ mọi người quét xong rồi bấm mở bàn phím.</p>
+        <div class="fear-nums">
+          <div><b id="fearPeopleNum">0</b><span>đã quét mã</span></div>
+          <div><b id="fearTotalNum">0</b><span>lượt gõ</span></div>
+          <div><b id="fearKindsNum">0</b><span>nỗi sợ khác nhau</span></div>
+        </div>
+        <button id="fearBtn" type="button" class="btn-primary">Mở bàn phím cho hội trường</button>
+        <ol id="fearTop" class="fear-top" aria-label="Nỗi sợ nhiều người gõ nhất"></ol>
+        <div class="ctrl-row">
+          <button id="fearSkipBtn" type="button" class="btn">Bỏ qua đoạn này</button>
+          <button id="fearResetBtn" type="button" class="btn danger">Xoá hết chữ</button>
+        </div>
+      </article>
+
       <article class="card control">
         <span id="ctrlEyebrow" class="eyebrow">BƯỚC HIỆN TẠI</span>
         <h1 id="ctrlTitle">Phòng chờ</h1>

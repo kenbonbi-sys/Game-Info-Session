@@ -32,7 +32,7 @@ const TYPES = {
   '.mp4': 'video/mp4',
   '.md': 'text/markdown; charset=utf-8',
 };
-const ROUTES = { '/': '/index.html', '/host': '/host.html', '/screen': '/screen.html', '/sandbox': '/sandbox.html' };
+const ROUTES = { '/': '/index.html', '/host': '/host.html', '/screen': '/screen.html', '/fear': '/fear.html', '/sandbox': '/sandbox.html' };
 // Never serve the answer key or server internals.
 const PRIVATE = /^\/(data|\.claude|node_modules)(\/|$)|^\/server\.js$/i;
 
@@ -264,6 +264,7 @@ const playerStreams = new Map();    // pid → Set<res>
 const screenStreams = new Set();    // projector windows
 const previewStreams = new Set();   // the dashboard's embedded preview: same feed, not counted as a projector
 const adminStreams = new Set();     // MC dashboards
+const fearStreams = new Set();      // điện thoại ở đoạn gõ nỗi sợ, mở màn chương trình
 const activity = [];                // dashboard feed, newest last
 let nextPlayerNo = 1;
 
@@ -346,6 +347,116 @@ function react(p, icon) {
   }
   reactTimer ??= setTimeout(flushReactions, REACT_FLUSH_MS);
   return [200, { ok: true }];
+}
+
+// ---- Nỗi sợ: word cloud mở màn chương trình --------------------------------------
+// Game đánh boss nằm cuối buổi, cách đoạn này cả tiếng đồng hồ. Đây là chỗ con boss được sinh ra:
+// cả hội trường gõ điều mình sợ khi làm nghiên cứu, chữ hiện lên màn chiếu thành đám mây, rồi MC
+// bấm một nút để đám mây xoáy lại thành Quái Vật. Tới cuối buổi, thứ họ bắn là chính nỗi sợ đó.
+const FEAR_MAX_LEN = 32;
+const FEAR_MAX_WORDS = 400;     // đủ cho một hội trường; chặn người rảnh tay làm màn chiếu ì ra
+const FEAR_EVERY_MS = 600;      // giữa hai lần gửi của cùng một máy: chặn spam, không chặn người gõ nhanh
+const FEAR_FLUSH_MS = 600;      // gom lại rồi mới đẩy, như icon phòng chờ
+const STORM_SECONDS = 15;       // dài bằng đoạn phim triệu hồi ở src/fear-cloud.js
+// Hội trường im ru mà MC vẫn bấm triệu hồi thì vẫn phải có cái để chiếu.
+const FEAR_FALLBACK = ['Sợ làm sai', 'Sợ bị đánh giá', 'Sợ không kịp deadline'];
+
+const fear = {
+  // done → wait (đang quét mã) → open (gõ) → storm (triệu hồi) → done.
+  // Mặc định là 'done', không phải 'wait': gói hosting miễn phí ngủ dậy là dựng lại từ đầu, mà
+  // game nằm cuối buổi — máy chiếu bật lên phải là phòng chờ của game, không phải màn mở đầu đã
+  // diễn xong từ một tiếng trước. MC bấm một nút để mở đoạn này.
+  phase: 'done',
+  phaseAt: Date.now(),
+  words: new Map(),       // khoá đã chuẩn hoá → { text, count, at }
+  people: new Map(),      // pid → { at, n }
+  top: [],
+  timer: null,
+  dirty: false,
+  flush: null,
+};
+
+// Gom "Sợ sai", "sợ sai!", "Sợ  sai" về một từ, nhưng giữ nguyên chữ người đầu tiên gõ để chiếu lên.
+function normFear(raw) {
+  const text = String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, FEAR_MAX_LEN);
+  const key = text.toLowerCase().replace(/[.,!?;:"'`~()[\]{}]/g, '').replace(/\s+/g, ' ').trim();
+  return key ? { key, text } : null;
+}
+
+function fearWordList() {
+  return [...fear.words.values()].sort((a, b) => b.count - a.count || a.at - b.at).map(w => [w.text, w.count]);
+}
+
+function fearMessage(role) {
+  const total = [...fear.words.values()].reduce((a, w) => a + w.count, 0);
+  const msg = {
+    type: 'fear',
+    phase: fear.phase,
+    phaseAt: fear.phaseAt,
+    now: Date.now(),
+    people: fear.people.size,
+    total,
+    kinds: fear.words.size,
+    top: fear.top,
+  };
+  // Điện thoại không cần cả đám mây: chữ nằm trên màn chiếu, máy chỉ là bàn phím.
+  if (role !== 'player') msg.words = fearWordList();
+  return msg;
+}
+
+function broadcastFear() {
+  fear.dirty = false;
+  broadcastScreens(fearMessage('screen'));
+  broadcastAdmins(fearMessage('admin'));
+  const forPhones = fearMessage('player');
+  for (const res of fearStreams) send(res, forPhones);
+}
+
+// Cả trăm người gõ cùng lúc: dồn lại nửa giây một lần thay vì vẽ lại đám mây sau mỗi chữ.
+function fearChanged() {
+  fear.dirty = true;
+  fear.flush ??= setTimeout(() => {
+    fear.flush = null;
+    if (fear.dirty) broadcastFear();
+  }, FEAR_FLUSH_MS);
+}
+
+function setFearPhase(next) {
+  fear.phase = next;
+  fear.phaseAt = Date.now();
+  clearTimeout(fear.timer);
+  fear.timer = null;
+  if (next === 'storm') {
+    const list = [...fear.words.values()].sort((a, b) => b.count - a.count || a.at - b.at);
+    fear.top = (list.length ? list.slice(0, 3) : FEAR_FALLBACK.map(text => ({ text, count: 0 })))
+      .map(w => ({ text: w.text, count: w.count }));
+    fear.timer = setTimeout(() => setFearPhase('done'), STORM_SECONDS * 1000);
+  }
+  broadcastFear();
+}
+
+function fearJoin() {
+  const pid = randomUUID();
+  fear.people.set(pid, { at: 0, n: fear.people.size + 1 });
+  fearChanged();
+  return [200, { pid, phase: fear.phase }];
+}
+
+function addFear(pid, raw) {
+  const person = fear.people.get(pid);
+  if (!person) return [404, { error: 'Chưa vào phòng, hãy quét lại mã' }];
+  if (fear.phase !== 'open') return [409, { error: 'Chưa tới lượt gõ, nhìn màn hình lớn nhé' }];
+  const w = normFear(raw);
+  if (!w) return [400, { error: 'Gõ một điều làm bạn sợ nhé' }];
+  const now = Date.now();
+  if (now - person.at < FEAR_EVERY_MS) return [429, { error: 'Từ từ thôi nào!' }];
+  person.at = now;
+  const hit = fear.words.get(w.key);
+  if (hit) hit.count++;
+  else if (fear.words.size < FEAR_MAX_WORDS) fear.words.set(w.key, { text: w.text, count: 1, at: now });
+  else return [200, { ok: true, text: w.text, full: true }];
+  fearChanged();
+  return [200, { ok: true, text: hit?.text ?? w.text }];
 }
 
 const isOnline = p => (playerStreams.get(p.pid)?.size ?? 0) > 0;
@@ -793,6 +904,35 @@ function endFire() {
 
 function hostAction(action) {
   switch (action) {
+    // Đoạn mở màn: mở bàn phím cho hội trường, rồi triệu hồi con boss từ chính những chữ đó.
+    case 'fear-wait':
+      setFearPhase('wait');
+      logEvent('Mở màn: máy chiếu hiện mã QR cho hội trường quét', 'phase');
+      return true;
+    case 'fear-open':
+      if (fear.phase !== 'storm') {
+        setFearPhase('open');
+        logEvent('Mở cho hội trường gõ nỗi sợ', 'phase');
+      }
+      return true;
+    case 'fear-storm':
+      if (fear.phase === 'open' || fear.phase === 'wait') {
+        setFearPhase('storm');
+        const names = fear.top.map(w => w.text).join(' · ');
+        logEvent(fear.words.size ? `Triệu hồi Quái Vật từ ${fear.words.size} nỗi sợ — top 3: ${names}` : `Chưa ai gõ, triệu hồi bằng nỗi sợ mặc định: ${names}`, fear.words.size ? 'phase' : 'warn');
+      }
+      return true;
+    case 'fear-reset':
+      fear.words.clear();
+      fear.people.clear();
+      fear.top = [];
+      setFearPhase('wait');
+      logEvent('Xoá sạch nỗi sợ, về lại màn quét mã', 'warn');
+      return true;
+    case 'fear-skip':
+      setFearPhase('done');
+      logEvent('Bỏ qua đoạn nỗi sợ', 'info');
+      return true;
     case 'start':
       if (game.phase === 'lobby' || game.phase === 'end') startGame();
       return true;
@@ -986,6 +1126,7 @@ function openHostStream(req, res, view) {
     });
     send(res, stateFor('screen'));
     send(res, seatsMessage());
+    send(res, fearMessage('screen'));
     // A projector reloaded mid-round lights up this round's shooters again, without replaying the hits.
     if (game.phase === 'fire') send(res, attackMessage(true));
     if (projector) {
@@ -997,11 +1138,24 @@ function openHostStream(req, res, view) {
   openStream(req, res, adminStreams);
   send(res, stateFor('admin'));
   send(res, roundMessage());
+  send(res, fearMessage('admin'));
   send(res, { type: 'logs', entries: activity });
 }
 
 async function handleApi(req, res, url, path) {
   if (path === '/api/join' && req.method === 'POST') return json(res, ...joinPlayer(await readJson(req)));
+
+  // Đoạn mở màn có đường riêng: nó chạy trước game cả tiếng, không dính gì tới ụ súng hay điểm.
+  if (path === '/api/fear/join' && req.method === 'POST') return json(res, ...fearJoin());
+  if (path === '/api/fear/word' && req.method === 'POST') {
+    const body = await readJson(req);
+    return json(res, ...addFear(body.pid, body.text));
+  }
+  if (path === '/api/fear/events') {
+    openStream(req, res, fearStreams);
+    send(res, fearMessage('player'));
+    return;
+  }
 
   const playerRoutes = { '/api/answer': 'answer', '/api/tap': 'tap', '/api/item': 'item', '/api/react': 'react' };
   if (playerRoutes[path] && req.method === 'POST') {

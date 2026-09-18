@@ -28,6 +28,45 @@ body[data-scene="final"] .question-scene, body[data-scene="finalreveal"] .questi
 body[data-scene="fire"] .fire-hud,
 body[data-scene="charge"] .charge-scene,
 body[data-scene="end"] .end-scene { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+
+/* ---- Mở màn: nỗi sợ của cả hội trường -------------------------------------------- */
+/* Đoạn này chiếm trọn màn chiếu: đấu trường và thanh máu boss chưa có nghĩa gì ở đây, và cái
+   đáng nhìn là chữ của chính khán giả đang mọc lên. */
+.fear-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; visibility: hidden; }
+.fear-join, .fear-bar { position: absolute; z-index: 3; visibility: hidden; opacity: 0; transition: opacity 340ms ease, visibility 340ms; }
+body[data-scene^="fear"] .arena, body[data-scene^="fear"] .hud { visibility: hidden; }
+body[data-scene^="fear"] .scrim { opacity: 1; }
+body[data-scene^="fear"] .stage { background: radial-gradient(ellipse at 50% 42%, #14243a 0%, #060c15 68%); }
+body[data-scene^="fear"] .fear-canvas { visibility: visible; }
+body[data-scene="fearjoin"] .fear-join,
+body[data-scene="fearcloud"] .fear-bar { visibility: visible; opacity: 1; }
+
+.fear-join {
+  top: 50%; left: 50%; translate: -50% -50%;
+  display: grid; justify-items: center; gap: 22px; width: min(1180px, 88vw); padding: 52px 64px 58px;
+  border: 3px solid #3d5065; border-radius: 22px 6px; background: #0d1c2ef2;
+  text-align: center; box-shadow: 0 30px 90px #02080ecc;
+}
+.fear-join h1 { margin: 0; color: #fff; font: 800 62px/1.14 var(--font-disp); text-wrap: balance; }
+.fear-join h1 em { font-style: normal; color: var(--ui-orange); }
+.fear-join h1 span { display: block; font-size: 46px; }
+.fear-join .qr { background: #fff; padding: 14px; border-radius: 12px 4px; }
+.fear-join .qr svg { display: block; width: 280px; height: 280px; }
+
+/* Lúc hội trường đang gõ, câu hỏi và mã lùi xuống một thanh mỏng để chữ có chỗ mọc. */
+.fear-bar {
+  right: 40px; bottom: 34px; left: 40px;
+  display: flex; align-items: center; gap: 26px; padding: 16px 26px;
+  border: 2px solid #3d5065; border-radius: 14px 4px; background: #0b1a2bf0;
+}
+.fear-bar-q { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.fear-bar-q b { color: #fff; font: 800 32px/1.2 var(--font-disp); }
+.fear-bar-q span { color: #9fb3c7; font: 600 19px var(--font-sans); }
+.fear-mini-qr { flex: none; width: 104px; height: 104px; padding: 7px; background: #fff; border-radius: 8px 3px; }
+.fear-mini-qr svg { display: block; width: 100%; height: 100%; }
+.fear-bar-count { flex: none; display: grid; justify-items: end; text-align: right; }
+.fear-bar-count b { color: var(--ui-orange); font: 52px/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
+.fear-bar-count span { color: #9fb3c7; font: 600 17px var(--font-sans); }
 /* The fun question shows its tally the same way a real reveal does. */
 body[data-scene="finalreveal"] .opt-count { display: block; }
 body[data-scene="finalreveal"] .opt:not(.correct) { opacity: .34; filter: saturate(.55); transform: scale(.975); }

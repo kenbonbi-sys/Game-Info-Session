@@ -3,6 +3,7 @@
 // drives the game from the dashboard at /host, which also embeds this page as a preview (?preview=1).
 import { ANSWERS, ARENA, shapeSvg } from './config.js';
 import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossUnleash, bossHealth } from './arena-view.js';
+import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, endStorm } from './fear-cloud.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
@@ -29,6 +30,7 @@ key ??= prompt('Nhập host key (in trong terminal khi chạy server):') ?? '';
 
 let state = null;
 let offset = 0;
+let fearQrUrl = '';
 let seatsTaken = 0;
 let builtIndex = -1;
 let lastCount = -1;
@@ -130,6 +132,9 @@ function onMessage(msg) {
       return;
     case 'charge':
       renderCharge(msg);
+      return;
+    case 'fear':
+      onFear(msg);
       return;
   }
 }
@@ -292,9 +297,8 @@ function renderTop(list) {
   return ol;
 }
 
-function renderQr(url) {
-  const box = $('qr');
-  if (box.dataset.url === url) return;
+function renderQrInto(box, url, cellSize = 8) {
+  if (!box || box.dataset.url === url) return;
   box.dataset.url = url;
   if (!window.qrcode) {
     box.textContent = 'Không tải được QR (thiếu internet), đọc link bên dưới';
@@ -303,16 +307,21 @@ function renderQr(url) {
   const qr = window.qrcode(0, 'M');
   qr.addData(url);
   qr.make();
-  box.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+  box.innerHTML = qr.createSvgTag({ cellSize, margin: 2, scalable: true });
 }
 
 // The dashboard picks which join link the projector advertises.
 function renderLobby(s) {
   const urls = s.joinUrls?.length ? s.joinUrls : [s.joinUrl];
   const url = urls.includes(s.joinUrl) ? s.joinUrl : urls[0];
-  renderQr(url);
+  renderQrInto($('qr'), url);
   $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
   $('lobbyCount').textContent = s.players;
+  // Đoạn mở màn có mã riêng: cùng máy chủ, khác đường — /fear là bàn phím, / là tay cầm.
+  fearQrUrl = `${url.replace(/\/+$/, '')}/fear`;
+  renderQrInto($('fearQr'), fearQrUrl, 8);
+  renderQrInto($('fearMiniQr'), fearQrUrl, 3);
+  $('fearUrl').textContent = fearQrUrl.replace(/^https?:\/\//, '');
 }
 
 function renderSeatCount() {
@@ -359,8 +368,28 @@ function bump(el) {
 }
 
 function sceneFor(s) {
+  // Đoạn mở màn chiếm trọn màn chiếu cho tới khi Quái Vật bay đi; game phía sau vẫn ở phòng chờ.
+  if (fear.phase === 'wait') return 'fearjoin';
+  if (fear.phase === 'open') return 'fearcloud';
+  if (fear.phase === 'storm') return 'fearstorm';
   if (s.phase === 'end' && victoryPlayback.active && !victoryPlayback.complete) return 'victory';
   return s.phase;
+}
+
+// ---- Nỗi sợ ------------------------------------------------------------------------
+
+const fear = { phase: 'done', phaseAt: 0, people: 0, total: 0, kinds: 0, top: [] };
+
+function onFear(msg) {
+  const wasStorm = fear.phase === 'storm';
+  Object.assign(fear, { phase: msg.phase, phaseAt: msg.phaseAt, people: msg.people, total: msg.total, kinds: msg.kinds, top: msg.top ?? [] });
+  setFearWords(msg.words);
+  if (msg.phase === 'storm' && !wasStorm) startStorm(fear.top, Math.max(0, (Date.now() + offset - msg.phaseAt) / 1000));
+  else if (msg.phase !== 'storm') endStorm();
+  $('fearPeople').textContent = String(fear.people);
+  $('fearTotal').textContent = fear.total.toLocaleString('vi-VN');
+  $('fearKinds').textContent = `điều · ${fear.kinds} nỗi sợ khác nhau`;
+  if (state) render(state);
 }
 
 // Top 5 on the victory screen: the score that ranked them, plus how much of the hall's tapping
@@ -437,6 +466,7 @@ function fit() {
   const k = Math.min(innerWidth / ARENA.width, innerHeight / ARENA.height);
   document.documentElement.style.setProperty('--k', k);
   resizeArena(k * (window.devicePixelRatio || 1));
+  resizeFearCloud(k * (window.devicePixelRatio || 1));
 }
 
 function toggleFullscreen() {
@@ -461,6 +491,7 @@ async function boot() {
   loadVictoryArt().then(art => { victoryArt = art; }).catch(err => console.warn('Victory fallback artwork:', err));
   // initArena takes the canvas synchronously, so the first fit can size it while sprites load.
   const loading = initArena($('arena'));
+  initFearCloud($('fearCanvas'));
   fit();
   addEventListener('resize', fit);
   $('promptShapes').replaceChildren(...ANSWERS.map(a => {
@@ -495,7 +526,11 @@ async function boot() {
     if (PREVIEW && now - last < PREVIEW_FRAME_MS) return;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
-    arenaFrame(dt, now / 1000);
+    if (document.body.dataset.scene?.startsWith('fear')) {
+      fearFrame(dt, fear.phase === 'storm' ? (Date.now() + offset - fear.phaseAt) / 1000 : null);
+    } else {
+      arenaFrame(dt, now / 1000);
+    }
     tickVictory(now);
     tickBoss();
     if (state) tickHud();

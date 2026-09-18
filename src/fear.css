@@ -1,0 +1,52 @@
+/* Đoạn mở màn trên điện thoại: một câu hỏi, một ô gõ, và danh sách những gì bạn đã gửi.
+   Dùng chung khung .pad của play.css nên chỉ cần phần riêng của màn này. */
+
+.fear-main { align-content: center; }
+
+.fear-eye { font-size: 62px; line-height: 1; animation: fear-breathe 3.4s ease-in-out infinite; }
+.fear-eye.storm { animation: fear-spin 2.2s linear infinite; }
+@keyframes fear-breathe { 50% { transform: scale(1.12) translateY(-4px); } }
+@keyframes fear-spin { to { transform: rotate(360deg); } }
+
+.fear-type { display: grid; align-content: start; gap: 12px; padding: 4px 2px; }
+.fear-q { margin: 0; color: #f1f4f8; font: 800 25px/1.22 var(--font-disp); text-align: center; text-wrap: balance; }
+.fear-q em { font-style: normal; color: var(--ui-orange); }
+
+.fear-form { display: grid; gap: 10px; }
+.fear-form input {
+  width: 100%; min-height: 54px; padding: 14px 16px; box-sizing: border-box;
+  border: 1px solid #5c7998; border-radius: 10px 3px; background: #0d1d2e;
+  color: var(--ui-text); font: 600 17px var(--font-sans);
+}
+.fear-form input::placeholder { color: #6d8299; }
+.fear-form .cta-ledge { width: 100%; }
+
+.fear-hint { margin: 0; color: #9fb1c4; font: 550 12px/1.5 var(--font-sans); text-align: center; }
+.fear-type .error { margin: 0; color: #f4a897; font-size: 12.5px; text-align: center; }
+.fear-type .error:empty { display: none; }
+
+/* Chữ của chính mình, mới nhất lên đầu: bằng chứng là nó đã lên tới màn chiếu. */
+.fear-mine { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+.fear-mine li {
+  padding: 6px 11px; border: 1px solid #3f658d; border-radius: 999px; background: #16304a;
+  color: #cfe0f2; font: 650 12.5px var(--font-sans);
+  animation: fear-pop 360ms cubic-bezier(.2, 1.6, .4, 1);
+}
+.fear-mine li:first-child { border-color: var(--ui-orange); background: #3a2520; color: #ffd5cb; }
+@keyframes fear-pop { from { transform: scale(.7); opacity: 0; } }
+
+/* Lời xác nhận rơi xuống dưới ô gõ, không đè lên chính câu hỏi người ta đang đọc. */
+body:has(.fear-pad) #banner { top: auto; bottom: 16%; translate: -50% 0; }
+
+.fear-pad .pad-score { text-align: right; }
+.fear-pad .pad-score b { color: var(--ui-orange); font: 800 20px/1 var(--font-disp); }
+.fear-pad .pad-score span { color: var(--ui-muted); font: 600 10.5px var(--font-sans); }
+
+@media (max-height: 700px) {
+  .fear-q { font-size: 21px; }
+  .fear-eye { font-size: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fear-eye, .fear-eye.storm, .fear-mine li { animation: none; }
+}

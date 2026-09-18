@@ -27,6 +27,7 @@ let logCount = 0;
 const timer = { sig: '', total: 1 };
 const rate = { index: -1, shots: 0, at: 0, perSecond: 0 };
 let builtQuestion = '';
+let fearAction = 'fear-wait';
 
 function connect() {
   const es = new EventSource(`/api/host/events?${keyParam}&view=admin`);
@@ -69,7 +70,63 @@ function onMessage(msg) {
     case 'log':
       addLog(msg.entry);
       return;
+    case 'fear':
+      renderFear(msg);
+      return;
   }
+}
+
+// ---- Mở màn: nỗi sợ ----------------------------------------------------------------
+// Bốn trạng thái, mỗi trạng thái một việc duy nhất cho MC bấm, để khỏi phải nhớ gì trên sân khấu.
+const FEAR_UI = {
+  wait: {
+    state: 'chờ quét mã',
+    note: 'Máy chiếu đang hiện mã QR. Chờ mọi người quét xong rồi bấm mở bàn phím.',
+    button: 'Mở bàn phím cho hội trường',
+    action: 'fear-open',
+  },
+  open: {
+    state: 'đang gõ',
+    note: 'Chữ đang mọc dần trên máy chiếu. Khi thấy đủ rồi thì triệu hồi Quái Vật.',
+    button: '🌪️ Triệu hồi Quái Vật',
+    action: 'fear-storm',
+  },
+  storm: {
+    state: 'đang triệu hồi',
+    note: 'Đoạn phim đang chạy trên máy chiếu (~15 giây). Xong là về phòng chờ của game.',
+    button: 'Đang chiếu…',
+    action: null,
+  },
+  done: {
+    state: 'chưa chạy',
+    note: 'Máy chiếu đang là phòng chờ của game. Bấm nút dưới để bắt đầu đoạn mở màn: máy chiếu sẽ hiện mã QR cho hội trường quét.',
+    button: '▶ Bắt đầu đoạn mở màn',
+    action: 'fear-wait',
+  },
+};
+
+function renderFear(msg) {
+  const ui = FEAR_UI[msg.phase] ?? FEAR_UI.done;
+  fearAction = ui.action;
+  $('fearState').textContent = ui.state;
+  $('fearNote').textContent = ui.note;
+  $('fearBtn').textContent = ui.button;
+  $('fearBtn').disabled = !ui.action;
+  $('fearCard').dataset.phase = msg.phase;
+  $('fearPeopleNum').textContent = String(msg.people ?? 0);
+  $('fearTotalNum').textContent = (msg.total ?? 0).toLocaleString('vi-VN');
+  $('fearKindsNum').textContent = String(msg.kinds ?? 0);
+  // Top 5 để MC đọc thành lời trước khi bấm; ba cái đầu chính là ba cái lên màn chiếu.
+  const top = (msg.words ?? []).slice(0, 5);
+  $('fearTop').replaceChildren(...top.map(([text, count], i) => {
+    const li = document.createElement('li');
+    li.className = i < 3 ? 'hot' : '';
+    li.append(
+      Object.assign(document.createElement('span'), { textContent: text }),
+      Object.assign(document.createElement('b'), { textContent: String(count) }),
+    );
+    return li;
+  }));
 }
 
 function onState(s) {
@@ -636,6 +693,14 @@ function boot() {
   $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
   $('resetBtn').addEventListener('click', () => confirm('Reset về phòng chờ? Điểm hiện tại sẽ bị xoá.') && action('reset'));
+  $('fearBtn').addEventListener('click', () => {
+    if (!fearAction) return;
+    // Triệu hồi là đường một chiều giữa lúc đang diễn: hỏi lại một câu trước khi cả hội trường thấy.
+    if (fearAction === 'fear-storm' && !confirm('Triệu hồi Quái Vật từ những nỗi sợ này? Bàn phím của hội trường sẽ đóng lại.')) return;
+    action(fearAction);
+  });
+  $('fearSkipBtn').addEventListener('click', () => confirm('Bỏ qua đoạn nỗi sợ, về thẳng phòng chờ của game?') && action('fear-skip'));
+  $('fearResetBtn').addEventListener('click', () => confirm('Xoá hết chữ hội trường đã gõ và quay lại màn quét mã?') && action('fear-reset'));
   $('csvBtn').href = `/api/host/results.csv?${keyParam}`;
   $('openScreen').addEventListener('click', openScreen);
   $('copyJoin').addEventListener('click', () => state && copy(state.joinUrl, 'Đã sao chép link vào chơi'));

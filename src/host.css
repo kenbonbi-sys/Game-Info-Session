@@ -20,6 +20,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px 4px; padding: 14px 16px; }
 .card h2 { margin: 0 0 10px; font: 800 15px/1.3 var(--font-disp); letter-spacing: .02em; }
+
+/* ---- Mở màn: nỗi sợ ------------------------------------------------------------- */
+.fear-card { display: grid; gap: 10px; }
+.fear-card h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.fear-state { padding: 3px 8px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--panel-2); color: var(--muted); font: 700 11px var(--font-disp); }
+.fear-card[data-phase="open"] .fear-state { border-color: var(--good); color: var(--good); }
+.fear-card[data-phase="storm"] .fear-state { border-color: var(--warn); color: var(--warn); }
+.fear-note { margin: 0; color: var(--muted); font: 500 12px/1.5 var(--font-sans); }
+.fear-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fear-nums div { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px 3px; background: var(--panel-2); }
+.fear-nums b { color: var(--text); font: 800 20px/1 var(--font-disp); font-variant-numeric: tabular-nums; }
+.fear-nums span { color: var(--muted); font: 600 10.5px/1.25 var(--font-sans); }
+/* Ba dòng đầu là ba nỗi sợ sẽ lên màn chiếu — MC đọc thành lời trước khi bấm triệu hồi. */
+.fear-top { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.fear-top li { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px 2px; background: var(--panel-2); font: 600 12.5px var(--font-sans); }
+.fear-top li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fear-top li b { color: var(--muted); font: 800 12px var(--font-disp); font-variant-numeric: tabular-nums; }
+.fear-top li.hot { border-color: #6d4436; background: #2a1c17; color: #ffd5cb; }
+.fear-top li.hot b { color: var(--ui-orange, #FF5D38); }
+.fear-top:empty { display: none; }
 .col { min-height: 0; }
 .col-left, .col-main { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; scrollbar-width: thin; }
 .col-left { grid-area: left; }
