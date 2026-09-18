@@ -17,8 +17,8 @@ const params = new URLSearchParams(location.search);
 const PREVIEW = params.has('preview');
 const PREVIEW_FRAME_MS = 50;
 const PHASE_LABEL = {
-  lobby: 'Phòng chờ', countdown: 'Chuẩn bị', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!',
-  final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'NÉM BÌNH!', victory: 'CÙNG NHAU CHIẾN THẮNG', end: 'Top 5',
+  lobby: 'Phòng chờ', countdown: 'Chuẩn bị', reading: 'Đang đọc đề', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!',
+  finalreading: 'Câu đố vui', final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'NÉM BÌNH!', victory: 'CÙNG NHAU CHIẾN THẮNG', end: 'Top 5',
 };
 const RING = 2 * Math.PI * 52;
 
@@ -146,16 +146,11 @@ function renderCharge({ taps, goal, full }) {
   $('chargeFill').style.width = `${p * 100}%`;
   $('chargeFill').parentElement.setAttribute('aria-valuenow', Math.round(p * 100));
   setBottleFill($('chargeBottle'), p);
-  $('chargeNum').textContent = taps.toLocaleString('vi-VN');
-  $('chargeGoal').textContent = `/${goal.toLocaleString('vi-VN')} lượt tap`;
   const bottle = document.querySelector('.bottle');
   bottle.dataset.wet = String(p > 0.01 && p < 0.995);
   bottle.dataset.near = String(p >= 0.9 && !full);
   bottle.dataset.full = String(!!full);
-  if (full) {
-    $('chargeTitle').textContent = 'BÌNH ĐẦY RỒI!';
-    $('chargeSub').textContent = 'Cùng nhau ném bình về phía Quái Vật!';
-  }
+  if (full) $('chargeTitle').textContent = 'BÌNH ĐẦY RỒI!';
 }
 
 function onSeats(msg) {
@@ -193,6 +188,8 @@ function enterPhase(s, live) {
     case 'countdown':
       lastCount = -1;
       break;
+    // Đề hiện một mình trước: cả hội trường đọc xong rồi đáp án và đồng hồ mới cùng bật lên.
+    case 'reading':
     case 'question':
       buildQuestion(s);
       break;
@@ -209,10 +206,11 @@ function enterPhase(s, live) {
       if (live && s.firing) banner(right ? 'TAP TAP TAP!' : 'Quái Vật phản đòn!', right ? 'warn' : 'bad');
       break;
     }
+    case 'finalreading':
     case 'final':
       buildQuestion(s);
       $('qMeta').textContent = `CÂU ĐỐ VUI · ${s.question?.group ?? ''}`.trim();
-      if (live) banner('Câu cuối: đố vui!', 'info');
+      if (live && s.phase === 'finalreading') banner('Câu cuối: đố vui!', 'info');
       break;
     case 'finalreveal':
       revealQuestion(s);
@@ -220,7 +218,6 @@ function enterPhase(s, live) {
       break;
     case 'charge':
       $('chargeTitle').textContent = 'CẢ HỘI TRƯỜNG TAP ĐI!';
-      $('chargeSub').textContent = 'Mọi người chạm liên tục nút BẮN trên điện thoại — kể cả ai trả lời sai!';
       renderCharge(s.charge ?? { taps: 0, goal: 300, full: false });
       if (live) banner('TÍCH NƯỚC — TAP TAP TAP!', 'warn');
       break;
@@ -333,7 +330,9 @@ function renderSeatCount() {
 
 function render(s) {
   $('players').textContent = s.players;
-  $('phaseLabel').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn' : s.phase === 'question' ? `Câu ${s.index + 1}/${s.total}` : PHASE_LABEL[s.phase] ?? s.phase;
+  $('phaseLabel').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn'
+    : ['reading', 'question'].includes(s.phase) ? `Câu ${s.index + 1}/${s.total}`
+    : PHASE_LABEL[s.phase] ?? s.phase;
   document.body.dataset.firing = String(!!s.firing);
   if (s.phase === 'lobby') renderLobby(s);
   if (s.phase === 'question') {
@@ -348,9 +347,8 @@ function render(s) {
     const nextKey = JSON.stringify(s.top);
     if (nextKey !== podiumKey) {
       podiumKey = nextKey;
-      $('podium').replaceChildren(...renderPodium(s.top));
+      $('podium').replaceChildren(...renderPodium(s.top, s.total));
     }
-    $('endStats').textContent = `${s.players} người chơi · ${s.total} câu hỏi · cả hội trường tap ${s.totalShots.toLocaleString('vi-VN')} lượt`;
   }
 }
 
@@ -401,22 +399,22 @@ function onFear(msg) {
 
 // Top 5 on the victory screen: the score that ranked them, plus how much of the hall's tapping
 // was theirs — the number people actually want to hear read out.
-function renderPodium(list) {
+function renderPodium(list, total) {
   return list.slice(0, 5).map((p, i) => {
     const li = document.createElement('li');
     li.style.setProperty('--step-height', `${[340, 270, 225, 170, 130][i]}px`);
     li.style.setProperty('--podium-order', [3, 2, 4, 1, 5][i]);
     li.style.setProperty('--reveal-delay', `${(4 - i) * 350}ms`);
-    li.setAttribute('aria-label', `Hạng ${i + 1}, ${p.name}, ${p.score} điểm, ${p.shots ?? 0} lượt tap`);
+    li.setAttribute('aria-label', `Hạng ${i + 1}, ${p.name}, ${p.score} điểm, đúng ${p.correct ?? 0}/${total} câu`);
     const step = Object.assign(document.createElement('div'), { className: 'podium-step' });
     step.append(
       Object.assign(document.createElement('b'), { textContent: String(i + 1) }),
-      Object.assign(document.createElement('i'), { textContent: `${(p.shots ?? 0).toLocaleString('vi-VN')} tap` }),
+      Object.assign(document.createElement('em'), { textContent: p.score.toLocaleString('vi-VN') }),
+      Object.assign(document.createElement('i'), { textContent: `đúng ${p.correct ?? 0}/${total} câu` }),
     );
     li.append(
       Object.assign(document.createElement('img'), { className: 'podium-fox', src: '/assets/design/icons/default-mascot.svg', alt: '', width: 120, height: 120 }),
       Object.assign(document.createElement('span'), { textContent: p.name }),
-      Object.assign(document.createElement('em'), { textContent: `${p.score.toLocaleString('vi-VN')} điểm` }),
       step,
     );
     return li;
@@ -448,11 +446,13 @@ function tickHud() {
       $('countNum').classList.add('tick');
     }
   }
-  if (s.phase === 'question') {
+  if (['reading', 'question', 'finalreading'].includes(s.phase)) {
+    const reading = s.phase !== 'question';
+    const span = reading ? s.read || 1 : s.time;
     const seconds = Math.ceil(left);
-    $('timerRing').style.strokeDashoffset = String(RING * (1 - Math.min(1, left / s.time)));
+    $('timerRing').style.strokeDashoffset = String(RING * (1 - Math.min(1, left / span)));
     if ($('timerNum').textContent !== String(seconds)) $('timerNum').textContent = seconds;
-    $('qTimer').classList.toggle('urgent', seconds <= 5);
+    $('qTimer').classList.toggle('urgent', !reading && seconds <= 5);
   }
   $('fireFill').style.width = s.phase === 'fire' && s.firing ? `${Math.min(1, left / s.fire) * 100}%` : '0%';
 }

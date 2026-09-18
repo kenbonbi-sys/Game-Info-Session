@@ -27,7 +27,7 @@ async function gameFor(t, { chargeSeconds = 60, finale = fixtureQuestion } = {})
   await mkdir(join(dir, 'assets', 'video'), { recursive: true });
   await Promise.all(['server.js', 'package.json', 'src/config.js', 'src/finale-config.js'].map(file => copyFile(join(root, file), join(dir, file))));
   await writeFile(join(dir, 'data', 'questions.json'), JSON.stringify({
-    timePerQuestion: 0.08, revealSeconds: 0.08, fireSeconds: 0.08,
+    readSeconds: 0.08, timePerQuestion: 0.08, revealSeconds: 0.08, fireSeconds: 0.08,
     chargeSeconds, shuffleOptions: false, questions: [fixtureQuestion], finale,
   }));
   await writeFile(join(dir, 'assets', 'video', 'seek.webm'), Buffer.from('0123456789abcdef'));

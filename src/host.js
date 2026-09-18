@@ -5,8 +5,8 @@ import { ANSWERS, shapeSvg } from './config.js';
 
 const $ = id => document.getElementById(id);
 const PHASE_NAME = {
-  lobby: 'Phòng chờ', countdown: 'Đếm ngược', question: 'Đang trả lời', reveal: 'Hiện đáp án', fire: 'Lượt bắn',
-  final: 'Câu đố vui', finalreveal: 'Đáp án câu vui', charge: 'Tích nước', unleash: 'Ném bình nước', victory: 'Clip chiến thắng', end: 'Vinh danh Top 5',
+  lobby: 'Phòng chờ', countdown: 'Đếm ngược', reading: 'Đang đọc đề', question: 'Đang trả lời', reveal: 'Hiện đáp án', fire: 'Lượt bắn',
+  finalreading: 'Đọc đề câu vui', final: 'Câu đố vui', finalreveal: 'Đáp án câu vui', charge: 'Tích nước', unleash: 'Ném bình nước', victory: 'Clip chiến thắng', end: 'Vinh danh Top 5',
 };
 const STATUS_LABEL = { answered: 'Đã chọn', correct: 'Đúng', wrong: 'Sai', timeout: 'Hết giờ', blocked: 'Khiên đỡ' };
 
@@ -167,7 +167,7 @@ const secondsLeft = () => (state?.endsAt ? Math.max(0, state.endsAt - (Date.now(
 
 function renderTop() {
   const s = state;
-  $('phaseName').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn' : s.phase === 'question' || s.phase === 'reveal' || s.phase === 'fire'
+  $('phaseName').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn' : s.phase === 'reading' || s.phase === 'question' || s.phase === 'reveal' || s.phase === 'fire'
     ? `${PHASE_NAME[s.phase]} · Câu ${s.index + 1}/${s.total}` : PHASE_NAME[s.phase];
   const chip = $('screenChip');
   chip.dataset.state = s.screens > 0 ? 'on' : 'off';
@@ -182,9 +182,11 @@ function nextLabel(s) {
   switch (s.phase) {
     case 'lobby': return '▶ Bắt đầu game';
     case 'countdown': return 'Vào câu 1 ngay';
+    case 'reading': return 'Mở đáp án ngay';
     case 'question': return 'Khoá & hiện đáp án';
     case 'reveal': return 'Cho cả hội trường bắn!';
     case 'fire': return s.index + 1 >= s.total ? 'Sang câu đố vui cuối' : `Sang câu ${s.index + 2}`;
+    case 'finalreading': return 'Mở đáp án ngay';
     case 'final': return 'Khoá & hiện đáp án';
     case 'finalreveal': return '💧 Mở màn tích nước!';
     case 'charge': return charged(s) ? 'Đang ném bình…' : 'Chờ hội trường tap…';
@@ -232,7 +234,7 @@ function renderRound() {
   $('bossPct').textContent = s.bossFellAt >= 0 ? `Gục ở câu ${s.bossFellAt + 1}` : `${hp}%`;
   $('bossFill').style.width = `${hp}%`;
   $('bossFill').parentElement.setAttribute('aria-valuenow', hp);
-  const inRound = ['question', 'reveal', 'fire'].includes(s.phase);
+  const inRound = ['reading', 'question', 'reveal', 'fire'].includes(s.phase);
   $('statAnswered').textContent = inRound ? `${s.answered}/${s.players}` : '–';
   $('statRight').textContent = inRound && s.answer !== undefined ? `${s.counts[s.answer] ?? 0} người` : '–';
   $('statShots').textContent = fmt(s.roundShots);
@@ -270,7 +272,7 @@ function renderJoin() {
 function renderTimeline() {
   const nav = $('timeline');
   const s = state;
-  const current = s && ['question', 'reveal', 'fire'].includes(s.phase) ? s.index : -1;
+  const current = s && ['reading', 'question', 'reveal', 'fire'].includes(s.phase) ? s.index : -1;
   const done = s?.phase === 'end' ? round.length : s && s.index >= 0 ? s.index + (current >= 0 ? 0 : 1) : 0;
   const sig = `${round.map(q => q.id).join()}|${current}|${done}`;
   if (nav.dataset.sig === sig) return;
@@ -335,7 +337,7 @@ function renderQuestion() {
 function renderRoster() {
   const s = state;
   const query = $('search').value.trim().toLocaleLowerCase('vi');
-  const inRound = ['question', 'reveal', 'fire'].includes(s.phase);
+  const inRound = ['reading', 'question', 'reveal', 'fire'].includes(s.phase);
   const rows = s.roster
     .map((r, i) => ({ rank: i + 1, n: r[0], name: r[1], turret: r[2], online: r[3], score: r[4], status: r[6], roundShots: r[7], shots: r[8] }))
     .filter(r => !query || r.name.toLocaleLowerCase('vi').includes(query));
@@ -581,6 +583,7 @@ function renderEditor() {
   const fx = draft.finale;
   $('fxText').value = fx.text ?? '';
   optionRows($('fxOptions'), fx, () => {});
+  $('fRead').value = draft.readSeconds ?? 10;
   $('fTime').value = draft.timePerQuestion ?? 15;
   $('fReveal').value = draft.revealSeconds ?? 5;
   $('fFire').value = draft.fireSeconds ?? 6;
@@ -626,6 +629,7 @@ function payload() {
     return { ...t, options: kept.map(([o]) => o), answer: Math.max(0, kept.findIndex(([, i]) => i === t.answer)) };
   };
   return {
+    readSeconds: Number($('fRead').value),
     timePerQuestion: Number($('fTime').value),
     revealSeconds: Number($('fReveal').value),
     fireSeconds: Number($('fFire').value),

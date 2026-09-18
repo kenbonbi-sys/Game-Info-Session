@@ -166,7 +166,7 @@ export function setArenaPhase(next) {
   if (next === phase) return;
   phase = next;
   if (next !== 'unleash') { finale = null; boss.suffer = null; }
-  if (next === 'lobby' || next === 'countdown' || next === 'question') {
+  if (next === 'lobby' || next === 'countdown' || next === 'reading' || next === 'question') {
     for (const f of fx) Object.assign(f, { ready: false, double: false, stunned: false, queue: 0 });
     hallQueue = 0;
   }
@@ -175,6 +175,7 @@ export function setArenaPhase(next) {
     bolts = [];
     for (const f of fx) Object.assign(f, { shield: false, boost: false });
   }
+  if (next === 'reading') say('Đọc kỹ đề nhé!', 1.8);
   if (next === 'question') say('Trả lời đi nào!', 1.8);
 }
 

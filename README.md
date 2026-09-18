@@ -42,9 +42,10 @@ trước khi mở.
 
 ## Luồng mỗi câu
 
-1. **Câu hỏi** (15s): màn chiếu hiện câu hỏi, 4 đáp án màu, đồng hồ và số người đã trả lời. Mọi người chọn trên điện thoại. **Chưa ai biết đúng sai**: điện thoại chỉ báo "Đã chọn". Khi mọi người đang kết nối đều đã chọn, câu hỏi đóng sau 1,5 giây.
-2. **Đáp án** (5s): màn chiếu tô đáp án đúng, số người chọn từng ô và Top 5. Điện thoại báo Chính xác (+điểm, combo) / Chưa đúng / Hết giờ.
-3. **Chuyển cảnh sang đấu trường, BẮN** (6s): ai trả lời đúng thì điện thoại hiện nút **BẮN!** to, **chạm liên tục** để ụ của mình bắn; cả hội trường bắn cùng lúc. Ai sai hoặc hết giờ thì Quái Vật phản đòn vào ụ đó (ụ bốc khói, lượt này không bắn được).
+1. **Đọc đề** (10s): màn chiếu chỉ hiện câu hỏi — chưa có đáp án, chưa có đồng hồ trả lời. Cả hội trường đọc xong cùng lúc rồi mới tới lượt bấm, nên ai đọc chậm không bị mất lượt vì người khác bấm trước. MC bấm **Mở đáp án ngay** để cắt ngắn. Sửa độ dài ở ô *Đọc câu hỏi (giây)* trong trình sửa câu hỏi (`readSeconds`).
+2. **Câu hỏi** (15s): 4 đáp án màu hiện ra đúng chỗ đã chừa sẵn, đồng hồ bắt đầu chạy, màn chiếu đếm số người đã trả lời. Mọi người chọn trên điện thoại. **Chưa ai biết đúng sai**: điện thoại chỉ báo "Đã chọn". Khi mọi người đang kết nối đều đã chọn, câu hỏi đóng sau 1,5 giây.
+3. **Đáp án** (5s): màn chiếu tô đáp án đúng, số người chọn từng ô và Top 5. Điện thoại báo Chính xác (+điểm, combo) / Chưa đúng / Hết giờ.
+4. **Chuyển cảnh sang đấu trường, BẮN** (6s): ai trả lời đúng thì điện thoại hiện nút **BẮN!** to, **chạm liên tục** để ụ của mình bắn; cả hội trường bắn cùng lúc. Ai sai hoặc hết giờ thì Quái Vật phản đòn vào ụ đó (ụ bốc khói, lượt này không bắn được).
 4. **Ngưng bắn** 2 giây rồi sang câu tiếp.
 
 Tắt **Tự chuyển** thì game dừng ở bước 2 và sau bước 3, chờ admin bấm nút trên bảng điều khiển.

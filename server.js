@@ -131,6 +131,7 @@ function validateQuizData(data) {
     return Math.round(n);
   };
   return {
+    readSeconds: secs(data.readSeconds, 10, 3, 60),
     timePerQuestion: secs(data.timePerQuestion, 15, 5, 120),
     revealSeconds: secs(data.revealSeconds, 5, 1, 60),
     fireSeconds: secs(data.fireSeconds, 6, 1, 60),
@@ -225,6 +226,9 @@ function loadQuiz() {
     throw new Error('data/questions.json: "finale" cần options và answer hợp lệ');
   }
   return {
+    // Câu hỏi hiện một mình chừng này giây trước khi đáp án và đồng hồ cùng bật lên. Không có
+    // quãng này thì ai đọc nhanh bấm trước, ai đọc chậm mất lượt — thi đọc chứ không phải thi hiểu.
+    read: data.readSeconds ?? 10,
     time: data.timePerQuestion ?? 15,
     reveal: data.revealSeconds ?? 5,
     fire: data.fireSeconds ?? 6,
@@ -466,13 +470,13 @@ const bossPercent = () => Math.round(100 * clamp(1 - game.boss.dmg / game.boss.m
 
 function youMessage(p, rank) {
   const i = game.index;
-  const inRound = ['question', 'reveal', 'fire'].includes(game.phase);
+  const inRound = ['reading', 'question', 'reveal', 'fire'].includes(game.phase);
   return {
     type: 'you', score: p.score, correct: p.correct, rank, players: players.size, turret: p.turret,
     items: p.items, armed: p.armed,
     hint: game.phase === 'question' ? p.hints[i] ?? null : null,
     picked: inRound ? p.picks[i]?.choice ?? null
-      : ['final', 'finalreveal'].includes(game.phase) ? game.finalePick?.[p.pid] ?? null
+      : ['finalreading', 'final', 'finalreveal'].includes(game.phase) ? game.finalePick?.[p.pid] ?? null
       : null,
     result: game.phase === 'reveal' || game.phase === 'fire' ? p.results[i] ?? null : null,
     shots: game.phase === 'fire' ? p.roundShots : game.phase === 'charge' ? p.chargeTaps ?? 0 : 0,
@@ -510,13 +514,14 @@ function roundStatus(p) {
 // role: 'player' (phones), 'screen' (projector and preview) or 'admin' (dashboard).
 function stateFor(role) {
   const q = game.round[game.index];
-  const inRound = q && ['question', 'reveal', 'fire'].includes(game.phase);
+  const inRound = q && ['reading', 'question', 'reveal', 'fire'].includes(game.phase);
   const s = {
     type: 'state',
     phase: game.phase,
     phaseAt: game.phaseAt,
     index: game.index,
     total: game.round.length || game.quiz.questions.length,
+    read: game.quiz.read,
     time: game.quiz.time,
     reveal: game.quiz.reveal,
     fire: game.quiz.fire,
@@ -529,15 +534,15 @@ function stateFor(role) {
     boss: bossPercent(),
   };
   const fq = game.quiz.finale;
-  const inFinale = fq && ['final', 'finalreveal'].includes(game.phase);
+  const inFinale = fq && ['finalreading', 'final', 'finalreveal'].includes(game.phase);
   // Phones get the number of tiles only: the question itself is read off the big screen.
   if (inRound) {
     s.options = q.options.length;
-    if (game.phase !== 'question') s.answer = q.answer;
+    if (!['reading', 'question'].includes(game.phase)) s.answer = q.answer;
   }
   if (inFinale) {
     s.options = fq.options.length;
-    if (game.phase !== 'final') s.answer = fq.answer;
+    if (!['finalreading', 'final'].includes(game.phase)) s.answer = fq.answer;
   }
   if (['charge', 'unleash', 'victory'].includes(game.phase)) s.charge = { ...game.charge };
   if (role === 'player') return s;
@@ -718,10 +723,16 @@ function nextQuestion() {
     startFinale();
     return;
   }
-  game.startedAt = Date.now();
   logEvent(`Câu ${game.index + 1}/${game.round.length} (${game.round[game.index].id})`, 'phase');
-  schedule('question', game.quiz.time, revealAnswer);
+  if (game.quiz.read > 0) schedule('reading', game.quiz.read, openQuestion);
+  else openQuestion();
   sendRanks();
+}
+
+// Đồng hồ chỉ chạy từ lúc đáp án hiện ra, nên điểm theo tốc độ đo từ đây — quãng đọc không tính.
+function openQuestion() {
+  game.startedAt = Date.now();
+  schedule('question', game.quiz.time, revealAnswer);
 }
 
 // ---- Finale: fill the bottle, throw it, defeat the boss, celebrate, then show Top 5 --
@@ -735,8 +746,13 @@ function startFinale() {
   }
   game.finalePick = {};
   logEvent('Câu đố vui cuối: cả hội trường cùng chuẩn bị đòn kết liễu', 'phase');
-  schedule('final', game.quiz.time, revealFinale);
+  if (game.quiz.read > 0) schedule('finalreading', game.quiz.read, openFinale);
+  else openFinale();
   sendRanks();
+}
+
+function openFinale() {
+  schedule('final', game.quiz.time, revealFinale);
 }
 
 function revealFinale() {
@@ -945,7 +961,9 @@ function hostAction(action) {
     case 'next':
       if (Date.now() - game.phaseAt < NEXT_GUARD_MS) return true;
       if (game.phase === 'countdown' || game.phase === 'fire') nextQuestion();
+      else if (game.phase === 'reading') openQuestion();
       else if (game.phase === 'question') revealAnswer();
+      else if (game.phase === 'finalreading') openFinale();
       else if (game.phase === 'reveal') startFire();
       else if (game.phase === 'final') revealFinale();
       else if (game.phase === 'finalreveal') startCharge();
@@ -1053,7 +1071,7 @@ function tapFire(p, index, n) {
 
 function useItem(p, item) {
   if (!ITEMS.includes(item)) return [400, { error: 'Vật phẩm không tồn tại' }];
-  if (!['countdown', 'question', 'reveal', 'fire'].includes(game.phase)) return [409, { error: 'Chỉ dùng vật phẩm trong lúc chơi' }];
+  if (!['countdown', 'reading', 'question', 'reveal', 'fire'].includes(game.phase)) return [409, { error: 'Chỉ dùng vật phẩm trong lúc chơi' }];
   if (!(p.items[item] > 0)) return [409, { error: 'Bạn đã dùng vật phẩm này rồi' }];
   let removed = null;
   if (item === 'hint') {

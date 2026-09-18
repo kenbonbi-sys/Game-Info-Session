@@ -67,7 +67,7 @@
           <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle id="timerRing" class="ring" cx="60" cy="60" r="52"/></svg>
           <b id="timerNum">15</b>
         </div>
-        <div id="qPrompt" class="q-prompt"><span id="promptShapes" class="prompt-shapes"></span><b>Chọn ô cùng màu, cùng hình trên điện thoại!</b></div>
+        <div id="qPrompt" class="q-prompt"><span id="promptShapes" class="prompt-shapes"></span><b class="q-play-note">Chọn ô cùng màu, cùng hình trên điện thoại!</b><b class="q-read-note">Đọc kỹ câu hỏi — đáp án sắp hiện ra</b></div>
         <div id="top5" class="top5" hidden></div>
         <div class="q-answered"><b id="answeredNum">0</b><span id="answeredOf">/0 đã trả lời</span></div>
       </div>
@@ -90,14 +90,11 @@
 
     <!-- Water lives inside the vessel; the same vessel is thrown into the arena. -->
     <section id="charge" class="charge-scene" aria-live="polite">
-      <span class="eyebrow">ĐÒN KẾT LIỄU</span>
       <h1 id="chargeTitle">CẢ HỘI TRƯỜNG TAP ĐI!</h1>
       <div class="charge-body">
         <div id="chargeBottle" class="bottle" aria-hidden="true"></div>
         <div class="charge-readout">
           <div class="charge-meter" role="progressbar" aria-label="Tích nước" aria-valuemin="0" aria-valuemax="100"><i id="chargeFill"></i></div>
-          <p class="charge-count"><b id="chargeNum">0</b><span id="chargeGoal">/300 lượt tap</span></p>
-          <p id="chargeSub" class="charge-sub">Mọi người chạm liên tục nút BẮN trên điện thoại — kể cả ai trả lời sai!</p>
         </div>
       </div>
     </section>
@@ -118,10 +115,8 @@
     </section>
 
     <section id="end" class="end-scene" aria-labelledby="endTitle">
-      <span class="eyebrow">CẢ HỘI TRƯỜNG ĐÃ CHIẾN THẮNG</span>
       <h1 id="endTitle">VINH DANH TOP 5</h1>
       <ol id="podium" class="podium"></ol>
-      <p id="endStats" class="end-stats"></p>
     </section>
 
     <div id="banner" class="banner" role="status"></div>

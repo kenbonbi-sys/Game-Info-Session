@@ -13,10 +13,10 @@ const TOUCH = matchMedia('(pointer: coarse)').matches;
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
 // Taps travel in small batches: one request per quarter second per player instead of one per tap.
 const TAP_FLUSH_MS = 250;
-const PLAY_VIEWS = ['countdown', 'answer', 'answered', 'result', 'stunned', 'ceasefire'];
+const PLAY_VIEWS = ['countdown', 'reading', 'answer', 'answered', 'result', 'stunned', 'ceasefire'];
 
 const net = { pid: null, name: '', no: null, es: null, offset: 0 };
-const quiz = { phase: 'connecting', index: -1, total: 15, time: 15, fire: 6, endsAt: 0, players: 0, options: 4, answer: null, firing: false, boss: 100 };
+const quiz = { phase: 'connecting', index: -1, total: 15, read: 10, time: 15, fire: 6, endsAt: 0, players: 0, options: 4, answer: null, firing: false, boss: 100 };
 // picked: tile chosen for the current question · result: the server's verdict, known from the reveal on.
 // removed: options the hint took away for removedIndex.
 const me = {
@@ -167,7 +167,7 @@ function onState(msg) {
   net.offset = msg.now - Date.now();
   const prev = { phase: quiz.phase, index: quiz.index };
   Object.assign(quiz, {
-    phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
+    phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, read: msg.read ?? quiz.read, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
     players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss, react: !!msg.react,
     charge: msg.charge ?? quiz.charge,
   });
@@ -243,7 +243,7 @@ function retryAnswer() {
 }
 
 async function useItem(item) {
-  if (me.busy || !['countdown', 'question', 'reveal', 'fire'].includes(quiz.phase)) return;
+  if (me.busy || !['countdown', 'reading', 'question', 'reveal', 'fire'].includes(quiz.phase)) return;
   me.busy = true;
   renderItems();
   try {
@@ -329,9 +329,11 @@ function currentView() {
   switch (quiz.phase) {
     case 'lobby': return 'lobby';
     case 'countdown': return 'countdown';
+    case 'reading': return 'reading';
     case 'question': return me.picked === null ? 'answer' : 'answered';
     case 'reveal': return 'result';
     case 'fire': return !quiz.firing ? 'ceasefire' : me.result?.correct ? 'fire' : 'stunned';
+    case 'finalreading': return 'reading';
     case 'final': return me.picked === null ? 'answer' : 'answered';
     case 'finalreveal': return 'finalresult';
     case 'charge': return 'charge';
@@ -425,6 +427,13 @@ function renderWait(view) {
       badge = { kind: 'count', content: '3' };
       title = 'Chuẩn bị!';
       text = 'Nhìn lên màn hình lớn, câu hỏi đầu tiên sắp hiện.';
+      break;
+    case 'reading':
+      badge = { kind: 'count', content: String(quiz.read ?? 10) };
+      title = 'Đọc câu hỏi nhé!';
+      text = quiz.phase === 'finalreading'
+        ? 'Câu đố vui cuối đang hiện trên màn hình lớn. Đáp án mở ngay sau đây.'
+        : 'Câu hỏi đang hiện trên màn hình lớn. Đáp án sẽ mở khi hết giờ đọc.';
       break;
     case 'answered': {
       const a = ANSWERS[me.picked];
@@ -556,7 +565,7 @@ function renderBoss() {
 function renderItems() {
   const tray = $('items');
   // Items do nothing in the finale — that question is not scored and the charge is not a round.
-  const inFinale = ['final', 'finalreveal', 'charge', 'unleash', 'victory'].includes(quiz.phase);
+  const inFinale = ['finalreading', 'final', 'finalreveal', 'charge', 'unleash', 'victory'].includes(quiz.phase);
   tray.hidden = inFinale || !PLAY_VIEWS.includes(document.body.dataset.view);
   if (tray.hidden) return;
   for (const btn of tray.querySelectorAll('.item')) {
@@ -621,7 +630,7 @@ function frame(t) {
       $('timer').querySelector('[role="progressbar"]').setAttribute('aria-valuenow', seconds);
     }
     $('timer').classList.toggle('urgent', seconds <= 5);
-  } else if (view === 'countdown') {
+  } else if (view === 'countdown' || view === 'reading') {
     const n = String(Math.max(1, Math.ceil(left)));
     if ($('waitBadge').textContent !== n) $('waitBadge').textContent = n;
   } else if (view === 'fire') {

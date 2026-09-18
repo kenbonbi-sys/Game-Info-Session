@@ -146,9 +146,8 @@ button { transition: transform 130ms, filter 130ms; }
 
 /* ---- Items ---------------------------------------------------------------------------- */
 .items { padding: 8px 12px 9px; background: #0c1b2c; border-bottom: 1px solid #3c5066; box-shadow: 0 4px 14px #030a1133; }
-.items-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 1px 6px; }
+.items-cap { margin: 0 1px 6px; }
 .items-cap b { color: #ffd5cb; font: 800 11px/1 var(--font-disp); letter-spacing: .08em; }
-.items-cap span { color: #8da2b8; font: 600 10px/1 var(--font-sans); }
 .items-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .item { --face: #19314a; --line: #3c546e; --bw: 1px; --c-out: var(--clip-card); --c-in: var(--clip-card-in); display: grid; grid-template-rows: auto auto minmax(0, 1fr); justify-items: center; align-content: start; gap: 3px; min-width: 0; min-height: 78px; padding: 8px 6px 9px; color: #e4ebf3; font: 800 11.5px/1.15 var(--font-disp); text-align: center; text-wrap: balance; filter: none; }
 .item img { width: 30px; height: 30px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px #0007); }
