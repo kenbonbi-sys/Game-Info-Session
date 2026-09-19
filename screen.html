@@ -40,7 +40,7 @@
         </div>
       </div>
       <div class="hud-right">
-        <span class="hud-chip hud-players"><svg viewBox="0 0 24 24" role="img" aria-label="Người chơi"><path d="M12 12.4a5.2 5.2 0 1 0 0-10.4 5.2 5.2 0 0 0 0 10.4Zm0 1.9c-4.5 0-8.2 2.6-8.2 5.8V22h16.4v-1.9c0-3.2-3.7-5.8-8.2-5.8Z"/></svg><b id="players">0</b></span>
+        <span class="hud-players"><svg viewBox="0 0 24 24" role="img" aria-label="Người chơi"><path d="M12 12.4a5.2 5.2 0 1 0 0-10.4 5.2 5.2 0 0 0 0 10.4Zm0 1.9c-4.5 0-8.2 2.6-8.2 5.8V22h16.4v-1.9c0-3.2-3.7-5.8-8.2-5.8Z"/></svg><b id="players">0</b></span>
       </div>
     </header>
 
@@ -61,7 +61,6 @@
           <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle id="timerRing" class="ring" cx="60" cy="60" r="52"/></svg>
           <b id="timerNum">15</b>
         </div>
-        <div id="qPrompt" class="q-prompt"><b class="q-read-note">Đọc kỹ câu hỏi — đáp án sắp hiện ra</b></div>
         <div id="top5" class="top5" hidden></div>
       </div>
       <h1 class="q-text"><span id="qText"></span></h1>
@@ -69,16 +68,7 @@
     </section>
 
     <section id="fireHud" class="fire-hud">
-      <div class="fire-card fire-call">
-        <b id="fireTitle">TAP TAP TAP!</b>
-        <span id="fireSub">Ai trả lời đúng: chạm liên tục nút BẮN trên điện thoại</span>
-        <div class="fire-timer"><i id="fireFill"></i></div>
-      </div>
-      <div class="fire-card fire-stats">
-        <span>Lượt này cả hội trường bắn</span>
-        <b id="roundShots">0</b>
-        <em id="shooters">0 ụ đang bắn</em>
-      </div>
+      <div class="fire-stats"><b id="roundShots">0</b></div>
     </section>
 
     <!-- Water lives inside the vessel; the same vessel is thrown into the arena. -->

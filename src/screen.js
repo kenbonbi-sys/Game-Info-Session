@@ -164,7 +164,7 @@ function onState(s) {
   state = s;
   const changed = !prev || prev.phase !== s.phase || prev.index !== s.index;
   if (changed) enterPhase(s, !!prev);
-  if (prev?.phase === 'fire' && s.phase === 'fire' && prev.firing && !s.firing) ceaseFire(s);
+  if (prev?.phase === 'fire' && s.phase === 'fire' && prev.firing && !s.firing) ceaseFire();
   // Follow the server's boss HP; a new game or a freshly opened page snaps instead of animating.
   // The finale is the exception: bossUnleash paces the last sliver so the boss suffers on cue.
   if (s.phase !== 'unleash') syncBoss(s.bossDmg, s.bossMax, !prev || (changed && (s.phase === 'lobby' || s.phase === 'countdown')));
@@ -193,9 +193,6 @@ function enterPhase(s, live) {
       roundShots = s.roundShots;
       $('roundShots').textContent = roundShots.toLocaleString('vi-VN');
       const right = s.counts?.[s.answer] ?? 0;
-      $('shooters').textContent = right ? `${right} người trả lời đúng đang bắn` : 'Chưa ai trả lời đúng lượt này';
-      $('fireTitle').textContent = !s.firing ? 'Ngưng bắn!' : right ? 'TAP TAP TAP!' : 'Quái Vật phản đòn!';
-      $('fireSub').textContent = right ? 'Ai trả lời đúng: chạm liên tục vào nút BẮN trên điện thoại' : 'Câu sau trả lời đúng để cả hội trường cùng bắn!';
       if (live && s.firing) banner(right ? 'TAP TAP TAP!' : 'Quái Vật phản đòn!', right ? 'warn' : 'bad');
       break;
     }
@@ -229,9 +226,7 @@ function enterPhase(s, live) {
   }
 }
 
-function ceaseFire(s) {
-  $('fireTitle').textContent = 'Ngưng bắn!';
-  $('fireSub').textContent = s.auto ? 'Câu tiếp theo sắp bắt đầu…' : 'Chuẩn bị câu tiếp theo nhé!';
+function ceaseFire() {
   banner(`Ngưng bắn! ${roundShots.toLocaleString('vi-VN')} phát`, 'info');
 }
 
@@ -256,7 +251,6 @@ function buildQuestion(s) {
     );
     return el;
   }));
-  $('qPrompt').hidden = false;
   $('top5').hidden = true;
 }
 
@@ -268,7 +262,6 @@ function revealQuestion(s) {
     el.querySelector('.opt-count').textContent = s.counts[i] ?? 0;
     el.querySelector('.opt-bar').style.width = `${((s.counts[i] ?? 0) / total) * 100}%`;
   });
-  $('qPrompt').hidden = true;
   $('top5').hidden = !s.top.length;
   $('top5').replaceChildren(Object.assign(document.createElement('h2'), { textContent: 'TOP 5 HIỆN TẠI' }), renderTop(s.top));
 }
@@ -427,7 +420,6 @@ function tickHud() {
     if ($('timerNum').textContent !== String(seconds)) $('timerNum').textContent = seconds;
     $('qTimer').classList.toggle('urgent', !reading && seconds <= 5);
   }
-  $('fireFill').style.width = s.phase === 'fire' && s.firing ? `${Math.min(1, left / s.fire) * 100}%` : '0%';
 }
 
 function tickBoss() {

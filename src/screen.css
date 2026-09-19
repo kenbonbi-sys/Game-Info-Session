@@ -94,11 +94,10 @@ body[data-scene="finalreveal"] .opt.correct .opt-check { display: block; animati
 #bossHealthFill { background: repeating-linear-gradient(90deg, #f06f52 0 18px, #d15236 18px 22px); box-shadow: inset 0 2px #ffb1a0; transition: width 240ms ease-out; }
 #bossHealthTrail { background: #f7b5a6; transition: width 800ms 300ms ease; }
 .hud-right { justify-self: end; display: flex; gap: 12px; }
-.hud-chip { padding: 10px 18px; border: 2px solid #3e5b7a; border-radius: 9px 3px; background: #172c43; color: #dce8f4; font: 700 21px var(--font-disp); white-space: nowrap; }
-.hud-chip b { color: var(--ui-blue-soft); font-variant-numeric: tabular-nums; }
-/* Số người chơi: một icon hình người rồi tới con số, khỏi phải đọc chữ từ cuối hội trường. */
-.hud-players { display: inline-flex; align-items: center; gap: 10px; }
-.hud-players svg { width: 23px; height: 23px; fill: var(--ui-blue-soft); }
+/* Số người chơi: một icon hình người rồi tới con số, trần trụi không khung. */
+.hud-players { display: inline-flex; align-items: center; gap: 10px; font: 700 24px var(--font-disp); white-space: nowrap; }
+.hud-players svg { width: 25px; height: 25px; fill: var(--ui-blue-soft); }
+.hud-players b { color: var(--ui-blue-soft); font-variant-numeric: tabular-nums; }
 
 
 /* ---- Lobby: join card on the left, the hall filling up on the right -------- */
@@ -138,10 +137,6 @@ body:not([data-scene="reading"]):not([data-scene="question"]):not([data-scene="f
    hỏi không nhảy vị trí đúng lúc người ta đang đọc dở. */
 body[data-scene="reading"] .options, body[data-scene="finalreading"] .options { visibility: hidden; opacity: 0; }
 body[data-scene="reading"] .q-timer .ring, body[data-scene="finalreading"] .q-timer .ring { stroke: #86b9ca; }
-.q-read-note { display: none; }
-body[data-scene="reading"] .q-read-note, body[data-scene="finalreading"] .q-read-note { display: block; }
-.q-prompt { display: grid; justify-items: center; gap: 16px; text-align: center; }
-.q-prompt b { color: #fff; font: 800 36px/1.25 var(--font-disp); }
 .top5 { justify-self: center; width: min(760px, 100%); }
 .top5 h2 { margin: 0 0 10px; color: #ffd5cb; font: 800 26px var(--font-disp); letter-spacing: .08em; text-align: center; }
 .top5 ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -164,19 +159,10 @@ body[data-scene="reveal"] .opt.correct { transform: scale(1.02); box-shadow: ins
 body[data-scene="reveal"] .opt.correct .opt-check { display: block; animation: mark-pop 420ms cubic-bezier(.2, 1.6, .4, 1); }
 
 /* ---- Shooting round ----------------------------------------------------------- */
-.fire-hud { position: absolute; z-index: 2; top: 102px; left: 34px; right: 34px; display: flex; justify-content: space-between; pointer-events: none; transform: translateY(-30px); }
-.fire-card { width: 540px; padding: 22px 30px 24px; border: 2px solid #5c7998; border-radius: 16px 5px; background: #0a1827eb; box-shadow: 0 20px 50px #02080ecc; }
-.fire-call b { display: block; color: var(--ui-orange); font: 900 62px/1.05 var(--font-disp); letter-spacing: .02em; text-shadow: 0 5px 0 #6b1a0b; }
-body[data-firing="true"] .fire-call b { animation: tap-shake 420ms steps(2, jump-none) infinite; }
-body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0c1b2c; }
-.fire-call span { display: block; margin-top: 10px; color: #dce8f4; font: 600 23px/1.35 var(--font-sans); }
-.fire-timer { height: 18px; margin-top: 18px; overflow: hidden; background: #061320; border: 3px solid #091522; outline: 2px solid #54657870; }
-.fire-timer i { display: block; width: 0; height: 100%; background: repeating-linear-gradient(90deg, #FF7034 0 16px, #E5303F 16px 20px); }
-.fire-stats { text-align: right; }
-.fire-stats span { color: #c9d7e5; font: 600 23px var(--font-sans); }
-.fire-stats b { display: block; margin: 10px 0 8px; color: #8fc5ff; font: 76px/1 var(--font-pixel); text-shadow: 0 7px 0 #0c3a70; font-variant-numeric: tabular-nums; }
+/* Lúc bắn, đấu trường mới là thứ đáng nhìn: chỉ còn số phát đạn của cả hội trường, không khung. */
+.fire-hud { position: absolute; z-index: 2; top: 102px; left: 34px; right: 34px; display: flex; justify-content: flex-end; pointer-events: none; transform: translateY(-30px); }
+.fire-stats b { display: block; color: #8fc5ff; font: 76px/1 var(--font-pixel); text-shadow: 0 7px 0 #0c3a70; font-variant-numeric: tabular-nums; }
 .fire-stats b.bump { animation: bump 160ms ease-out; }
-.fire-stats em { color: #fff; font: 700 23px var(--font-disp); font-style: normal; }
 
 /* ---- End ------------------------------------------------------------------------- */
 .end-scene { position: absolute; z-index: 2; inset: 150px 150px 55px; text-align: center; transform: translateY(24px); }
@@ -258,8 +244,8 @@ body[data-scene="victory"] .victory-scene { visibility: visible; opacity: 1; poi
 body[data-scene="victory"] .hud, body[data-scene="victory"] .banner { visibility: hidden; }
 /* Máu boss chỉ có nghĩa lúc cả hội trường đang bắn. Trong lúc chọn đáp án nó chỉ tranh chỗ với
    câu hỏi — và "Câu 1/15" đã nằm ngay trên câu hỏi rồi. */
-body[data-scene="question"] .hud, body[data-scene="reveal"] .hud,
-body[data-scene="final"] .hud, body[data-scene="finalreveal"] .hud { visibility: hidden; }
+body[data-scene="reading"] .hud, body[data-scene="question"] .hud, body[data-scene="reveal"] .hud,
+body[data-scene="finalreading"] .hud, body[data-scene="final"] .hud, body[data-scene="finalreveal"] .hud { visibility: hidden; }
 
 .banner { position: absolute; z-index: 4; top: 54%; left: 50%; translate: -50% -50%; padding: 22px 50px 26px; border: 3px solid #9fc8f2; border-radius: 18px 5px; background: var(--ui-blue); color: #fff; font: 800 64px/1.15 var(--font-disp); white-space: nowrap; opacity: 0; pointer-events: none; box-shadow: 0 20px 60px #020e1acc; }
 .banner[data-tone="bad"] { border-color: var(--ui-orange); background: #4a2b22; color: #ffcabd; }
@@ -267,8 +253,8 @@ body[data-scene="final"] .hud, body[data-scene="finalreveal"] .hud { visibility:
 .banner.pop { animation: toast-pop 1.8s ease both; }
 /* Câu hỏi giờ nằm giữa màn hình, còn thanh HUD thì trốn: đẩy toast lên chỗ vừa trống ra, chứ
    không để nó đè lên đúng dòng chữ cả hội trường đang đọc. */
-body[data-scene="question"] .banner, body[data-scene="reveal"] .banner,
-body[data-scene="final"] .banner, body[data-scene="finalreveal"] .banner { top: 13%; }
+body[data-scene="reading"] .banner, body[data-scene="question"] .banner, body[data-scene="reveal"] .banner,
+body[data-scene="finalreading"] .banner, body[data-scene="final"] .banner, body[data-scene="finalreveal"] .banner { top: 13%; }
 
 /* ---- Outside the stage: nothing here is part of the show ------------------------------ */
 /* The cursor and the fullscreen tip only appear while someone moves the mouse over the window. */
@@ -281,13 +267,12 @@ body.idle .fs-hint, body.fullscreen .fs-hint, body.preview .fs-hint { opacity: 0
 @keyframes arrive { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes count-pop { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mark-pop { from { transform: scale(.3); } to { transform: none; } }
-@keyframes tap-shake { 0% { transform: translate(0, 0); } 50% { transform: translate(3px, -2px); } }
 @keyframes bump { 40% { transform: scale(1.08); } }
 @keyframes urgent { 50% { opacity: .55; } }
 @keyframes toast-pop { 0% { opacity: 0; transform: translateY(14px) scale(.9); } 12%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; }
-  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .fire-call b, .q-timer b, .opt-check,
+  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .q-timer b, .opt-check,
   .bottle, .bottle svg { animation: none !important; }
   .unleash-scene .unleash-caption { animation: none !important; }
   body[data-scene="end"] .podium li { animation: none; opacity: 1; }
