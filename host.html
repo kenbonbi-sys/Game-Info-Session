@@ -148,51 +148,48 @@
       <p id="editorWarn" class="editor-warn" hidden></p>
 
       <div class="editor-body">
+        <!-- Trái: cả bộ câu hỏi theo đúng thứ tự sẽ chơi. Giữa: đúng thứ hội trường sắp thấy. -->
         <aside class="editor-list">
           <div class="editor-list-head">
             <b>Thứ tự chơi</b><span id="editorCount" class="muted"></span>
           </div>
           <ol id="editorOrder" class="q-list"></ol>
+          <button id="editorAdd" type="button" class="btn sm wide">+ Thêm câu hỏi</button>
           <div class="editor-list-head"><b>Không dùng</b></div>
           <ol id="editorBench" class="q-list bench"></ol>
-          <button id="editorAdd" type="button" class="btn sm wide">+ Thêm câu hỏi</button>
+          <div class="editor-list-head"><b>Cuối buổi</b></div>
+          <ol id="editorFinale" class="q-list"></ol>
         </aside>
 
-        <section class="editor-form">
+        <section class="editor-stage">
           <div id="editorEmpty" class="muted empty">Chọn một câu ở danh sách bên trái để sửa.</div>
-          <div id="editorFields" hidden>
-            <div class="field-row">
-              <label class="field"><span>ID</span><input id="fId" type="text" maxlength="24" autocomplete="off"></label>
-              <label class="field"><span>Nhóm</span><input id="fGroup" type="text" maxlength="40" autocomplete="off" placeholder="vd: Learning Hub"></label>
-            </div>
-            <label class="field"><span>Câu hỏi</span><textarea id="fText" rows="3" maxlength="300"></textarea></label>
-            <fieldset class="opts">
-              <legend>Đáp án <em class="muted">— chọn nút tròn ở ô đúng</em></legend>
-              <div id="fOptions" class="opt-rows"></div>
-            </fieldset>
-            <label class="check"><input id="fConfirmed" type="checkbox"><span>Đáp án đã được team xác nhận</span></label>
-            <div class="field-row end">
-              <button id="fDelete" type="button" class="btn sm danger">Xoá câu này</button>
-            </div>
+          <div id="editorCanvas" class="canvas" hidden>
+            <textarea id="fText" class="canvas-q" rows="2" maxlength="300" placeholder="Nhập câu hỏi ở đây" aria-label="Câu hỏi"></textarea>
+            <div id="fOptions" class="tiles"></div>
+            <p class="canvas-note">Bấm vòng tròn bên phải ô để chọn đáp án đúng. Ô bỏ trống sẽ không lên màn chiếu.</p>
           </div>
-
-          <details class="editor-extra">
-            <summary>Câu đố vui cuối &amp; thời gian</summary>
-            <label class="field"><span>Câu đố vui</span><textarea id="fxText" rows="2" maxlength="300"></textarea></label>
-            <fieldset class="opts">
-              <legend>Đáp án <em class="muted">— thứ tự A/B/C/D giữ nguyên, không bị đảo</em></legend>
-              <div id="fxOptions" class="opt-rows"></div>
-            </fieldset>
-            <div class="field-row">
-              <label class="field"><span>Đọc câu hỏi (giây)</span><input id="fRead" type="number" min="3" max="60"></label>
-              <label class="field"><span>Trả lời (giây)</span><input id="fTime" type="number" min="5" max="120"></label>
-              <label class="field"><span>Hiện đáp án (giây)</span><input id="fReveal" type="number" min="1" max="60"></label>
-              <label class="field"><span>Lượt bắn (giây)</span><input id="fFire" type="number" min="1" max="60"></label>
-              <label class="field"><span>Tích nước tối đa (giây)</span><input id="fCharge" type="number" min="5" max="300"></label>
-            </div>
-            <label class="check"><input id="fShuffle" type="checkbox"><span>Đảo thứ tự đáp án mỗi ván</span></label>
-          </details>
         </section>
+
+        <aside class="editor-side">
+          <div id="sideQuestion" hidden>
+            <h3>Câu này</h3>
+            <label class="field"><span>ID</span><input id="fId" type="text" maxlength="24" autocomplete="off"></label>
+            <label class="field"><span>Nhóm</span><input id="fGroup" type="text" maxlength="40" autocomplete="off" placeholder="vd: Learning Hub"></label>
+            <label class="check"><input id="fConfirmed" type="checkbox"><span>Đáp án đã được team xác nhận</span></label>
+            <button id="fDelete" type="button" class="btn sm danger wide">Xoá câu này</button>
+          </div>
+          <p id="sideFinale" class="side-note" hidden>Câu đố vui cuối buổi: không tính điểm, và thứ tự A/B/C/D giữ nguyên chứ không bị đảo.</p>
+
+          <h3 class="side-sep">Cả bộ câu hỏi</h3>
+          <div class="side-grid">
+            <label class="field"><span>Đọc câu hỏi (giây)</span><input id="fRead" type="number" min="3" max="60"></label>
+            <label class="field"><span>Trả lời (giây)</span><input id="fTime" type="number" min="5" max="120"></label>
+            <label class="field"><span>Hiện đáp án (giây)</span><input id="fReveal" type="number" min="1" max="60"></label>
+            <label class="field"><span>Lượt bắn (giây)</span><input id="fFire" type="number" min="1" max="60"></label>
+            <label class="field"><span>Tích nước tối đa (giây)</span><input id="fCharge" type="number" min="5" max="300"></label>
+          </div>
+          <label class="check"><input id="fShuffle" type="checkbox"><span>Đảo thứ tự đáp án mỗi ván</span></label>
+        </aside>
       </div>
 
       <footer class="editor-foot">

@@ -219,7 +219,7 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 }
 /* ---- Question editor ------------------------------------------------------------------- */
 .editor { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 22px; background: #040b13e0; backdrop-filter: blur(4px); }
-.editor-box { display: flex; flex-direction: column; width: min(1180px, 100%); height: min(860px, 100%); border: 1px solid var(--line-2); border-radius: 14px 4px; background: var(--panel); box-shadow: 0 30px 80px #000c; overflow: hidden; }
+.editor-box { display: flex; flex-direction: column; width: min(1340px, 100%); height: min(860px, 100%); border: 1px solid var(--line-2); border-radius: 14px 4px; background: var(--panel); box-shadow: 0 30px 80px #000c; overflow: hidden; }
 .editor-head, .editor-foot { display: flex; align-items: center; gap: 10px; padding: 13px 18px; background: var(--panel-2); }
 .editor-head { border-bottom: 1px solid var(--line); }
 .editor-foot { border-top: 1px solid var(--line); }
@@ -227,16 +227,24 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 /* The dashboard's primary button is a full-width step button; in this footer it is one of several. */
 .editor-foot .btn-primary { width: auto; min-height: 42px; padding: 10px 26px; border-radius: 9px 3px; font-size: 15px; box-shadow: inset 0 -3px 0 #6B0009; }
 .editor-warn { margin: 0; padding: 10px 18px; border-bottom: 1px solid #6a4a1c; background: #38290f; color: #ffdfa6; font: 600 13px/1.45 var(--font-sans); }
-.editor-body { flex: 1; display: grid; grid-template-columns: 330px minmax(0, 1fr); min-height: 0; }
+.editor-body { flex: 1; display: grid; grid-template-columns: 274px minmax(0, 1fr) 300px; min-height: 0; }
 .editor-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; padding: 12px; overflow-y: auto; border-right: 1px solid var(--line); }
-.editor-list-head { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 4px 2px; font: 800 12px var(--font-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
-.q-list { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
-.q-list li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px 3px; background: #0d1e30; cursor: pointer; }
+.editor-list-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; padding: 10px 4px 2px; font: 800 12px var(--font-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.editor-list-head .muted { font: 600 11px var(--font-sans); letter-spacing: 0; text-transform: none; }
+.q-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.q-list li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 9px 9px 8px; border: 1px solid var(--line); border-radius: 9px 3px; background: #0d1e30; cursor: pointer; }
 .q-list li:hover { border-color: var(--line-2); }
 .q-list li[aria-selected="true"] { border-color: var(--orange); background: #2b1a15; }
-.q-list li .n { color: var(--blue-soft); font: 700 12px var(--font-disp); font-variant-numeric: tabular-nums; }
-.q-list li .t { min-width: 0; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
-.q-list li .t em { display: block; color: var(--faint); font-size: 11px; font-style: normal; }
+.q-list li .n { color: var(--blue-soft); font: 700 12px/1.5 var(--font-disp); font-variant-numeric: tabular-nums; }
+.q-list li .t { min-width: 0; }
+.q-list li .t b { display: block; overflow: hidden; font: 600 12.5px/1.5 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.q-list li .t em { display: block; overflow: hidden; color: var(--faint); font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+/* Bốn vạch màu = bốn ô đáp án: vạch mờ là ô còn trống, vạch có viền trắng là đáp án đúng.
+   Nhìn cả cột là biết câu nào còn dở, khỏi phải bấm vào từng câu. */
+.q-list li .bar { display: flex; gap: 3px; margin-top: 6px; }
+.q-list li .bar i { flex: 1; height: 5px; border-radius: 2px; background: var(--c); opacity: .22; }
+.q-list li .bar i.on { opacity: 1; }
+.q-list li .bar i.right { box-shadow: 0 0 0 1.5px #ffffffd0; }
 .q-list li .flag { color: var(--warn); font-size: 12px; }
 .q-list .row-btns { display: flex; gap: 3px; }
 .q-list .row-btns button { padding: 2px 6px; border: 1px solid var(--line); border-radius: 5px; background: #16293c; color: var(--muted); font: 700 11px var(--font-disp); cursor: pointer; }
@@ -244,34 +252,73 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .q-list .row-btns button:disabled { opacity: .35; cursor: default; }
 .q-list.bench li { background: #0b1725; opacity: .82; }
 
-.editor-form { min-height: 0; padding: 16px 20px 20px; overflow-y: auto; }
+/* Giữa: dựng đúng như máy chiếu sẽ chiếu — bảng trắng ở trên, bốn ô màu bên dưới. Người set-up
+   nhìn thấy cái hội trường sẽ thấy, không phải bốn ô input xếp dọc. */
+.editor-stage { min-height: 0; padding: 20px 22px; overflow-y: auto; }
+.canvas { display: grid; gap: 16px; }
+.canvas-q {
+  width: 100%; min-height: 92px; padding: 22px 26px; border: 2px solid transparent; border-radius: 12px 4px;
+  background: #F4F8FC; color: #0B1A2B; font: 800 24px/1.32 var(--font-disp); text-align: center;
+  resize: none; overflow: hidden; box-sizing: border-box;
+}
+.canvas-q::placeholder { color: #8ba0b5; }
+.canvas-q:focus { border-color: var(--orange); outline: none; }
+.canvas-note { margin: 2px 0 0; color: var(--faint); font-size: 12px; text-align: center; }
+
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 14px 14px 16px; border-radius: 10px 3px; background: var(--c); box-shadow: inset 0 -5px 0 var(--ledge);
+}
+.tile[data-empty="true"] { opacity: .52; }
+.tile[data-empty="true"]:focus-within { opacity: 1; }
+.tile .shape { display: grid; place-items: center; width: 28px; height: 28px; }
+.tile .shape svg { width: 26px; height: 26px; fill: #fff; }
+.tile textarea { width: 100%; min-height: 42px; padding: 9px 11px; border: 0; border-radius: 7px 2px; background: #ffffff26; color: #fff; font: 700 15px/1.35 var(--font-disp); resize: none; overflow: hidden; box-sizing: border-box; }
+.tile textarea::placeholder { color: #ffffffa3; font-weight: 600; }
+.tile textarea:focus { background: #ffffff3d; outline: 2px solid #fff; outline-offset: 1px; }
+/* Vòng tròn chọn đáp án đúng, y như nút tròn trên ô đáp án của Kahoot. */
+.tile .mark { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border: 3px solid #ffffffc4; border-radius: 50%; background: #00000021; cursor: pointer; }
+.tile .mark input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tile .mark::after { content: "✓"; color: #ffffff00; font: 800 17px/1 var(--font-disp); }
+.tile[data-correct="true"] { outline: 3px solid #ffffffd9; outline-offset: 2px; }
+.tile[data-correct="true"] .mark { border-color: #fff; background: var(--good); }
+.tile[data-correct="true"] .mark::after { color: #fff; }
+.tile .mark:has(input:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* Phải: những thứ chỉnh một lần rồi thôi. */
+.editor-side { min-height: 0; padding: 16px 16px 20px; overflow-y: auto; border-left: 1px solid var(--line); }
+.editor-side h3 { margin: 0 0 10px; font: 800 13px var(--font-disp); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+.editor-side .side-sep { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.side-note { margin: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px 3px; background: #0c1d2e; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.side-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.editor-stage .empty { padding: 40px 0; text-align: center; }
 .field { display: block; margin-bottom: 12px; }
 .field > span { display: block; margin-bottom: 4px; color: var(--muted); font: 700 12px var(--font-disp); }
 .field input, .field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 7px 3px; background: #0a1826; font: 500 14px/1.45 var(--font-sans); resize: vertical; box-sizing: border-box; }
 .field input:focus, .field textarea:focus { border-color: var(--orange); }
-.field-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.field-row .field { flex: 1; min-width: 150px; }
-.field-row.end { justify-content: flex-end; }
-.opts { margin: 0 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px 3px; }
-.opts legend { padding: 0 6px; color: var(--muted); font: 700 12px var(--font-disp); }
-.opts legend em { font-weight: 500; }
-.opt-rows { display: flex; flex-direction: column; gap: 7px; }
-.opt-row { display: grid; grid-template-columns: auto 22px minmax(0, 1fr); align-items: center; gap: 9px; }
-.opt-row input[type="radio"] { width: 17px; height: 17px; accent-color: var(--good); cursor: pointer; }
-.opt-row .letter { color: var(--blue-soft); font: 800 14px var(--font-disp); }
-.opt-row input[type="text"] { width: 100%; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 7px 3px; background: #0a1826; box-sizing: border-box; }
-.opt-row[data-correct="true"] input[type="text"] { border-color: var(--good); background: #0c2419; }
 .check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: 13px; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--orange); }
-.editor-extra { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px 3px; background: #0c1d2e; }
-.editor-extra summary { font: 800 13px var(--font-disp); cursor: pointer; }
-.editor-extra > *:not(summary) { margin-top: 12px; }
 .btn.wide { width: 100%; margin-top: 8px; }
 .btn.sm.danger, .btn.danger { border-color: #7a3a30; color: #ffb3a5; }
 
-@media (max-width: 900px) {
+/* Laptop hẹp: bóp hai cột hai bên trước, vì bảng câu hỏi ở giữa mới là chỗ cần rộng. */
+@media (max-width: 1180px) {
+  .editor-body { grid-template-columns: 232px minmax(0, 1fr) 248px; }
+  .editor-side { padding: 14px 12px 18px; }
+  .editor-side .side-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* Hẹp nữa thì cột phải nằm xuống dưới, các ô cài đặt trải ngang cho khỏi chiếm chiều cao. */
+@media (max-width: 1000px) {
+  .editor-body { grid-template-columns: 224px minmax(0, 1fr); }
+  .editor-side { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 18px; align-items: start; border-left: 0; border-top: 1px solid var(--line); }
+  .editor-side .side-sep { margin-top: 0; padding-top: 0; border-top: 0; }
+  .editor-side .side-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
   .editor-body { grid-template-columns: minmax(0, 1fr); }
-  .editor-list { max-height: 240px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .editor-list { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .tiles { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

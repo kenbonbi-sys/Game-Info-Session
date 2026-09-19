@@ -450,12 +450,15 @@ function selectTab(logTab) {
 // Edits a working copy of data/questions.json and only writes it back on Lưu, so a half-finished
 // edit can be abandoned. The server validates again before the file is replaced.
 
-const LETTERS = 'ABCD';
+// Câu đố vui cuối buổi cũng là một câu hỏi, nên nó nằm luôn trong danh sách bên trái và sửa
+// bằng đúng cái bảng ở giữa. Khoá của nó là một Symbol, nên không đời nào đụng id người ta gõ.
+const FINALE_ID = Symbol('finale');
 let draft = null;        // the working copy
 let picked = null;       // id of the question being edited
 
 const byId = id => draft.questions.find(q => q.id === id);
 const benchIds = () => draft.questions.filter(q => !draft.order.includes(q.id)).map(q => q.id);
+const current = () => (picked === FINALE_ID ? draft.finale : byId(picked));
 
 async function openEditor() {
   try {
@@ -474,8 +477,8 @@ async function openEditor() {
     warn.textContent = notes.join(' ');
     warn.hidden = !notes.length;
     $('editorMsg').textContent = '';
-    renderEditor();
     $('editor').hidden = false;
+    renderEditor();
     $('editorClose').focus();
   } catch (err) {
     toast(err.message, 'bad');
@@ -488,15 +491,33 @@ function closeEditor() {
   picked = null;
 }
 
-function questionRow(id, index, inOrder) {
-  const q = byId(id);
+function card(id, q, label, sub) {
   const li = document.createElement('li');
   li.setAttribute('aria-selected', String(id === picked));
-  li.innerHTML = `<span class="n">${inOrder ? index + 1 : '·'}</span>
-    <span class="t">${escapeHtml(q.text || '(chưa có nội dung)')}<em>${escapeHtml(q.id)}${q.group ? ` · ${escapeHtml(q.group)}` : ''}</em></span>`;
+  li.innerHTML = `<span class="n">${escapeHtml(label)}</span>
+    <span class="t"><b>${escapeHtml(q.text || '(chưa có nội dung)')}</b><em>${escapeHtml(sub)}</em>${answerBar(q)}</span>`;
+  li.addEventListener('click', e => {
+    if (e.target.closest('.row-btns')) return;
+    picked = id;
+    renderEditor();
+  });
+  return li;
+}
+
+// Bốn vạch màu đúng thứ tự A/B/C/D: đậm là ô đã có chữ, viền trắng là đáp án đúng.
+function answerBar(q) {
+  const bars = ANSWERS.map((a, i) => {
+    const cls = [String(q.options?.[i] ?? '').trim() && 'on', q.answer === i && 'right'].filter(Boolean).join(' ');
+    return `<i class="${cls}" style="--c:${a.color}"></i>`;
+  });
+  return `<span class="bar" aria-hidden="true">${bars.join('')}</span>`;
+}
+
+function questionRow(id, index, inOrder) {
+  const q = byId(id);
+  const li = card(id, q, inOrder ? String(index + 1) : '·', `${q.id}${q.group ? ` · ${q.group}` : ''}`);
   if (q.answerConfirmed === false) {
-    const flag = Object.assign(document.createElement('span'), { className: 'flag', textContent: '⚠', title: 'Đáp án chưa xác nhận' });
-    li.append(flag);
+    li.append(Object.assign(document.createElement('span'), { className: 'flag', textContent: '⚠', title: 'Đáp án chưa xác nhận' }));
   }
   const btns = document.createElement('span');
   btns.className = 'row-btns';
@@ -510,12 +531,11 @@ function questionRow(id, index, inOrder) {
     btns.append(rowBtn('+', 'Thêm vào ván chơi', false, () => { draft.order.push(id); renderEditor(); }));
   }
   li.append(btns);
-  li.addEventListener('click', e => {
-    if (e.target.closest('.row-btns')) return;
-    picked = id;
-    renderEditor();
-  });
   return li;
+}
+
+function finaleRow() {
+  return card(FINALE_ID, draft.finale, '★', 'Câu đố vui · không tính điểm');
 }
 
 function rowBtn(label, title, disabled, onClick) {
@@ -533,44 +553,78 @@ function moveInOrder(index, delta) {
 
 const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Four rows whether or not the question uses all four: blank ones are dropped when saving.
-function optionRows(host, target, onChange) {
-  host.replaceChildren(...Array.from({ length: 4 }, (_, i) => {
-    const row = document.createElement('div');
-    row.className = 'opt-row';
-    row.dataset.correct = String(target.answer === i);
+// Ô chữ cao dần theo nội dung. Đáp án dài thì ô cao lên chứ không mọc thanh cuộn tí hon, nên
+// người set-up lúc nào cũng đọc được trọn cái mình vừa gõ.
+function fitBox(el) {
+  el.style.height = 'auto';
+  // scrollHeight không tính viền, mà ô lại đo theo border-box: thiếu phần viền là chữ bị hụt.
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+}
+
+function refitEditor() {
+  fitBox($('fText'));
+  for (const box of $('fOptions').querySelectorAll('textarea')) fitBox(box);
+}
+
+// Bốn ô màu đúng như trên màn chiếu, kể cả khi câu này chỉ dùng hai ô: ô trống mờ đi và bị bỏ
+// lúc lưu, nên người set-up không phải nghĩ xem "để trống thì sao".
+function optionTiles(host, target, onChange) {
+  host.replaceChildren(...ANSWERS.map((a, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.setProperty('--c', a.color);
+    tile.style.setProperty('--ledge', a.ledge);
+    const shape = Object.assign(document.createElement('span'), { className: 'shape' });
+    shape.innerHTML = shapeSvg(a.shape);
+    // textarea chứ không phải input một dòng: đáp án dài tới đâu cũng đọc được hết, khỏi phải
+    // rê con trỏ trong ô để xem mình vừa gõ gì.
+    const text = Object.assign(document.createElement('textarea'), { rows: 2, value: target.options[i] ?? '', maxLength: 160, placeholder: `Đáp án ${a.letter}` });
+    text.setAttribute('aria-label', `Nội dung đáp án ${a.letter}`);
+    text.addEventListener('input', () => { target.options[i] = text.value; fitBox(text); onChange(); });
+    const mark = Object.assign(document.createElement('label'), { className: 'mark', title: `Chọn ${a.letter} làm đáp án đúng` });
     const radio = Object.assign(document.createElement('input'), { type: 'radio', name: `${host.id}-correct`, checked: target.answer === i });
-    radio.setAttribute('aria-label', `Đáp án ${LETTERS[i]} là đáp án đúng`);
+    radio.setAttribute('aria-label', `Đáp án ${a.letter} là đáp án đúng`);
     radio.addEventListener('change', () => { target.answer = i; onChange(); });
-    const text = Object.assign(document.createElement('input'), { type: 'text', value: target.options[i] ?? '', maxLength: 160, placeholder: `Đáp án ${LETTERS[i]}` });
-    text.setAttribute('aria-label', `Nội dung đáp án ${LETTERS[i]}`);
-    text.addEventListener('input', () => { target.options[i] = text.value; onChange(); });
-    row.append(radio, Object.assign(document.createElement('span'), { className: 'letter', textContent: LETTERS[i] }), text);
-    return row;
+    mark.append(radio);
+    tile.append(shape, text, mark);
+    return tile;
   }));
+  for (const box of host.querySelectorAll('textarea')) fitBox(box);
+  markTiles(host, target);
+}
+
+// Trạng thái của bốn ô (đúng / còn trống) chỉ là hai thuộc tính, đổi được mà không dựng lại ô —
+// gõ tới đâu ô sáng lên tới đó mà con trỏ vẫn nằm yên.
+function markTiles(host, target) {
+  for (const [i, tile] of [...host.children].entries()) {
+    tile.dataset.correct = String(target?.answer === i);
+    tile.dataset.empty = String(!String(target?.options?.[i] ?? '').trim());
+  }
 }
 
 function renderEditor() {
-  $('editorOrder').replaceChildren(...draft.order.map((id, i) => questionRow(id, i, true)));
-  $('editorBench').replaceChildren(...benchIds().map(id => questionRow(id, 0, false)));
+  renderEditorLists();
   const unconfirmed = draft.order.filter(id => byId(id)?.answerConfirmed === false).length;
   $('editorCount').textContent = `${draft.order.length} câu${unconfirmed ? ` · ⚠ ${unconfirmed} chưa xác nhận` : ''}`;
   $('editorState').textContent = `${draft.questions.length} câu trong file`;
 
-  const q = picked && byId(picked);
-  $('editorEmpty').hidden = !!q;
-  $('editorFields').hidden = !q;
-  if (q) {
-    q.options ??= [];
-    $('fId').value = q.id;
-    $('fGroup').value = q.group ?? '';
-    $('fText').value = q.text ?? '';
-    $('fConfirmed').checked = q.answerConfirmed !== false;
-    optionRows($('fOptions'), q, () => renderEditorLists());
+  const t = current();
+  const isFinale = picked === FINALE_ID;
+  $('editorEmpty').hidden = !!t;
+  $('editorCanvas').hidden = !t;
+  $('sideQuestion').hidden = !t || isFinale;
+  $('sideFinale').hidden = !isFinale;
+  if (t) {
+    t.options ??= [];
+    $('fText').value = t.text ?? '';
+    fitBox($('fText'));
+    optionTiles($('fOptions'), t, () => renderEditorLists());
+    if (!isFinale) {
+      $('fId').value = t.id;
+      $('fGroup').value = t.group ?? '';
+      $('fConfirmed').checked = t.answerConfirmed !== false;
+    }
   }
-  const fx = draft.finale;
-  $('fxText').value = fx.text ?? '';
-  optionRows($('fxOptions'), fx, () => {});
   $('fRead').value = draft.readSeconds ?? 10;
   $('fTime').value = draft.timePerQuestion ?? 15;
   $('fReveal').value = draft.revealSeconds ?? 5;
@@ -583,7 +637,8 @@ function renderEditor() {
 function renderEditorLists() {
   $('editorOrder').replaceChildren(...draft.order.map((id, i) => questionRow(id, i, true)));
   $('editorBench').replaceChildren(...benchIds().map(id => questionRow(id, 0, false)));
-  for (const [i, row] of [...$('fOptions').children].entries()) row.dataset.correct = String(byId(picked)?.answer === i);
+  $('editorFinale').replaceChildren(finaleRow());
+  markTiles($('fOptions'), current());
 }
 
 function addQuestion() {
@@ -675,7 +730,7 @@ function bindEditor() {
     renderEditorLists();
   });
   $('fGroup').addEventListener('input', e => { const q = byId(picked); if (q) { q.group = e.target.value; renderEditorLists(); } });
-  $('fText').addEventListener('input', e => { const q = byId(picked); if (q) { q.text = e.target.value; renderEditorLists(); } });
+  $('fText').addEventListener('input', e => { const t = current(); fitBox(e.target); if (t) { t.text = e.target.value; renderEditorLists(); } });
   $('fConfirmed').addEventListener('change', e => {
     const q = byId(picked);
     if (!q) return;
@@ -683,8 +738,9 @@ function bindEditor() {
     else q.answerConfirmed = false;
     renderEditorLists();
   });
-  $('fxText').addEventListener('input', e => { draft.finale.text = e.target.value; });
   $('editor').addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(); });
+  // Cửa sổ đổi cỡ thì bề rộng ô đổi theo, chiều cao vừa tính lúc trước không còn đúng nữa.
+  addEventListener('resize', () => { if (!$('editor').hidden && draft) refitEditor(); });
 }
 
 function boot() {
