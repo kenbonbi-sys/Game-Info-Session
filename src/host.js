@@ -101,7 +101,7 @@ const FEAR_UI = {
   // game, tức là đấu trường và mấy chục ụ súng — hội trường thấy trước là lộ mất đoạn cuối buổi.
   outro: {
     state: 'câu hỏi đọng lại',
-    note: 'Máy chiếu đang để Quái Vật và câu hỏi "Ta nên làm gì để chiến đấu với nỗi sợ đây?". Cứ để đó mà dẫn phần nội dung; cuối buổi mới bấm nút dưới để mở phòng chờ của game.',
+    note: 'Máy chiếu đang để Quái Vật và câu hỏi "Chúng ta nên làm gì để chiến đấu với nỗi sợ đây?". Cứ để đó mà dẫn phần nội dung; cuối buổi mới bấm nút dưới để mở phòng chờ của game.',
     button: 'Xong phần nội dung · mở phòng chờ game',
     action: 'fear-done',
   },

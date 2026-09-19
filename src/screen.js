@@ -16,10 +16,6 @@ const params = new URLSearchParams(location.search);
 // The dashboard's preview is silent, renders at a lower frame rate and doesn't count as a projector.
 const PREVIEW = params.has('preview');
 const PREVIEW_FRAME_MS = 50;
-const PHASE_LABEL = {
-  lobby: 'Phòng chờ', countdown: 'Chuẩn bị', reading: 'Đang đọc đề', question: 'Đang trả lời', reveal: 'Đáp án', fire: 'BẮN!',
-  finalreading: 'Câu đố vui', final: 'Câu đố vui', finalreveal: 'Đáp án', charge: 'TÍCH NƯỚC!', unleash: 'NÉM BÌNH!', victory: 'CÙNG NHAU CHIẾN THẮNG', end: 'Top 5',
-};
 const RING = 2 * Math.PI * 52;
 
 let key = params.get('key');
@@ -32,7 +28,6 @@ key ??= prompt('Nhập host key (in trong terminal khi chạy server):') ?? '';
 let state = null;
 let offset = 0;
 let fearQrUrl = '';
-let seatsTaken = 0;
 let builtIndex = -1;
 let lastCount = -1;
 let roundShots = 0;
@@ -155,14 +150,12 @@ function renderCharge({ taps, goal, full }) {
 
 function onSeats(msg) {
   setSeats(msg.seats);
-  seatsTaken = msg.seats.length;
   // Newest arrivals first; a reconnecting projector lists the latest few instead of everyone.
   const fresh = msg.seats.filter(([, n]) => !announced.has(n)).sort((a, b) => a[1] - b[1]).slice(-8);
   for (const [, n] of msg.seats) announced.add(n);
   const list = $('arrivals');
   for (const [, , name] of fresh) list.prepend(Object.assign(document.createElement('li'), { textContent: name }));
   while (list.children.length > 8) list.lastElementChild.remove();
-  renderSeatCount();
 }
 
 function onState(s) {
@@ -209,7 +202,6 @@ function enterPhase(s, live) {
     case 'finalreading':
     case 'final':
       buildQuestion(s);
-      $('qMeta').textContent = `CÂU ĐỐ VUI · ${s.question?.group ?? ''}`.trim();
       if (live && s.phase === 'finalreading') banner('Câu cuối: đố vui!', 'info');
       break;
     case 'finalreveal':
@@ -247,7 +239,6 @@ function buildQuestion(s) {
   const q = s.question;
   if (!q) return;
   builtIndex = s.index;
-  $('qMeta').textContent = `Câu ${s.index + 1}/${s.total}${q.group ? ` · ${q.group}` : ''}`;
   $('qText').textContent = q.text;
   $('options').replaceChildren(...q.options.map((text, i) => {
     const a = ANSWERS[i];
@@ -323,26 +314,10 @@ function renderLobby(s) {
   $('fearUrl').textContent = fearQrUrl.replace(/^https?:\/\//, '');
 }
 
-function renderSeatCount() {
-  const free = ARENA.slots.length - seatsTaken;
-  $('seatCount').textContent = free > 0 ? `${free}/${ARENA.slots.length} ụ súng còn trống` : 'Hết ụ, người vào sau bắn từ lối đi';
-}
-
 function render(s) {
   $('players').textContent = s.players;
-  $('phaseLabel').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn'
-    : ['reading', 'question'].includes(s.phase) ? `Câu ${s.index + 1}/${s.total}`
-    : PHASE_LABEL[s.phase] ?? s.phase;
   document.body.dataset.firing = String(!!s.firing);
   if (s.phase === 'lobby') renderLobby(s);
-  if (s.phase === 'question') {
-    $('answeredNum').textContent = s.answered;
-    $('answeredOf').textContent = `/${Math.max(s.online, s.answered)} đã trả lời`;
-  }
-  if (s.phase === 'final' || s.phase === 'finalreveal') {
-    $('answeredNum').textContent = s.answered ?? 0;
-    $('answeredOf').textContent = `/${Math.max(s.online ?? 0, s.answered ?? 0)} đã trả lời`;
-  }
   if (s.phase === 'end') {
     const nextKey = JSON.stringify(s.top);
     if (nextKey !== podiumKey) {
@@ -392,8 +367,6 @@ function onFear(msg) {
   else if (msg.phase === 'outro') startOutro(since);
   else endStorm();
   $('fearPeople').textContent = String(fear.people);
-  $('fearTotal').textContent = fear.total.toLocaleString('vi-VN');
-  $('fearKinds').textContent = `điều · ${fear.kinds} nỗi sợ khác nhau`;
   if (state) render(state);
 }
 
@@ -506,15 +479,6 @@ async function boot() {
   initFearCloud($('fearCanvas'));
   fit();
   addEventListener('resize', fit);
-  $('promptShapes').replaceChildren(...ANSWERS.map(a => {
-    const i = document.createElement('i');
-    i.style.setProperty('--c', a.color);
-    i.style.setProperty('--ledge', a.ledge);
-    i.innerHTML = shapeSvg(a.shape);
-    return i;
-  }));
-  renderSeatCount();
-
   if (!PREVIEW) {
     // The first key press or click on the projector window also unlocks its sound.
     initGameAudio();

@@ -418,9 +418,8 @@ function renderWait(view) {
     case 'lobby':
       art = 'turret';
       title = turret ? `Bạn ở ${turret}!` : 'Bạn đã vào phòng!';
-      text = turret
-        ? 'Tên bạn đang hiện trên ụ súng ở màn hình lớn. Chờ MC bắt đầu nhé!'
-        : 'Hết ụ súng rồi: bạn vẫn trả lời, có điểm và bắn từ lối đi giữa hội trường.';
+      // Có ụ rồi thì tấm hình và dòng "Bạn ở Ụ số N!" đã nói đủ; chỉ ai không có ụ mới cần dặn thêm.
+      text = turret ? '' : 'Hết ụ súng rồi: bạn vẫn trả lời, có điểm và bắn từ lối đi giữa hội trường.';
       extra.push(Object.assign(document.createElement('span'), { className: 'stat-line', innerHTML: `<b>${quiz.players}</b> người đã vào phòng` }));
       break;
     case 'countdown':
@@ -606,7 +605,6 @@ function renderEnd() {
   $('end').hidden = false;
   $('endTitle').textContent = me.rank && me.rank <= 5 ? '🏆 Bạn lọt TOP 5!' : 'Quái Vật Dễ Sợ đã gục ngã!';
   $('endRank').textContent = me.rank ? `#${me.rank} / ${me.players}` : '';
-  $('endScore').textContent = `${me.score.toLocaleString('vi-VN')} điểm · đúng ${me.correct}/${quiz.total} câu · ${(me.totalShots ?? 0).toLocaleString('vi-VN')} lượt tap`;
 }
 
 function banner(text, tone = 'info') {
@@ -738,6 +736,19 @@ function playGuideStep(step) {
   guideView.start = performance.now() / 1000 - GUIDE_STARTS[step];
 }
 
+// Bước đang chiếu ngay lúc này — clip tự chạy tiếp nên nó trôi khỏi bước vừa bấm. Tính lại theo
+// đồng hồ chứ không đọc bước vừa vẽ: hai cú chạm liên tiếp trong cùng một khung hình vẫn đi hai bước.
+function liveGuideStep() {
+  if (REDUCED_MOTION.matches || !spritesDone()) return guideView.step;
+  const elapsed = Math.max(0, performance.now() / 1000 - guideView.start) % GUIDE_TOTAL;
+  return GUIDE_STARTS.findLastIndex(start => elapsed >= start);
+}
+
+// Hai điểm chạm trái/phải: bước vừa trôi qua vẫn xem lại được, bước sau không phải chờ hết vòng.
+function stepGuide(delta) {
+  playGuideStep((liveGuideStep() + delta + GUIDE_STARTS.length) % GUIDE_STARTS.length);
+}
+
 // Clips auto-advance and loop; with reduced motion each step holds its key frame until tapped.
 function renderGuide(t) {
   // Hướng dẫn mở ngay lúc quét mã nên gần như luôn tới trước sprite. Chữ đọc được ngay;
@@ -787,8 +798,14 @@ async function boot() {
   $('guideBtn').addEventListener('click', () => showGuide(true));
   $('guideClose').addEventListener('click', () => showGuide(false));
   guide.addEventListener('click', e => { if (e.target === guide) showGuide(false); });
-  guide.addEventListener('keydown', e => { if (e.key === 'Escape') showGuide(false); });
+  guide.addEventListener('keydown', e => {
+    if (e.key === 'Escape') showGuide(false);
+    if (e.key === 'ArrowLeft') stepGuide(-1);
+    if (e.key === 'ArrowRight') stepGuide(1);
+  });
   for (const btn of guideSteps) btn.addEventListener('click', () => playGuideStep(Number(btn.dataset.step)));
+  $('guidePrev').addEventListener('click', () => stepGuide(-1));
+  $('guideNext').addEventListener('click', () => stepGuide(1));
   for (const btn of $('items').querySelectorAll('.item')) btn.addEventListener('click', () => useItem(btn.dataset.item));
 
   // pointerdown, not click: every finger counts, and a tap registers before the finger lifts.

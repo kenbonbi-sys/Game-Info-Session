@@ -46,10 +46,13 @@ const O = {
   ask: 3.2,       // câu hỏi của cả buổi
   tease: 4.4,
 };
-const ASK = 'TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY?';
+const ASK = 'CHÚNG TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY?';
 const TEASE = 'Hãy cùng đón xem nhé!';
 
 const CENTER = { x: W / 2, y: H / 2 - 20 };
+// Khung QR nằm ở góc trái dưới, ngoài canvas — giữ chỗ cho nó như một chữ đã đặt sẵn, không thì
+// chữ mọc đè lên mã và người tới muộn hết quét được.
+const QR_BOX = { x: 24, y: 898, w: 164, h: H - 898 };
 const MAX_DRAWN = 110;            // chữ nhỏ hơn nữa thì ngồi cuối hội trường cũng không đọc nổi
 const SIZE_MIN = 26;
 const SIZE_MAX = 112;
@@ -93,7 +96,8 @@ export function resizeFearCloud(renderScale) {
 // ---- Xếp chữ ----------------------------------------------------------------------
 
 // Xoắn ốc từ tâm ra, dẹt theo chiều ngang cho hợp màn 16:9; chữ nào không còn chỗ thì thôi,
-// thà thiếu một chữ nhỏ còn hơn đè lên chữ khác.
+// thà thiếu một chữ nhỏ còn hơn đè lên chữ khác. Chừa 170px trên cho câu hỏi và 120px dưới
+// cho khung QR — hai thứ đó nằm ngoài canvas nên chỉ ở đây mới giữ chỗ cho chúng được.
 function place(w, h, boxes) {
   for (let i = 12; i < 3600; i++) {
     const a = i * 0.28;
@@ -101,7 +105,7 @@ function place(w, h, boxes) {
     const x = CENTER.x + Math.cos(a) * r * 1.85;
     const y = CENTER.y + Math.sin(a) * r * 0.78;
     const box = { x: x - w / 2 - PAD, y: y - h / 2 - PAD, w: w + PAD * 2, h: h + PAD * 2 };
-    if (box.x < 48 || box.y < 96 || box.x + box.w > W - 48 || box.y + box.h > H - 120) continue;
+    if (box.x < 48 || box.y < 170 || box.x + box.w > W - 48 || box.y + box.h > H - 120) continue;
     if (boxes.some(o => box.x < o.x + o.w && o.x < box.x + box.w && box.y < o.y + o.h && o.y < box.y + box.h)) continue;
     boxes.push(box);
     return { x, y };
@@ -116,7 +120,7 @@ function relayout() {
   const min = list[list.length - 1].count;
   // Hội trường càng gõ nhiều thì chữ càng phải nhỏ lại, không thì tràn ra ngoài màn chiếu.
   const density = clamp(1.15 - list.length / 150, 0.46, 1);
-  const boxes = [];
+  const boxes = [QR_BOX];
   for (const w of words.values()) w.placed = false;
   for (const w of list) {
     const f = max === min ? 1 : (w.count - min) / (max - min);
@@ -489,7 +493,7 @@ function drawStorm(e) {
     if (e >= T.line && e < T.laugh) bubble(LINE, CENTER.x, 202, 50, clamp((e - T.line) / 0.3, 0, 1));
     else if (laughing) bubble(LAUGH, CENTER.x, 202, 58, clamp((e - T.laugh) / 0.2, 0, 1));
     const titleAlpha = clamp((e - T.born - 0.5) / 0.7, 0, 1) * (1 - clamp((e - T.fly) / 0.3, 0, 1));
-    text('QUÁI VẬT NỖI SỢ', CENTER.x, 928, 36, '#d99c7f', { alpha: titleAlpha, outline: 0 });
+    text('QUÁI VẬT "DỄ SỢ"', CENTER.x, 928, 36, '#d99c7f', { alpha: titleAlpha, outline: 0 });
   }
   letterbox(easeOut(clamp(e / 0.8, 0, 1)));
   const blackout = clamp((e - T.end + 0.6) / 0.6, 0, 1);
@@ -543,7 +547,9 @@ function drawOutro(e) {
   // Câu hỏi ở trên, lời hẹn ở dưới, con boss đứng giữa: một tấm poster đứng yên chờ MC nói tiếp.
   const ask = clamp((e - O.ask) / 0.7, 0, 1);
   if (ask > 0.01) {
-    const size = fitSize(ASK, 68, W - 320);
+    // Câu dài nên fitSize sẽ co chữ lại; nới lề còn 120px mỗi bên để nó không tụt quá nhỏ,
+    // ngồi cuối hội trường vẫn phải đọc được.
+    const size = fitSize(ASK, 68, W - 240);
     text(ASK, CENTER.x, 174 - (1 - easeOut(ask)) * 26 * motion, size, '#fff0e5', { alpha: ask, outline: 8 });
   }
   const tease = clamp((e - O.tease) / 0.7, 0, 1);

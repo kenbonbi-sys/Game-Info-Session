@@ -27,7 +27,7 @@ cùng bắn không còn là một con quái vật vô danh — nó là nỗi s�
 người đã gõ → bị nuốt nốt → Quái Vật bước ra, nói *"TA LÀ NỖI SỢ CỦA CÁC NGƯƠI!"*, cười, rồi bay đi.
 
 Phim xong, máy chiếu **không tự về phòng chờ**: nó tối hẳn, Quái Vật hiện lại trong bóng tối và
-màn hình hỏi *"TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY? — Hãy cùng đón xem nhé!"*. Đó là tấm nền
+màn hình hỏi *"CHÚNG TA NÊN LÀM GÌ ĐỂ CHIẾN ĐẤU VỚI NỖI SỢ ĐÂY? — Hãy cùng đón xem nhé!"*. Đó là tấm nền
 để MC dẫn sang phần nội dung, và nó nằm yên đó cho tới khi MC bấm bước 4. Phòng chờ của game đã là
 đấu trường với mấy chục ụ súng, thấy trước là lộ mất đoạn cuối buổi — nên bước 4 hỏi lại một câu
 trước khi mở.

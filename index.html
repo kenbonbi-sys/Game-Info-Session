@@ -106,8 +106,7 @@
       <h1 id="joinTitle">Cùng <b>Buddy</b><span>đánh bay <em>“Dễ Sợ”</em></span></h1>
       <button id="guideBtn" type="button" class="guide-btn" aria-haspopup="dialog"><span class="guide-play" aria-hidden="true"></span>Xem lại hướng dẫn</button>
       <label class="name-label" for="nameInput">Tên domain của bạn</label>
-      <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: khang.pham2" autocomplete="username" enterkeyhint="go" aria-describedby="nameHint joinError" required>
-      <p id="nameHint" class="name-hint">Đúng domain thì phần thưởng 7 ngày qua mới về đúng ụ súng của bạn.</p>
+      <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: khang.pham2" autocomplete="username" enterkeyhint="go" aria-describedby="joinError" required>
       <button id="joinBtn" type="submit" class="cta-ledge" disabled>Đang tải…</button>
       <p id="loadState" class="load-state" role="status"><i class="load-bar"><b id="loadFill"></b></i><span id="loadText">Đang tải hình ảnh…</span></p>
       <p id="joinError" class="error" role="alert"></p>
@@ -132,7 +131,12 @@
         <button type="button" class="guide-step" data-step="2"><i></i>3. TAP để bắn</button>
         <button type="button" class="guide-step" data-step="3"><i></i>4. Vật phẩm</button>
       </div>
-      <div class="guide-stage"><canvas id="guideClip" class="guide-clip" width="640" height="400" aria-hidden="true"></canvas><p id="guideLoading" class="guide-loading" hidden>Đang tải hình minh hoạ…</p></div>
+      <div class="guide-stage">
+        <canvas id="guideClip" class="guide-clip" width="640" height="400" aria-hidden="true"></canvas>
+        <p id="guideLoading" class="guide-loading" hidden>Đang tải hình minh hoạ…</p>
+        <button id="guidePrev" type="button" class="guide-nav guide-nav--prev" aria-label="Bước trước"><i aria-hidden="true"></i></button>
+        <button id="guideNext" type="button" class="guide-nav guide-nav--next" aria-label="Bước sau"><i aria-hidden="true"></i></button>
+      </div>
       <p id="guideCaption" class="guide-caption" aria-live="polite"></p>
       <button id="guideClose" type="button" class="cta-ledge">Đã hiểu</button>
     </div>
@@ -140,11 +144,8 @@
 
   <section id="end" class="overlay" hidden>
     <div class="px dialog">
-      <div class="end-medal" aria-hidden="true">✦</div>
-      <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
       <h1 id="endTitle">Kết thúc!</h1>
       <div id="endRank" class="rank ca-rankpop"></div>
-      <p id="endScore"></p>
       <p>Xem bảng xếp hạng trên màn hình lớn nhé!</p>
     </div>
   </section>

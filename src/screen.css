@@ -37,7 +37,7 @@ body[data-scene="end"] .end-scene { visibility: visible; opacity: 1; transform: 
 /* Đoạn này chiếm trọn màn chiếu: đấu trường và thanh máu boss chưa có nghĩa gì ở đây, và cái
    đáng nhìn là chữ của chính khán giả đang mọc lên. */
 .fear-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; visibility: hidden; }
-.fear-join, .fear-bar { position: absolute; z-index: 3; visibility: hidden; opacity: 0; transition: opacity 340ms ease, visibility 340ms; }
+.fear-join, .fear-bar, .fear-ask { position: absolute; z-index: 3; visibility: hidden; opacity: 0; transition: opacity 340ms ease, visibility 340ms; }
 body[data-scene^="fear"] .arena, body[data-scene^="fear"] .hud { visibility: hidden; }
 body[data-scene^="fear"] .scrim { opacity: 1; }
 body[data-scene^="fear"] .stage { background: radial-gradient(ellipse at 50% 42%, #14243a 0%, #060c15 68%); }
@@ -45,6 +45,7 @@ body[data-scene^="fear"] .stage { background: radial-gradient(ellipse at 50% 42%
 body[data-scene="fearoutro"] .stage { background: #04070c; }
 body[data-scene^="fear"] .fear-canvas { visibility: visible; }
 body[data-scene="fearjoin"] .fear-join,
+body[data-scene="fearcloud"] .fear-ask,
 body[data-scene="fearcloud"] .fear-bar { visibility: visible; opacity: 1; }
 
 .fear-join {
@@ -59,20 +60,20 @@ body[data-scene="fearcloud"] .fear-bar { visibility: visible; opacity: 1; }
 .fear-join .qr { background: #fff; padding: 14px; border-radius: 12px 4px; }
 .fear-join .qr svg { display: block; width: 280px; height: 280px; }
 
-/* Lúc hội trường đang gõ, câu hỏi và mã lùi xuống một thanh mỏng để chữ có chỗ mọc. */
+/* Lúc hội trường đang gõ, câu hỏi lên hẳn đỉnh màn chiếu và đứng một mình: ai ngẩng lên lúc nào
+   cũng đọc được đang hỏi gì. Cả khoảng giữa để trống cho chữ của hội trường mọc lên. */
+.fear-ask {
+  top: 46px; right: 40px; left: 40px;
+  margin: 0; color: #fff; font: 800 46px/1.2 var(--font-disp); text-align: center; text-wrap: balance;
+}
+/* Mã QR lùi xuống góc trái, vừa đủ một khung — người tới muộn vẫn quét được mà không che chữ. */
 .fear-bar {
-  right: 40px; bottom: 34px; left: 40px;
-  display: flex; align-items: center; gap: 26px; padding: 16px 26px;
+  bottom: 34px; left: 40px;
+  display: flex; align-items: center; padding: 12px;
   border: 2px solid #3d5065; border-radius: 14px 4px; background: #0b1a2bf0;
 }
-.fear-bar-q { flex: 1; min-width: 0; display: grid; gap: 4px; }
-.fear-bar-q b { color: #fff; font: 800 32px/1.2 var(--font-disp); }
-.fear-bar-q span { color: #9fb3c7; font: 600 19px var(--font-sans); }
 .fear-mini-qr { flex: none; width: 104px; height: 104px; padding: 7px; background: #fff; border-radius: 8px 3px; }
 .fear-mini-qr svg { display: block; width: 100%; height: 100%; }
-.fear-bar-count { flex: none; display: grid; justify-items: end; text-align: right; }
-.fear-bar-count b { color: var(--ui-orange); font: 52px/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
-.fear-bar-count span { color: #9fb3c7; font: 600 17px var(--font-sans); }
 /* The fun question shows its tally the same way a real reveal does. */
 body[data-scene="finalreveal"] .opt-count { display: block; }
 body[data-scene="finalreveal"] .opt:not(.correct) { opacity: .34; filter: saturate(.55); transform: scale(.975); }
@@ -95,10 +96,10 @@ body[data-scene="finalreveal"] .opt.correct .opt-check { display: block; animati
 .hud-right { justify-self: end; display: flex; gap: 12px; }
 .hud-chip { padding: 10px 18px; border: 2px solid #3e5b7a; border-radius: 9px 3px; background: #172c43; color: #dce8f4; font: 700 21px var(--font-disp); white-space: nowrap; }
 .hud-chip b { color: var(--ui-blue-soft); font-variant-numeric: tabular-nums; }
-.hud-chip.accent { border-color: var(--ui-orange); background: #3a2520; color: #ffd5cb; }
-body[data-scene="fire"][data-firing="true"] .hud-chip.accent { background: var(--ui-orange); color: #fff; animation: chip-pulse 800ms ease-in-out infinite; }
+/* Số người chơi: một icon hình người rồi tới con số, khỏi phải đọc chữ từ cuối hội trường. */
+.hud-players { display: inline-flex; align-items: center; gap: 10px; }
+.hud-players svg { width: 23px; height: 23px; fill: var(--ui-blue-soft); }
 
-.eyebrow { color: #b0c2d6; font: 700 16px/1.4 var(--font-sans); letter-spacing: .14em; }
 
 /* ---- Lobby: join card on the left, the hall filling up on the right -------- */
 .lobby-card { position: absolute; z-index: 2; top: 108px; bottom: 30px; left: 30px; width: 490px; display: flex; flex-direction: column; align-items: center; padding: 28px 34px 26px; text-align: center; background: #0a1827f2; border: 2px solid #5c7998; border-radius: 18px 5px; box-shadow: 0 24px 60px #02080ecc; transform: translateX(-60px); }
@@ -107,11 +108,9 @@ body[data-scene="fire"][data-firing="true"] .hud-chip.accent { background: var(-
 .qr svg { display: block; width: 100%; height: 100%; }
 .join-url { margin-top: 24px; color: #fff; font: 800 30px/1.2 var(--font-disp); word-break: break-all; }
 .url-pick { margin-top: 10px; max-width: 100%; padding: 6px 10px; border: 2px solid #3e5b7a; border-radius: 6px; background: #172c43; color: #dce8f4; font: 700 15px var(--font-disp); }
-.lobby-note { margin: 12px 0 0; color: #abbccf; font: 500 18px/1.45 var(--font-sans); }
 .lobby-count { display: flex; align-items: center; gap: 18px; margin-top: auto; padding-top: 14px; text-align: left; }
 .lobby-count b { color: var(--ui-orange); font: 800 88px/1 var(--font-disp); font-variant-numeric: tabular-nums; }
 .lobby-count span { font: 800 26px/1.2 var(--font-disp); }
-.lobby-count em { display: block; color: #9fb3c8; font: 500 18px var(--font-sans); font-style: normal; }
 .arrivals { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 8px; width: 100%; min-height: 86px; margin: 14px 0 0; padding: 0; list-style: none; }
 .arrivals li { max-width: 200px; padding: 7px 13px; overflow: hidden; border: 1px solid #45688e; border-radius: 7px 2px; background: #1a3047; font: 700 18px var(--font-disp); text-overflow: ellipsis; white-space: nowrap; animation: arrive 420ms cubic-bezier(.2, 1.4, .4, 1) both; }
 .arrivals li:first-child { border-color: var(--ui-orange); background: #3a2520; color: #ffd5cb; }
@@ -126,7 +125,6 @@ body[data-scene="fire"][data-firing="true"] .hud-chip.accent { background: var(-
 /* Thanh HUD biến mất trong lúc chọn đáp án nên khung câu hỏi lấy luôn phần trên của màn chiếu. */
 .question-scene { position: absolute; z-index: 2; top: 48px; right: 64px; bottom: 40px; left: 64px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 22px; transform: translateY(70px) scale(.97); }
 .q-text { align-self: center; margin: 0; padding: 22px 48px 30px; border-radius: 16px 5px; background: #F4F8FC; color: #0B1A2B; font: 800 50px/1.22 var(--font-disp); text-align: center; text-wrap: balance; box-shadow: 0 8px 0 #0a1522, 0 24px 60px #02080e99; }
-.q-meta { display: block; margin-bottom: 8px; color: #45607c; font: 800 22px/1.3 var(--font-disp); letter-spacing: .04em; text-transform: uppercase; }
 .q-middle { display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; align-items: center; gap: 30px; min-height: 0; }
 .q-timer { position: relative; width: 190px; height: 190px; justify-self: start; }
 .q-timer svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -139,20 +137,11 @@ body:not([data-scene="reading"]):not([data-scene="question"]):not([data-scene="f
 /* Quãng đọc: đề đứng một mình. Bốn ô đáp án vẫn giữ nguyên chỗ của nó rồi mới hiện ra, để câu
    hỏi không nhảy vị trí đúng lúc người ta đang đọc dở. */
 body[data-scene="reading"] .options, body[data-scene="finalreading"] .options { visibility: hidden; opacity: 0; }
-body[data-scene="reading"] .q-answered, body[data-scene="finalreading"] .q-answered { visibility: hidden; }
 body[data-scene="reading"] .q-timer .ring, body[data-scene="finalreading"] .q-timer .ring { stroke: #86b9ca; }
 .q-read-note { display: none; }
-body[data-scene="reading"] .q-play-note, body[data-scene="finalreading"] .q-play-note { display: none; }
 body[data-scene="reading"] .q-read-note, body[data-scene="finalreading"] .q-read-note { display: block; }
-body[data-scene="reading"] .prompt-shapes, body[data-scene="finalreading"] .prompt-shapes { visibility: hidden; }
 .q-prompt { display: grid; justify-items: center; gap: 16px; text-align: center; }
 .q-prompt b { color: #fff; font: 800 36px/1.25 var(--font-disp); }
-.prompt-shapes { display: flex; gap: 14px; }
-.prompt-shapes i { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 9px 3px; background: var(--c); box-shadow: inset 0 -5px 0 var(--ledge); animation: shape-bob 1.6s ease-in-out infinite; }
-.prompt-shapes i:nth-child(2) { animation-delay: .15s; } .prompt-shapes i:nth-child(3) { animation-delay: .3s; } .prompt-shapes i:nth-child(4) { animation-delay: .45s; }
-.prompt-shapes svg { width: 30px; height: 30px; fill: #fff; }
-.q-answered { justify-self: end; display: grid; justify-items: center; color: #c9d7e5; font: 700 24px/1.2 var(--font-disp); text-align: center; }
-.q-answered b { color: #fff; font: 84px/1.05 var(--font-pixel); font-variant-numeric: tabular-nums; }
 .top5 { justify-self: center; width: min(760px, 100%); }
 .top5 h2 { margin: 0 0 10px; color: #ffd5cb; font: 800 26px var(--font-disp); letter-spacing: .08em; text-align: center; }
 .top5 ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -197,12 +186,22 @@ body[data-firing="false"] .fire-call b { color: #c9d7e5; text-shadow: 0 5px 0 #0
 body[data-scene="end"] .podium li { animation: podium-reveal 750ms cubic-bezier(.2,.8,.2,1) var(--reveal-delay) both; }
 .podium li > span { flex: none; width: 100%; padding: 0 4px; box-sizing: border-box; }
 .podium-fox { width: 106px; height: 106px; object-fit: contain; filter: drop-shadow(0 8px 12px #0008); }
-.podium-step { box-sizing: border-box; display: flex; align-items: center; flex-direction: column; gap: 6px; width: 100%; height: var(--step-height); margin-top: 12px; padding: 20px 10px; border: 2px solid #5f819e; border-top: 8px solid #a4cbe6; background: linear-gradient(#244966, #102b42); box-shadow: inset -12px 0 #071a2933, 0 20px 30px #0005; }
-.podium li .podium-step b { width: auto; color: #d2e9fb; font: 800 62px/1 var(--font-disp); }
+.podium-step { box-sizing: border-box; display: flex; align-items: center; flex-direction: column; gap: 4px; width: 100%; height: var(--step-height); margin-top: 12px; padding: 26px 12px 20px; border: 2px solid #5f819e; border-top: 8px solid #a4cbe6; background: linear-gradient(#244966, #102b42); box-shadow: inset -12px 0 #071a2933, 0 20px 30px #0005; }
+/* Thứ hạng nằm trong một tấm huy chương ngũ giác, mũi chúc xuống: liếc một cái là thấy ai hạng
+   mấy, không phải đọc số. Đệm dưới đẩy con số lên phần thân, không rơi vào mũi nhọn. */
+.podium li .podium-step b {
+  box-sizing: border-box; display: grid; place-items: center; width: 104px; height: 100px;
+  margin-bottom: 8px; padding-bottom: 15px;
+  clip-path: polygon(18% 0%, 82% 0%, 100% 62%, 50% 100%, 0% 62%);
+  background: linear-gradient(#a9c7e1, #6c8eae); color: #fff; font: 800 46px/1 var(--font-disp);
+  text-shadow: 0 3px 0 #00000033;
+}
+.podium li:nth-child(2) .podium-step b { background: linear-gradient(#eef4fa, #9cb2c7); color: #41586e; text-shadow: 0 3px 0 #ffffff4d; }
+.podium li:nth-child(3) .podium-step b { background: linear-gradient(#e8ad7c, #b26f3b); }
 .podium li .podium-step em { color: #a4d6ff; font: normal 800 34px/1 var(--font-disp); font-variant-numeric: tabular-nums; }
 .podium li .podium-step i { color: #b5d4eb; font: normal 600 19px var(--font-sans); }
 .podium li:first-child .podium-step { border-color: #ffb968; border-top-color: #ffe3a9; background: linear-gradient(#965829, #4a2a20); box-shadow: inset -12px 0 #54291755, 0 0 70px #ffb15a22; }
-.podium li:first-child .podium-step b { color: #ffe4ac; font-size: 86px; }
+.podium li:first-child .podium-step b { width: 126px; height: 121px; padding-bottom: 18px; background: linear-gradient(#ffd96f, #e2951b); color: #fff; font-size: 58px; }
 .podium li:first-child .podium-step em { color: #ffe9c4; font-size: 40px; }
 .podium li:first-child > span { color: #ffe4ac; font-size: 35px; }
 .podium li:first-child .podium-step i { color: #ffdaae; }
@@ -282,15 +281,13 @@ body.idle .fs-hint, body.fullscreen .fs-hint, body.preview .fs-hint { opacity: 0
 @keyframes arrive { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes count-pop { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes mark-pop { from { transform: scale(.3); } to { transform: none; } }
-@keyframes chip-pulse { 50% { box-shadow: 0 0 0 5px #ff5d3844, 0 0 22px #ff5d38aa; } }
 @keyframes tap-shake { 0% { transform: translate(0, 0); } 50% { transform: translate(3px, -2px); } }
 @keyframes bump { 40% { transform: scale(1.08); } }
-@keyframes shape-bob { 50% { transform: translateY(-8px); } }
 @keyframes urgent { 50% { opacity: .55; } }
 @keyframes toast-pop { 0% { opacity: 0; transform: translateY(14px) scale(.9); } 12%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 1ms !important; }
-  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .prompt-shapes i, .fire-call b, .hud-chip.accent, .q-timer b, .opt-check,
+  .arrivals li, .top5 li, .podium li, .count-scene b.tick, .fire-call b, .q-timer b, .opt-check,
   .bottle, .bottle svg { animation: none !important; }
   .unleash-scene .unleash-caption { animation: none !important; }
   body[data-scene="end"] .podium li { animation: none; opacity: 1; }
