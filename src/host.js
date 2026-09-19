@@ -81,19 +81,16 @@ function onMessage(msg) {
 const FEAR_UI = {
   wait: {
     state: 'chờ quét mã',
-    note: 'Máy chiếu đang hiện mã QR. Chờ mọi người quét xong rồi bấm mở bàn phím.',
     button: 'Mở bàn phím cho hội trường',
     action: 'fear-open',
   },
   open: {
     state: 'đang gõ',
-    note: 'Chữ đang mọc dần trên máy chiếu. Khi thấy đủ rồi thì triệu hồi Quái Vật.',
     button: '🌪️ Triệu hồi Quái Vật',
     action: 'fear-storm',
   },
   storm: {
     state: 'đang triệu hồi',
-    note: 'Đoạn phim đang chạy trên máy chiếu (~15 giây). Xong là máy chiếu dừng ở câu hỏi của cả buổi.',
     button: 'Đang chiếu…',
     action: null,
   },
@@ -101,13 +98,11 @@ const FEAR_UI = {
   // game, tức là đấu trường và mấy chục ụ súng — hội trường thấy trước là lộ mất đoạn cuối buổi.
   outro: {
     state: 'câu hỏi đọng lại',
-    note: 'Máy chiếu đang để Quái Vật và câu hỏi "Chúng ta nên làm gì để chiến đấu với nỗi sợ đây?". Cứ để đó mà dẫn phần nội dung; cuối buổi mới bấm nút dưới để mở phòng chờ của game.',
     button: 'Xong phần nội dung · mở phòng chờ game',
     action: 'fear-done',
   },
   done: {
     state: 'chưa chạy',
-    note: 'Máy chiếu đang là phòng chờ của game. Bấm nút dưới để bắt đầu đoạn mở màn: máy chiếu sẽ hiện mã QR cho hội trường quét.',
     button: '▶ Bắt đầu đoạn mở màn',
     action: 'fear-wait',
   },
@@ -117,7 +112,6 @@ function renderFear(msg) {
   const ui = FEAR_UI[msg.phase] ?? FEAR_UI.done;
   fearAction = ui.action;
   $('fearState').textContent = ui.state;
-  $('fearNote').textContent = ui.note;
   $('fearBtn').textContent = ui.button;
   $('fearBtn').disabled = !ui.action;
   $('fearCard').dataset.phase = msg.phase;
@@ -200,26 +194,20 @@ function nextLabel(s) {
 function renderControl() {
   const s = state;
   const n = s.index + 1;
-  const right = s.answer !== undefined ? s.counts?.[s.answer] ?? 0 : 0;
-  const [title, text] = {
-    lobby: ['Phòng chờ', `${s.players} người đã vào. Mời mọi người quét QR trên màn chiếu, đủ người thì bắt đầu.`],
-    countdown: ['Đếm ngược', 'Câu 1 sắp hiện trên màn chiếu.'],
-    question: [`Câu ${n}: đang trả lời`, 'Khi mọi người online đã chọn, đáp án tự hiện sau 1,5 giây.'],
-    reveal: [`Đáp án câu ${n}`, s.auto ? 'Tự chuyển sang lượt bắn khi hết giờ.' : 'Đang dừng chờ MC: bấm để cho cả hội trường bắn.'],
-    fire: s.firing
-      ? [`Lượt bắn câu ${n}`, `${right} người trả lời đúng đang tap bắn.`]
-      : ['Ngưng bắn', s.auto ? 'Tự sang câu tiếp theo.' : 'Đang dừng chờ MC: bấm để sang câu tiếp.'],
-    final: ['Câu đố vui cuối', 'Không tính điểm. Đọc to câu hỏi cho cả hội trường — trả lời xong là tới màn tích nước.'],
-    finalreveal: ['Đáp án câu vui', `${right} người đoán đúng. Bấm để mở màn tích nước cho cả hội trường.`],
-    charge: charged(s)
-      ? ['Bình đã đầy!', 'Cả đội cáo đang ném bình nước vào Quái Vật trên màn chiếu.']
-      : ['Tích nước!', `${(s.charge?.taps ?? 0).toLocaleString('vi-VN')}/${(s.charge?.goal ?? 0).toLocaleString('vi-VN')} lượt tap. Hô hào cả hội trường tap đi — hoặc bấm "Nạp đầy" nếu muốn chốt sớm.`],
-    unleash: ['Ném bình nước!', 'Bình nước bay vào Quái Vật, khiến nó chao đảo rồi gục xuống. Tiếp theo là clip cả đội cáo ăn mừng.'],
-    victory: ['Cả đội cáo cùng chiến thắng!', 'Clip chiến thắng đang phát trên màn chiếu. Top 5 tự hiện sau khi clip kết thúc.'],
-    end: ['Kết thúc', 'Màn chiếu đang hiện Top 5 kèm lượt tap. Tải CSV để lấy danh sách trao quà.'],
-  }[s.phase] ?? ['', ''];
-  $('ctrlTitle').textContent = title;
-  $('ctrlText').textContent = text;
+  // Tên bước thôi: nút ngay dưới đã nói bước kế tiếp là gì, khỏi cần một đoạn giải thích nữa.
+  $('ctrlTitle').textContent = {
+    lobby: 'Phòng chờ',
+    countdown: 'Đếm ngược',
+    question: `Câu ${n}: đang trả lời`,
+    reveal: `Đáp án câu ${n}`,
+    fire: s.firing ? `Lượt bắn câu ${n}` : 'Ngưng bắn',
+    final: 'Câu đố vui cuối',
+    finalreveal: 'Đáp án câu vui',
+    charge: charged(s) ? 'Bình đã đầy!' : 'Tích nước!',
+    unleash: 'Ném bình nước!',
+    victory: 'Cả đội cáo cùng chiến thắng!',
+    end: 'Kết thúc',
+  }[s.phase] ?? '';
   $('fillBtn').hidden = s.phase !== 'charge' || charged(s);
   $('nextBtn').textContent = nextLabel(s);
   // Let the hall finish its bottle and watch the full victory clip before revealing Top 5.
@@ -717,7 +705,6 @@ function boot() {
   $('csvBtn').href = `/api/host/results.csv?${keyParam}`;
   $('openScreen').addEventListener('click', openScreen);
   $('copyJoin').addEventListener('click', () => state && copy(state.joinUrl, 'Đã sao chép link vào chơi'));
-  $('copyScreen').addEventListener('click', () => copy(screenUrl, 'Đã sao chép link màn chiếu'));
   $('urlPick').addEventListener('change', e => action('joinurl', { url: e.target.value }));
   $('search').addEventListener('input', () => state && renderRoster());
   $('tabPlayers').addEventListener('click', () => selectTab(false));

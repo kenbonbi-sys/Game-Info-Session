@@ -29,7 +29,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fear-card[data-phase="storm"] .fear-state { border-color: var(--warn); color: var(--warn); }
 /* Máy chiếu đang đứng ở câu hỏi cuối đoạn mở màn và chờ MC: nút dưới nó mở luôn phòng chờ game. */
 .fear-card[data-phase="outro"] .fear-state { border-color: var(--orange); color: var(--orange); }
-.fear-note { margin: 0; color: var(--muted); font: 500 12px/1.5 var(--font-sans); }
 .fear-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .fear-nums div { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px 3px; background: var(--panel-2); }
 .fear-nums b { color: var(--text); font: 800 20px/1 var(--font-disp); font-variant-numeric: tabular-nums; }
@@ -74,7 +73,6 @@ body[data-phase="fire"] .phase-pill .dot { background: var(--orange); box-shadow
 .btn.danger:hover { background: #3a1d19; }
 .btn.toggle[aria-pressed="true"] b { color: var(--good); }
 .btn.toggle[aria-pressed="false"] b { color: var(--warn); }
-.link { padding: 0; border: 0; background: none; color: var(--blue-soft); font: inherit; text-decoration: underline; cursor: pointer; }
 
 /* ---- Question timeline -------------------------------------------------------------- */
 .timeline { grid-area: timeline; display: flex; gap: 5px; }
@@ -105,7 +103,9 @@ body[data-phase="fire"] .phase-bar i { background: linear-gradient(90deg, #FF703
 /* The finale's manual top-up: blue, so it never gets mistaken for the main step button. */
 .btn-primary.fill { margin-top: 10px; background: linear-gradient(180deg, #4aa3ef, #12467d); box-shadow: inset 0 -3px 0 #0a2f54; }
 .btn-primary.fill:hover { background: linear-gradient(180deg, #6fc0ff, #16538f); }
-.ctrl-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px; }
+/* Hàng nút phụ: bọc xuống dòng khi cột hẹp, không thì nút cuối rơi ra ngoài thẻ. */
+.ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ctrl-row > * { flex: 1 1 auto; }
 .keys { margin-top: 10px !important; color: var(--faint) !important; font-size: 12px; }
 kbd { padding: 1px 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; background: #132a42; color: #dce8f4; font: 700 11px var(--font-sans); }
 
@@ -126,7 +126,6 @@ kbd { padding: 1px 5px; border: 1px solid var(--line-2); border-bottom-width: 2p
 .join-info { display: grid; gap: 7px; min-width: 0; justify-items: start; }
 .join-url { font: 800 15px/1.3 var(--font-disp); word-break: break-all; }
 .select { max-width: 100%; padding: 4px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--panel-2); font-size: 12px; }
-.join p { margin: 10px 0 0; font-size: 12px; }
 
 /* ---- Current question ------------------------------------------------------------------ */
 .q-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
