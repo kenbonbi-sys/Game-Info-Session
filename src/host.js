@@ -464,18 +464,10 @@ async function openEditor() {
   try {
     const res = await fetch(`/api/host/questions?${keyParam}`);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
-    const { data, ephemeral, remote, live } = await res.json();
+    const { data } = await res.json();
     draft = structuredClone(data);
     draft.finale ??= { id: 'Finale', group: 'Câu đố vui', text: '', options: ['', '', '', ''], answer: 0 };
     picked = draft.order[0] ?? draft.questions[0]?.id ?? null;
-    // Two different warnings, and the hosted one matters more: there the file does not survive.
-    const warn = $('editorWarn');
-    const notes = [];
-    if (ephemeral) notes.push('Bản này chạy trên hosting nhưng chưa nối Supabase: file sẽ trở về bản trong repo mỗi lần deploy hoặc server ngủ dậy. Sửa xong hãy bấm "Tải file JSON" và commit vào repo.');
-    if (remote) notes.push('Đã nối Supabase: bấm Lưu là bộ câu hỏi nằm lại trên đó, server ngủ dậy hay deploy lại vẫn còn nguyên.');
-    if (live) notes.push('Đang giữa ván: thay đổi chỉ áp dụng từ lần "Bắt đầu / Chơi lại" kế tiếp.');
-    warn.textContent = notes.join(' ');
-    warn.hidden = !notes.length;
     $('editorMsg').textContent = '';
     $('editor').hidden = false;
     renderEditor();
@@ -606,24 +598,16 @@ function renderEditor() {
   renderEditorLists();
   const unconfirmed = draft.order.filter(id => byId(id)?.answerConfirmed === false).length;
   $('editorCount').textContent = `${draft.order.length} câu${unconfirmed ? ` · ⚠ ${unconfirmed} chưa xác nhận` : ''}`;
-  $('editorState').textContent = `${draft.questions.length} câu trong file`;
 
   const t = current();
-  const isFinale = picked === FINALE_ID;
   $('editorEmpty').hidden = !!t;
   $('editorCanvas').hidden = !t;
-  $('sideQuestion').hidden = !t || isFinale;
-  $('sideFinale').hidden = !isFinale;
+  $('sideFinale').hidden = picked !== FINALE_ID;
   if (t) {
     t.options ??= [];
     $('fText').value = t.text ?? '';
     fitBox($('fText'));
     optionTiles($('fOptions'), t, () => renderEditorLists());
-    if (!isFinale) {
-      $('fId').value = t.id;
-      $('fGroup').value = t.group ?? '';
-      $('fConfirmed').checked = t.answerConfirmed !== false;
-    }
   }
   $('fRead').value = draft.readSeconds ?? 10;
   $('fTime').value = draft.timePerQuestion ?? 15;
@@ -650,15 +634,6 @@ function addQuestion() {
   picked = q.id;
   renderEditor();
   $('fText').focus();
-}
-
-function deleteQuestion() {
-  const q = picked && byId(picked);
-  if (!q || !confirm(`Xoá hẳn câu "${q.id}" khỏi file?`)) return;
-  draft.questions = draft.questions.filter(x => x.id !== q.id);
-  draft.order = draft.order.filter(id => id !== q.id);
-  picked = draft.order[0] ?? draft.questions[0]?.id ?? null;
-  renderEditor();
 }
 
 // Blank option slots are dropped here, and the correct answer follows its text to the new index.
@@ -718,26 +693,8 @@ function bindEditor() {
   $('editorCancel').addEventListener('click', closeEditor);
   $('editorSave').addEventListener('click', saveEditor);
   $('editorAdd').addEventListener('click', addQuestion);
-  $('fDelete').addEventListener('click', deleteQuestion);
   $('editorDownload').addEventListener('click', downloadDraft);
-  $('fId').addEventListener('input', e => {
-    const q = byId(picked);
-    const next = e.target.value.trim();
-    if (!q || !next || draft.questions.some(x => x !== q && x.id === next)) return;
-    draft.order = draft.order.map(id => (id === q.id ? next : id));
-    q.id = next;
-    picked = next;
-    renderEditorLists();
-  });
-  $('fGroup').addEventListener('input', e => { const q = byId(picked); if (q) { q.group = e.target.value; renderEditorLists(); } });
   $('fText').addEventListener('input', e => { const t = current(); fitBox(e.target); if (t) { t.text = e.target.value; renderEditorLists(); } });
-  $('fConfirmed').addEventListener('change', e => {
-    const q = byId(picked);
-    if (!q) return;
-    if (e.target.checked) delete q.answerConfirmed;
-    else q.answerConfirmed = false;
-    renderEditorLists();
-  });
   $('editor').addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(); });
   // Cửa sổ đổi cỡ thì bề rộng ô đổi theo, chiều cao vừa tính lúc trước không còn đúng nữa.
   addEventListener('resize', () => { if (!$('editor').hidden && draft) refitEditor(); });

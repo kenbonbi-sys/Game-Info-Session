@@ -226,7 +226,6 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .editor-head h2 { margin: 0; font: 800 18px var(--font-disp); }
 /* The dashboard's primary button is a full-width step button; in this footer it is one of several. */
 .editor-foot .btn-primary { width: auto; min-height: 42px; padding: 10px 26px; border-radius: 9px 3px; font-size: 15px; box-shadow: inset 0 -3px 0 #6B0009; }
-.editor-warn { margin: 0; padding: 10px 18px; border-bottom: 1px solid #6a4a1c; background: #38290f; color: #ffdfa6; font: 600 13px/1.45 var(--font-sans); }
 .editor-body { flex: 1; display: grid; grid-template-columns: 274px minmax(0, 1fr) 300px; min-height: 0; }
 .editor-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; padding: 12px; overflow-y: auto; border-right: 1px solid var(--line); }
 .editor-list-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; padding: 10px 4px 2px; font: 800 12px var(--font-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
@@ -263,7 +262,6 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 }
 .canvas-q::placeholder { color: #8ba0b5; }
 .canvas-q:focus { border-color: var(--orange); outline: none; }
-.canvas-note { margin: 2px 0 0; color: var(--faint); font-size: 12px; text-align: center; }
 
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile {

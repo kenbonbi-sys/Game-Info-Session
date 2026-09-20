@@ -140,12 +140,10 @@
     <div class="editor-box">
       <header class="editor-head">
         <h2 id="editorTitle">Sửa bộ câu hỏi</h2>
-        <span id="editorState" class="muted"></span>
         <span class="spacer"></span>
         <button id="editorDownload" type="button" class="btn sm">⭳ Tải file JSON</button>
         <button id="editorClose" type="button" class="btn sm">Đóng</button>
       </header>
-      <p id="editorWarn" class="editor-warn" hidden></p>
 
       <div class="editor-body">
         <!-- Trái: cả bộ câu hỏi theo đúng thứ tự sẽ chơi. Giữa: đúng thứ hội trường sắp thấy. -->
@@ -166,18 +164,10 @@
           <div id="editorCanvas" class="canvas" hidden>
             <textarea id="fText" class="canvas-q" rows="2" maxlength="300" placeholder="Nhập câu hỏi ở đây" aria-label="Câu hỏi"></textarea>
             <div id="fOptions" class="tiles"></div>
-            <p class="canvas-note">Bấm vòng tròn bên phải ô để chọn đáp án đúng. Ô bỏ trống sẽ không lên màn chiếu.</p>
           </div>
         </section>
 
         <aside class="editor-side">
-          <div id="sideQuestion" hidden>
-            <h3>Câu này</h3>
-            <label class="field"><span>ID</span><input id="fId" type="text" maxlength="24" autocomplete="off"></label>
-            <label class="field"><span>Nhóm</span><input id="fGroup" type="text" maxlength="40" autocomplete="off" placeholder="vd: Learning Hub"></label>
-            <label class="check"><input id="fConfirmed" type="checkbox"><span>Đáp án đã được team xác nhận</span></label>
-            <button id="fDelete" type="button" class="btn sm danger wide">Xoá câu này</button>
-          </div>
           <p id="sideFinale" class="side-note" hidden>Câu đố vui cuối buổi: không tính điểm, và thứ tự A/B/C/D giữ nguyên chứ không bị đảo.</p>
 
           <h3 class="side-sep">Cả bộ câu hỏi</h3>
