@@ -594,6 +594,24 @@ function markTiles(host, target) {
   }
 }
 
+// Số giây chọn sẵn, mỗi ô một nấc hợp lý cho đúng việc của nó.
+const SECOND_CHOICES = {
+  fRead: [5, 8, 10, 12, 15, 20, 30],
+  fTime: [10, 15, 20, 25, 30, 45, 60, 90],
+  fReveal: [3, 5, 8, 10, 15, 20],
+  fFire: [4, 5, 6, 8, 10, 15],
+  fCharge: [30, 45, 60, 90, 120, 180],
+};
+
+// Con số trong file mà không nằm trong danh sách thì chèn vào đúng chỗ của nó: mở hộp chọn ra
+// không được phép lặng lẽ đổi mất thứ người ta đã chỉnh tay.
+function fillSeconds(id, value) {
+  const el = $(id);
+  const list = [...new Set([...SECOND_CHOICES[id], value])].sort((a, b) => a - b);
+  el.replaceChildren(...list.map(v => Object.assign(document.createElement('option'), { value: String(v), textContent: `${v} giây` })));
+  el.value = String(value);
+}
+
 function renderEditor() {
   renderEditorLists();
   const unconfirmed = draft.order.filter(id => byId(id)?.answerConfirmed === false).length;
@@ -608,12 +626,12 @@ function renderEditor() {
     fitBox($('fText'));
     optionTiles($('fOptions'), t, () => renderEditorLists());
   }
-  $('fRead').value = draft.readSeconds ?? 10;
-  $('fTime').value = draft.timePerQuestion ?? 15;
-  $('fReveal').value = draft.revealSeconds ?? 5;
-  $('fFire').value = draft.fireSeconds ?? 6;
-  $('fCharge').value = draft.chargeSeconds ?? 45;
-  $('fShuffle').checked = draft.shuffleOptions !== false;
+  fillSeconds('fRead', draft.readSeconds ?? 10);
+  fillSeconds('fTime', draft.timePerQuestion ?? 15);
+  fillSeconds('fReveal', draft.revealSeconds ?? 5);
+  fillSeconds('fFire', draft.fireSeconds ?? 6);
+  fillSeconds('fCharge', draft.chargeSeconds ?? 45);
+  $('fShuffle').value = String(draft.shuffleOptions !== false);
 }
 
 // Typing in a field must not rebuild the field and steal the caret, so only the lists refresh.
@@ -651,7 +669,7 @@ function payload() {
     revealSeconds: Number($('fReveal').value),
     fireSeconds: Number($('fFire').value),
     chargeSeconds: Number($('fCharge').value),
-    shuffleOptions: $('fShuffle').checked,
+    shuffleOptions: $('fShuffle').value === 'true',
     finale: shrink(draft.finale),
     order: [...draft.order],
     questions: draft.questions.map(shrink),
