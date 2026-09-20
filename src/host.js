@@ -483,11 +483,11 @@ function closeEditor() {
   picked = null;
 }
 
-function card(id, q, label, sub) {
+function card(id, q, label) {
   const li = document.createElement('li');
   li.setAttribute('aria-selected', String(id === picked));
   li.innerHTML = `<span class="n">${escapeHtml(label)}</span>
-    <span class="t"><b>${escapeHtml(q.text || '(chưa có nội dung)')}</b><em>${escapeHtml(sub)}</em>${answerBar(q)}</span>`;
+    <span class="t"><b>${escapeHtml(q.text || '(chưa có nội dung)')}</b>${answerBar(q)}</span>`;
   li.addEventListener('click', e => {
     if (e.target.closest('.row-btns')) return;
     picked = id;
@@ -507,7 +507,7 @@ function answerBar(q) {
 
 function questionRow(id, index, inOrder) {
   const q = byId(id);
-  const li = card(id, q, inOrder ? String(index + 1) : '·', `${q.id}${q.group ? ` · ${q.group}` : ''}`);
+  const li = card(id, q, inOrder ? String(index + 1) : '·');
   if (q.answerConfirmed === false) {
     li.append(Object.assign(document.createElement('span'), { className: 'flag', textContent: '⚠', title: 'Đáp án chưa xác nhận' }));
   }
@@ -527,7 +527,7 @@ function questionRow(id, index, inOrder) {
 }
 
 function finaleRow() {
-  return card(FINALE_ID, draft.finale, '★', 'Câu đố vui · không tính điểm');
+  return card(FINALE_ID, draft.finale, '★');
 }
 
 function rowBtn(label, title, disabled, onClick) {
@@ -602,7 +602,6 @@ function renderEditor() {
   const t = current();
   $('editorEmpty').hidden = !!t;
   $('editorCanvas').hidden = !t;
-  $('sideFinale').hidden = picked !== FINALE_ID;
   if (t) {
     t.options ??= [];
     $('fText').value = t.text ?? '';

@@ -237,7 +237,6 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .q-list li .n { color: var(--blue-soft); font: 700 12px/1.5 var(--font-disp); font-variant-numeric: tabular-nums; }
 .q-list li .t { min-width: 0; }
 .q-list li .t b { display: block; overflow: hidden; font: 600 12.5px/1.5 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
-.q-list li .t em { display: block; overflow: hidden; color: var(--faint); font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 /* Bốn vạch màu = bốn ô đáp án: vạch mờ là ô còn trống, vạch có viền trắng là đáp án đúng.
    Nhìn cả cột là biết câu nào còn dở, khỏi phải bấm vào từng câu. */
 .q-list li .bar { display: flex; gap: 3px; margin-top: 6px; }
@@ -287,8 +286,6 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 /* Phải: những thứ chỉnh một lần rồi thôi. */
 .editor-side { min-height: 0; padding: 16px 16px 20px; overflow-y: auto; border-left: 1px solid var(--line); }
 .editor-side h3 { margin: 0 0 10px; font: 800 13px var(--font-disp); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
-.editor-side .side-sep { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
-.side-note { margin: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px 3px; background: #0c1d2e; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 .side-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .editor-stage .empty { padding: 40px 0; text-align: center; }
 .field { display: block; margin-bottom: 12px; }
@@ -310,7 +307,6 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 @media (max-width: 1000px) {
   .editor-body { grid-template-columns: 224px minmax(0, 1fr); }
   .editor-side { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 18px; align-items: start; border-left: 0; border-top: 1px solid var(--line); }
-  .editor-side .side-sep { margin-top: 0; padding-top: 0; border-top: 0; }
   .editor-side .side-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 760px) {
