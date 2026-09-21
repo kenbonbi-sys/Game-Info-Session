@@ -1,7 +1,13 @@
-// Game loop: spawning, combat, rendering, HUD and menus.
-import { buildFoxSheet, buildSlimeArt, loadAsepriteSheet, loadGridSheet, loadSvgStrip, sheetToAsepriteJson, makeCanvas } from './sprites.js';
+// Game loop: the shared context every module writes into, plus rendering, HUD and menus.
+import { buildFoxSheet, buildEnemyArt, buildPickupArt, loadAsepriteSheet, loadGridSheet, loadSvgStrip, sheetToAsepriteJson, makeCanvas } from './sprites.js';
 import { Input, World, SpatialHash, WORLD } from './world.js';
-import { Player, Enemy, UPGRADES, applyUpgrade, rollChoices, weaponStats } from './entities.js';
+import {
+  Player, WEAPONS, PERKS, ALL_UPGRADES, WEAPON_SLOTS, PERK_SLOTS,
+  mods, rollChoices, applyChoice, chestPicks, evoHint, weaponFace,
+} from './entities.js';
+import { updateWeapons, updateWeaponFx, drawGroundFx, drawWeaponFx } from './weapons.js';
+import { runDirector, updateEnemies, updateFoeShots, updateDrops, onEnemyDeath, spawnEnemy, drawEnemy, drawFoeShots, drawDrops } from './swarm.js';
+import { drawText, pixelDot, rand, shadow } from './draw.js';
 import { SPRITES } from './config.js';
 
 const $ = id => document.getElementById(id);
@@ -9,20 +15,38 @@ const canvas = $('game');
 const ctx = canvas.getContext('2d');
 const cam = { x: 0, y: 0, w: 0, h: 0 };
 const enemyHash = new SpatialHash(24);
-const state = { mode: 'loading', time: 0, kills: 0, debug: false, shake: 0, choices: [] };
-const rand = (a, b) => a + Math.random() * (b - a);
+const state = { mode: 'loading', time: 0, kills: 0, debug: false, shake: 0, flash: 0, choices: [] };
 const MAX_ENEMIES = 450;
 const MAX_PARTICLES = 900;
 const MAX_GEMS = 400;
+const MAX_TEXTS = 90;
 
-let foxSheet, bossSheet, slimeArt, world, player;
-let enemies = [], projectiles = [], gems = [], particles = [], texts = [], ghosts = [];
-let spawnTimer = 0, bossTimer = 0, pendingLevelUps = 0;
+let foxSheet, bossSheet, enemyArt, pickupArt, world, player;
+let pendingLevelUps = 0;
+
+// Everything the swarm and weapon modules are allowed to touch. They push entities in here and
+// call back through the helpers; kills, XP and particles stay owned by this file.
+const G = {
+  state, cam, bounds: WORLD,
+  world: null, player: null, hash: enemyHash, m: null,
+  art: null, pickupArt: null, bossSheet: null,
+  enemies: [], shots: [], foeShots: [], zones: [], bolts: [], claws: [], ripples: [],
+  gems: [], drops: [], particles: [], texts: [], ghosts: [],
+  maxParticles: MAX_PARTICLES, maxEnemies: MAX_ENEMIES,
+  spawnTimer: 0, nextEvent: 0, lateTimer: 45, lateIndex: 0, wave: 1,
+  pendingChests: [],
+  hpMul: () => 1 + state.time / 110,
+  compact, burst, hit, near, toast, hurtPlayer, shakeBy, flashScreen, onScreen,
+};
 
 function resize() {
-  const scale = Math.max(2, Math.round(Math.min(innerWidth / 640, innerHeight / 360)));
-  canvas.width = Math.ceil(innerWidth / scale);
-  canvas.height = Math.ceil(innerHeight / scale);
+  // A hidden tab reports 0×0. Falling through with that collapses the camera, and everything
+  // measured from it — spawn distance, culling, what counts as on screen — collapses with it.
+  const vw = Math.max(480, innerWidth);
+  const vh = Math.max(270, innerHeight);
+  const scale = Math.max(2, Math.round(Math.min(vw / 640, vh / 360)));
+  canvas.width = Math.ceil(vw / scale);
+  canvas.height = Math.ceil(vh / scale);
   canvas.style.width = `${canvas.width * scale}px`;
   canvas.style.height = `${canvas.height * scale}px`;
   ctx.imageSmoothingEnabled = false;
@@ -45,10 +69,14 @@ function newGame() {
   world = new World((Math.random() * 1e9) | 0);
   player = new Player(foxSheet, WORLD.w / 2, WORLD.h / 2);
   player.onDash = () => burst(player.x, player.y - 4, 10, '#fff3e0', 50);
-  enemies = []; projectiles = []; gems = []; particles = []; texts = []; ghosts = [];
-  Object.assign(state, { mode: 'play', time: 0, kills: 0, shake: 0, choices: [] });
-  spawnTimer = 0;
-  bossTimer = 60;
+  Object.assign(G, {
+    world, player,
+    enemies: [], shots: [], foeShots: [], zones: [], bolts: [], claws: [], ripples: [],
+    gems: [], drops: [], particles: [], texts: [], ghosts: [],
+    spawnTimer: 0, nextEvent: 0, lateTimer: 45, lateIndex: 0, wave: 1, pendingChests: [],
+  });
+  G.m = mods(player);
+  Object.assign(state, { mode: 'play', time: 0, kills: 0, shake: 0, flash: 0, choices: [] });
   pendingLevelUps = 0;
   cam.x = player.x - cam.w / 2;
   cam.y = player.y - cam.h / 2;
@@ -60,206 +88,83 @@ function newGame() {
 
 function update(dt) {
   state.time += dt;
-  player.update(dt, Input.axis(), Input.hit('Space'), world);
-  spawn(dt);
-  updateEnemies(dt);
-  updateWeapons(dt);
-  updateProjectiles(dt);
-  compact(enemies, e => e.hp > 0);
+  G.m = mods(player);
+  player.update(dt, Input.axis(), Input.hit('Space'), world, G.m);
+  runDirector(dt, G);
+  updateEnemies(dt, G);
+  updateWeapons(dt, G);
+  updateFoeShots(dt, G);
+  compact(G.enemies, e => e.hp > 0);
   updateGems(dt);
+  updateDrops(dt, G);
   updateFx(dt);
   if (player.dead) gameOver();
+  else if (G.pendingChests.length) openChest();
   else if (pendingLevelUps > 0) openLevelUp();
 }
 
-function offscreenPoint() {
-  const a = Math.random() * Math.PI * 2;
-  const d = Math.hypot(cam.w, cam.h) / 2 + 20;
-  return {
-    x: Math.max(10, Math.min(WORLD.w - 10, player.x + Math.cos(a) * d)),
-    y: Math.max(10, Math.min(WORLD.h - 10, player.y + Math.sin(a) * d)),
-  };
-}
-
-function spawn(dt) {
-  const t = state.time;
-  spawnTimer += dt * (0.8 + t * 0.04);
-  const cap = Math.min(MAX_ENEMIES, 60 + t * 3);
-  const hpMul = 1 + t / 150;
-  while (spawnTimer >= 1) {
-    spawnTimer -= 1;
-    if (enemies.length >= cap) continue;
-    const type = t > 40 && Math.random() < Math.min(0.5, (t - 40) / 120) ? 'purple' : 'green';
-    const group = t > 20 && Math.random() < 0.15 ? 6 : 1;
-    const p = offscreenPoint();
-    for (let i = 0; i < group; i++) enemies.push(new Enemy(type, p.x + rand(-15, 15), p.y + rand(-15, 15), hpMul));
+function near(x, y, range, count) {
+  const out = [];
+  for (const e of enemyHash.query(x, y, range)) {
+    if (e.hp <= 0) continue;
+    const d = (e.x - x) ** 2 + (e.y - y) ** 2;
+    if (d < range * range) out.push({ e, d });
   }
-  bossTimer -= dt;
-  if (bossTimer <= 0) {
-    bossTimer = 45;
-    spawnBoss();
-  }
+  out.sort((a, b) => a.d - b.d);
+  return out.slice(0, count).map(o => o.e);
 }
 
-function spawnBoss() {
-  const p = offscreenPoint();
-  enemies.push(new Enemy('boss', p.x, p.y, 1 + state.time / 150));
-  toast('⚠ BOSS xuất hiện!');
+function onScreen(o, m = 0) {
+  return o.x > cam.x - m && o.x < cam.x + cam.w + m && o.y > cam.y - m && o.y < cam.y + cam.h + m * 2;
 }
 
-function updateEnemies(dt) {
-  enemyHash.clear();
-  for (const e of enemies) enemyHash.insert(e);
-  const knockDecay = Math.exp(-dt * 8);
-  for (const e of enemies) {
-    const dx = player.x - e.x;
-    const dy = player.y - e.y;
-    const d = Math.hypot(dx, dy) || 1;
-    let sx = 0, sy = 0;
-    for (const o of enemyHash.query(e.x, e.y, e.r + 20)) {
-      if (o === e) continue;
-      const ox = e.x - o.x, oy = e.y - o.y;
-      const min = e.r + o.r;
-      const d2 = ox * ox + oy * oy;
-      if (d2 >= min * min || d2 < 1e-4) continue;
-      const l = Math.sqrt(d2);
-      sx += (ox / l) * (min - l);
-      sy += (oy / l) * (min - l);
-    }
-    e.x += ((dx / d) * e.speed + e.kx) * dt + sx * 0.5;
-    e.y += ((dy / d) * e.speed + e.ky) * dt + sy * 0.5;
-    e.kx *= knockDecay;
-    e.ky *= knockDecay;
-    world.collide(e);
-    e.flash = Math.max(0, e.flash - dt);
-    e.orbCd = Math.max(0, e.orbCd - dt);
-    e.phase += dt * e.fps;
-    if (d < e.r + player.r && player.damage(e.dmg)) {
-      texts.push({ x: player.x, y: player.y - player.hitY * 2 - 6, text: `-${e.dmg}`, life: 0.7, color: '#ff6b6b' });
-      burst(player.x, player.y - player.hitY, 8, '#ff6b6b');
-      state.shake = 3;
-    }
-  }
+function shakeBy(amount) {
+  state.shake = Math.max(state.shake, amount);
 }
 
-function nearestEnemies(x, y, range, count) {
-  return enemyHash.query(x, y, range)
-    .filter(e => e.hp > 0)
-    .map(e => ({ e, d: (e.x - x) ** 2 + (e.y - y) ** 2 }))
-    .filter(o => o.d < range * range)
-    .sort((a, b) => a.d - b.d)
-    .slice(0, count)
-    .map(o => o.e);
+function flashScreen(amount) {
+  state.flash = Math.max(state.flash, amount);
 }
 
-function hitEnemy(e, dmg, nx, ny, knock) {
+function hurtPlayer(amount, fx, fy) {
+  const taken = player.damage(amount, G.m.armor);
+  if (!taken) return;
+  G.texts.push({ x: player.x, y: player.y - player.hitY * 2 - 6, text: `-${taken}`, life: 0.7, color: '#ff6b6b' });
+  burst(fx ?? player.x, fy ?? player.y - player.hitY, 8, '#ff6b6b');
+  shakeBy(3);
+}
+
+function hit(e, dmg, nx, ny, knock, opts = {}) {
   if (e.hp <= 0) return;
-  const crit = Math.random() < 0.1;
-  const amount = Math.round(crit ? dmg * 2 : dmg);
+  const crit = opts.crit || Math.random() < G.m.crit;
+  const amount = Math.max(1, Math.round(crit ? dmg * G.m.critMul : dmg));
   e.hp -= amount;
   e.flash = 0.1;
   e.kx += (nx * knock) / e.mass;
   e.ky += (ny * knock) / e.mass;
-  texts.push({ x: e.x + rand(-4, 4), y: e.y - e.hitY * 2 - 4, text: String(amount), life: 0.6, color: crit ? '#ffd23f' : '#ffffff' });
-  if (e.hp <= 0) {
-    state.kills++;
-    if (gems.length < MAX_GEMS) {
-      gems.push({ x: e.x, y: e.y - 3, value: e.xp, vx: rand(-25, 25), vy: rand(-25, 25), pull: false, taken: false });
-    } else {
-      gems[Math.floor(Math.random() * gems.length)].value += e.xp;
-    }
-    burst(e.x, e.y - e.hitY, 6 + 4 * Math.min(e.mass, 5), e.color);
+  if (G.texts.length < MAX_TEXTS && onScreen(e, 20)) {
+    G.texts.push({ x: e.x + rand(-4, 4), y: e.y - e.hitY * 2 - 4, text: String(amount), life: 0.6, color: crit ? '#ffd23f' : '#ffffff' });
   }
+  if (e.hp <= 0) killed(e);
 }
 
-function updateWeapons(dt) {
-  const w = weaponStats(player);
-
-  if (w.foxfire) {
-    player.cd.foxfire -= dt;
-    if (player.cd.foxfire <= 0) {
-      const targets = nearestEnemies(player.x, player.y, 260, w.foxfire.count);
-      if (targets.length) {
-        player.cd.foxfire = w.foxfire.cooldown;
-        const sx = player.x, sy = player.y - player.hitY;
-        for (let i = 0; i < w.foxfire.count; i++) {
-          const t = targets[i % targets.length];
-          const spread = i >= targets.length ? (i - targets.length + 1) * 0.3 : 0;
-          const a = Math.atan2(t.y - t.hitY - sy, t.x - sx) + spread;
-          projectiles.push({
-            x: sx, y: sy, r: 3, life: 1.4, hit: new Set(),
-            vx: Math.cos(a) * w.foxfire.speed, vy: Math.sin(a) * w.foxfire.speed,
-            dmg: w.foxfire.dmg, pierce: w.foxfire.pierce,
-          });
-        }
-      }
-    }
+function killed(e) {
+  state.kills++;
+  if (G.gems.length < MAX_GEMS) {
+    G.gems.push({ x: e.x, y: e.y - 3, value: e.xp, vx: rand(-25, 25), vy: rand(-25, 25), pull: false, taken: false });
+  } else {
+    G.gems[Math.floor(Math.random() * G.gems.length)].value += e.xp;
   }
-
-  player.orbs = [];
-  if (w.orbs) {
-    player.orbAngle += dt * w.orbs.spin;
-    for (let i = 0; i < w.orbs.count; i++) {
-      const a = player.orbAngle + (i * Math.PI * 2) / w.orbs.count;
-      const ox = player.x + Math.cos(a) * w.orbs.radius;
-      const oy = player.y - player.hitY + Math.sin(a) * w.orbs.radius * 0.8;
-      player.orbs.push({ x: ox, y: oy });
-      for (const e of enemyHash.query(ox, oy + 20, 50)) {
-        if (e.hp <= 0 || e.orbCd > 0) continue;
-        const dx = e.x - ox, dy = e.y - e.hitY - oy;
-        if (dx * dx + dy * dy > (e.hitR + 4) ** 2) continue;
-        const l = Math.hypot(dx, dy) || 1;
-        e.orbCd = 0.35;
-        hitEnemy(e, w.orbs.dmg, dx / l, dy / l, 80);
-      }
-    }
-  }
-
-  if (w.spin) {
-    player.cd.spin -= dt;
-    if (player.cd.spin <= 0) {
-      player.cd.spin = w.spin.cooldown;
-      player.spinFx = 0.3;
-      player.spinRadius = w.spin.radius;
-      for (const e of enemyHash.query(player.x, player.y, w.spin.radius + 12)) {
-        const dx = e.x - player.x, dy = e.y - player.y;
-        const l = Math.hypot(dx, dy) || 1;
-        if (l < w.spin.radius + e.r) hitEnemy(e, w.spin.dmg, dx / l, dy / l, 170);
-      }
-    }
-  }
-  player.spinFx = Math.max(0, player.spinFx - dt);
-}
-
-function updateProjectiles(dt) {
-  for (const p of projectiles) {
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.life -= dt;
-    if (particles.length < MAX_PARTICLES && Math.random() < 0.7) {
-      particles.push({ x: p.x, y: p.y, vx: rand(-8, 8), vy: rand(-8, 8), life: 0.3, max: 0.3, color: Math.random() < 0.5 ? '#ffb347' : '#ff6a2b', size: 1 });
-    }
-    for (const e of enemyHash.query(p.x, p.y + 20, 50)) {
-      if (e.hp <= 0 || p.hit.has(e)) continue;
-      const dx = e.x - p.x, dy = e.y - e.hitY - p.y;
-      if (dx * dx + dy * dy > (e.hitR + p.r) ** 2) continue;
-      p.hit.add(e);
-      const l = Math.hypot(p.vx, p.vy);
-      hitEnemy(e, p.dmg, p.vx / l, p.vy / l, 90);
-      burst(p.x, p.y, 4, '#ffb347');
-      if (p.pierce-- <= 0) {
-        p.life = 0;
-        break;
-      }
-    }
-  }
-  compact(projectiles, p => p.life > 0);
+  burst(e.x, e.y - e.hitY, 6 + 4 * Math.min(e.mass, 5), e.color);
+  onEnemyDeath(e, G);
 }
 
 function updateGems(dt) {
   const damp = Math.exp(-dt * 6);
-  for (const g of gems) {
-    const dx = player.x - g.x, dy = player.y - player.hitY / 2 - g.y;
+  let gained = 0;
+  for (const g of G.gems) {
+    const dx = player.x - g.x;
+    const dy = player.y - player.hitY / 2 - g.y;
     const d = Math.hypot(dx, dy) || 1;
     if (d < player.pickup) g.pull = true;
     if (g.pull) {
@@ -273,100 +178,50 @@ function updateGems(dt) {
     g.vy *= damp;
     if (d < 6) {
       g.taken = true;
-      pendingLevelUps += player.gainXp(g.value);
+      gained += g.value;
     }
   }
-  compact(gems, g => !g.taken);
+  if (gained) pendingLevelUps += player.gainXp(gained * G.m.growth);
+  compact(G.gems, g => !g.taken);
 }
 
 function burst(x, y, n, color, speed = 40) {
-  for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+  for (let i = 0; i < n && G.particles.length < MAX_PARTICLES; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = rand(speed * 0.3, speed);
     const life = rand(0.25, 0.5);
-    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, color, size: Math.random() < 0.3 ? 2 : 1 });
+    G.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, color, size: Math.random() < 0.3 ? 2 : 1 });
   }
 }
 
 function updateFx(dt) {
   const damp = Math.exp(-dt * 4);
-  for (const p of particles) {
+  for (const p of G.particles) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vx *= damp;
     p.vy *= damp;
     p.life -= dt;
   }
-  compact(particles, p => p.life > 0);
-  for (const t of texts) {
+  compact(G.particles, p => p.life > 0);
+  for (const t of G.texts) {
     t.y -= 18 * dt;
     t.life -= dt;
   }
-  compact(texts, t => t.life > 0);
-  for (const g of ghosts) g.life -= dt;
-  compact(ghosts, g => g.life > 0);
-  if (player.dashing) ghosts.push({ x: player.x, y: player.y, flip: player.facing < 0, frame: player.anim.frameIndex, life: 0.18 });
+  compact(G.texts, t => t.life > 0);
+  for (const g of G.ghosts) g.life -= dt;
+  compact(G.ghosts, g => g.life > 0);
+  if (player.dashing) G.ghosts.push({ x: player.x, y: player.y, flip: player.facing < 0, frame: player.anim.frameIndex, life: 0.18 });
+  updateWeaponFx(dt, G);
   state.shake = Math.max(0, state.shake - dt * 20);
+  state.flash = Math.max(0, state.flash - dt * 2);
 }
 
 // ---- Rendering ---------------------------------------------------------------
 
-const inView = (o, m) => o.x > cam.x - m && o.x < cam.x + cam.w + m && o.y > cam.y - m && o.y < cam.y + cam.h + m * 2;
-
-function pixelDot(x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x - r, y - r + 1, r * 2 + 1, r * 2 - 1);
-  ctx.fillRect(x - r + 1, y - r, r * 2 - 1, r * 2 + 1);
-}
-
-function drawText(text, x, y, color, size = 8) {
-  ctx.font = `600 ${size}px "Pixelify Sans", monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = '#150d1c';
-  ctx.strokeText(text, Math.round(x), Math.round(y));
-  ctx.fillStyle = color;
-  ctx.fillText(text, Math.round(x), Math.round(y));
-}
-
-function shadow(x, y, rx, ry) {
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath();
-  ctx.ellipse(Math.round(x), Math.round(y), rx, ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawHpBar(x, y, w, ratio) {
-  ctx.fillStyle = '#150d1c';
-  ctx.fillRect(Math.round(x - w / 2) - 1, Math.round(y) - 1, w + 2, 5);
-  ctx.fillStyle = '#ff4d4d';
-  ctx.fillRect(Math.round(x - w / 2), Math.round(y), Math.max(0, Math.round(w * ratio)), 3);
-}
-
-function drawEnemy(e) {
-  if (e.type === 'boss' && bossSheet) {
-    const { frames, anims, pivot, headroom } = bossSheet;
-    const f = frames[anims.idle.frames[Math.floor(e.phase) % anims.idle.frames.length]];
-    shadow(e.x, e.y, 24, 5);
-    ctx.drawImage(e.flash > 0 ? bossSheet.flashImage : bossSheet.image, f.x, f.y, f.w, f.h,
-      Math.round(e.x - pivot.x), Math.round(e.y - pivot.y), f.w, f.h);
-    drawHpBar(e.x, e.y - headroom - 8, 48, e.hp / e.maxHp);
-    drawText('BOSS', e.x, e.y - headroom - 10, '#ff6b6b');
-    return;
-  }
-  // Slimes, or a giant red slime if the boss sprite failed to load.
-  const art = slimeArt[e.type] ?? slimeArt.red;
-  const s = e.type === 'boss' ? 5 : e.scale;
-  const f = Math.floor(e.phase) % 2;
-  shadow(e.x, e.y, 6 * s, 2 * s);
-  ctx.drawImage(e.flash > 0 ? art.flash[f] : art.frames[f], Math.round(e.x - 8 * s), Math.round(e.y - 15 * s), 16 * s, 16 * s);
-  if (e.type === 'boss') drawHpBar(e.x, e.y - 15 * s - 6, 48, e.hp / e.maxHp);
-}
-
 function drawPlayer() {
-  shadow(player.x, player.y, 12, 3);
-  for (const g of ghosts) {
+  shadow(ctx, player.x, player.y, 12, 3);
+  for (const g of G.ghosts) {
     ctx.globalAlpha = (g.life / 0.18) * 0.4;
     player.anim.draw(ctx, g.x, g.y, g.flip, g.frame);
   }
@@ -374,16 +229,16 @@ function drawPlayer() {
   ctx.globalAlpha = blink ? 0.4 : 1;
   player.anim.draw(ctx, player.x, player.y, player.facing < 0);
   ctx.globalAlpha = 1;
-  drawText('Fox', player.x, player.y - foxSheet.headroom - 3, '#ffe066');
+  drawText(ctx, 'Fox', player.x, player.y - foxSheet.headroom - 3, '#ffe066');
 }
 
 function drawGems() {
-  for (const g of gems) {
-    if (!inView(g, 8)) continue;
+  for (const g of G.gems) {
+    if (!onScreen(g, 8)) continue;
     const x = Math.round(g.x);
     const y = Math.round(g.y + Math.sin(state.time * 6 + g.x) * 1);
     const [fill, hi] = g.value >= 10 ? ['#ffd23f', '#fff6c2'] : g.value >= 2 ? ['#7dff8a', '#e0ffe4'] : ['#5ad1ff', '#d8f6ff'];
-    pixelDot(x, y, 2, '#10243a');
+    pixelDot(ctx, x, y, 2, '#10243a');
     ctx.fillStyle = fill;
     ctx.fillRect(x - 1, y, 3, 1);
     ctx.fillRect(x, y - 1, 1, 3);
@@ -392,41 +247,14 @@ function drawGems() {
   }
 }
 
-function drawSpin() {
-  const t = player.spinFx / 0.3;
-  const r = player.spinRadius * (1 - t * 0.5);
-  ctx.strokeStyle = `rgba(255, 190, 110, ${t})`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(Math.round(player.x), Math.round(player.y - player.hitY / 2), r, r * 0.8, 0, 0, Math.PI * 2);
-  ctx.stroke();
-}
-
-function drawWeaponsFx() {
-  for (const o of player.orbs ?? []) {
-    const x = Math.round(o.x), y = Math.round(o.y);
-    ctx.globalAlpha = 0.35;
-    pixelDot(x, y, 4, '#b06cff');
-    ctx.globalAlpha = 1;
-    pixelDot(x, y, 2, '#d9b8ff');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x, y, 1, 1);
-  }
-  for (const p of projectiles) {
-    const x = Math.round(p.x), y = Math.round(p.y);
-    ctx.globalAlpha = 0.35;
-    pixelDot(x, y, 4, '#ff6a2b');
-    ctx.globalAlpha = 1;
-    pixelDot(x, y, 2, '#ffb347');
-    pixelDot(x, y, 1, '#fff1c1');
-  }
-  for (const p of particles) {
+function drawParticles() {
+  for (const p of G.particles) {
     ctx.globalAlpha = Math.max(0, p.life / p.max);
     ctx.fillStyle = p.color;
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
   }
   ctx.globalAlpha = 1;
-  for (const t of texts) drawText(t.text, t.x, t.y, t.color);
+  for (const t of G.texts) drawText(ctx, t.text, t.x, t.y, t.color);
 }
 
 function drawDebug(drawables) {
@@ -470,22 +298,30 @@ function render(dt) {
   ctx.translate(Math.round(-cam.x + sx), Math.round(-cam.y + sy));
 
   world.drawGround(ctx, cam);
+  drawGroundFx(ctx, G);
   drawGems();
-  if (player.spinFx > 0) drawSpin();
+  drawDrops(ctx, G);
 
   const drawables = world.visibleProps(cam);
-  for (const e of enemies) if (inView(e, 24)) drawables.push(e);
+  for (const e of G.enemies) if (onScreen(e, 40)) drawables.push(e);
   drawables.push(player);
   drawables.sort((a, b) => a.y - b.y);
   for (const d of drawables) {
     if (d === player) drawPlayer();
     else if (d.kind) world.drawProp(ctx, d);
-    else drawEnemy(d);
+    else drawEnemy(ctx, d, G);
   }
 
-  drawWeaponsFx();
+  drawWeaponFx(ctx, G);
+  drawFoeShots(ctx, G);
+  drawParticles();
   if (state.debug) drawDebug(drawables);
   ctx.restore();
+
+  if (state.flash > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.6, state.flash)})`;
+    ctx.fillRect(0, 0, cam.w, cam.h);
+  }
 }
 
 // ---- HUD & menus -----------------------------------------------------------
@@ -507,20 +343,34 @@ function updateHud(rawDt) {
   $('hpFill').style.width = `${(player.hp / player.maxHp) * 100}%`;
   $('hpText').textContent = `${Math.ceil(player.hp)}/${player.maxHp}`;
   $('xpFill').style.width = `${(player.xp / player.xpNeed) * 100}%`;
-  $('xpText').textContent = `${player.xp}/${player.xpNeed}`;
-  $('dashFill').style.width = `${(1 - player.dashCd / 1.2) * 100}%`;
+  $('xpText').textContent = `${Math.floor(player.xp)}/${player.xpNeed}`;
+  $('dashFill').style.width = `${(1 - player.dashCd / player.dashCooldown) * 100}%`;
   $('time').textContent = fmtTime(state.time);
   $('kills').textContent = state.kills;
-  $('enemyCount').textContent = enemies.length;
+  $('gold').textContent = player.gold;
+  $('enemyCount').textContent = G.enemies.length;
+  $('wave').textContent = G.wave;
   $('fps').textContent = fps;
   $('animName').textContent = `${player.anim.name} #${player.anim.index}`;
 }
 
+function slotHtml(key, level, { evolved = false, kind = 'weapon' } = {}) {
+  const face = kind === 'weapon' ? weaponFace(player, key) : PERKS[key];
+  const max = ALL_UPGRADES[key].max;
+  const hint = kind === 'weapon' ? evoHint(player, key) : null;
+  const title = `${face.name} Lv.${level}/${max}${hint ? ` — ${hint}` : ''}`;
+  return `<div class="slot${evolved ? ' evo' : ''}${level >= max ? ' maxed' : ''}" title="${title}">${face.icon}<b>${level}</b></div>`;
+}
+
 function renderSlots() {
-  const owned = Object.entries(player.skills);
-  $('slots').innerHTML =
-    owned.map(([k, l]) => `<div class="slot" title="${UPGRADES[k].name}">${UPGRADES[k].icon}<b>${l}</b></div>`).join('') +
-    '<div class="slot empty"></div>'.repeat(Math.max(0, 8 - owned.length));
+  const weapons = Object.entries(player.weapons);
+  const perks = Object.entries(player.perks);
+  $('weaponSlots').innerHTML =
+    weapons.map(([k, l]) => slotHtml(k, l, { evolved: !!player.evolved[k] })).join('') +
+    '<div class="slot empty"></div>'.repeat(Math.max(0, WEAPON_SLOTS - weapons.length));
+  $('perkSlots').innerHTML =
+    perks.map(([k, l]) => slotHtml(k, l, { kind: 'perk' })).join('') +
+    '<div class="slot empty"></div>'.repeat(Math.max(0, PERK_SLOTS - perks.length));
 }
 
 function showModal(title, bodyHtml, actions) {
@@ -542,35 +392,93 @@ function hideModal() {
   $('modal').hidden = true;
 }
 
+function choiceCard(choice, i) {
+  const { kind, key } = choice;
+  if (kind === 'evo') {
+    const { evo, name } = WEAPONS[key];
+    return {
+      className: 'choice evo',
+      label: `<span class="key">${i + 1}</span><span class="icon">${evo.icon}</span><span class="title">${evo.name}</span>` +
+        `<span class="lvl">TIẾN HOÁ · từ ${name}</span><span class="desc">${evo.desc}</span>`,
+      onClick: () => pickUpgrade(i),
+    };
+  }
+  const def = kind === 'weapon' ? WEAPONS[key] : PERKS[key];
+  const lvl = (kind === 'weapon' ? player.weapons[key] : player.perks[key]) ?? 0;
+  const tag = lvl ? `Lv.${lvl} → ${lvl + 1}` : kind === 'weapon' ? 'CHIÊU MỚI' : 'PERK MỚI';
+  return {
+    className: `choice ${kind}`,
+    label: `<span class="key">${i + 1}</span><span class="icon">${def.icon}</span><span class="title">${def.name}</span>` +
+      `<span class="lvl">${tag}</span><span class="desc">${def.desc(lvl)}</span>`,
+    onClick: () => pickUpgrade(i),
+  };
+}
+
 function openLevelUp() {
   const choices = rollChoices(player);
   if (!choices.length) {
     pendingLevelUps = 0;
-    player.hp = Math.min(player.maxHp, player.hp + 30);
+    player.heal(30);
+    toast('❤️ Không còn gì để nâng — hồi 30 máu');
     return;
   }
   state.mode = 'levelup';
   state.choices = choices;
-  showModal(`LEVEL UP! → Lv.${player.level}`, '<p class="hint">Chọn 1 kỹ năng — click hoặc bấm phím 1 / 2 / 3</p>', choices.map((key, i) => {
-    const u = UPGRADES[key];
-    const lvl = player.skills[key] ?? 0;
-    return {
-      className: 'choice',
-      label: `<span class="key">${i + 1}</span><span class="icon">${u.icon}</span><span class="title">${u.name}</span>` +
-        `<span class="lvl">${lvl ? `Lv.${lvl} → ${lvl + 1}` : 'MỚI'}</span><span class="desc">${u.desc(lvl)}</span>`,
-      onClick: () => pickUpgrade(key),
-    };
-  }));
+  const slots = `Chiêu ${Object.keys(player.weapons).length}/${WEAPON_SLOTS} · Perk ${Object.keys(player.perks).length}/${PERK_SLOTS}`;
+  showModal(`LEVEL UP! → Lv.${player.level}`,
+    `<p class="hint">Chọn 1 — click hoặc bấm phím 1…${choices.length} · ${slots}</p>`,
+    choices.map(choiceCard));
 }
 
-function pickUpgrade(key) {
+function pickUpgrade(i) {
   if (state.mode !== 'levelup') return;
-  applyUpgrade(player, key);
+  const choice = state.choices[i];
+  if (!choice) return;
+  applyChoice(player, choice);
+  G.m = mods(player);
   pendingLevelUps--;
   renderSlots();
   hideModal();
   state.mode = 'play';
-  burst(player.x, player.y - 8, 16, '#ffe066', 60);
+  if (choice.kind === 'evo') {
+    toast(`✨ ${WEAPONS[choice.key].evo.name} — tiến hoá!`);
+    flashScreen(0.3);
+    burst(player.x, player.y - 8, 40, '#ffd23f', 110);
+  } else {
+    burst(player.x, player.y - 8, 16, '#ffe066', 60);
+  }
+}
+
+function openChest() {
+  const n = G.pendingChests.shift();
+  const picks = chestPicks(player, n);
+  const gold = 15 + Math.round(state.time / 6);
+  player.gold += gold;
+  const lines = [];
+  for (const key of picks) {
+    const before = player.weapons[key] ?? 0;
+    applyChoice(player, { kind: 'weapon', key });
+    const face = weaponFace(player, key);
+    lines.push(`<div class="loot">${face.icon} <b>${face.name}</b> ${before ? `Lv.${before} → ${before + 1}` : 'CHIÊU MỚI'}</div>`);
+  }
+  if (!picks.length) {
+    const healed = player.heal(60);
+    lines.push(`<div class="loot">❤️ <b>Hồi ${healed} máu</b> — mọi chiêu đã kịch trần</div>`);
+  }
+  lines.push(`<div class="loot">💰 <b>+${gold} vàng</b></div>`);
+  G.m = mods(player);
+  renderSlots();
+  state.mode = 'chest';
+  burst(player.x, player.y - 8, 30, '#ffd23f', 90);
+  showModal('🎁 RƯƠNG BÁU', `<p class="hint">Cướp áp tải rơi đồ</p>${lines.join('')}`, [
+    { label: 'Nhận (Space)', onClick: closeChest },
+  ]);
+}
+
+function closeChest() {
+  if (state.mode !== 'chest') return;
+  hideModal();
+  state.mode = 'play';
 }
 
 function sheetInfo(title, sheet, id) {
@@ -591,6 +499,18 @@ function appendPreview(id, sheet) {
   $(id).append(c);
 }
 
+function buildList() {
+  const line = (key, lvl, kind) => {
+    const face = kind === 'weapon' ? weaponFace(player, key) : PERKS[key];
+    const hint = kind === 'weapon' ? evoHint(player, key) : null;
+    return `<li>${face.icon} ${face.name} <b>Lv.${lvl}</b>${hint ? ` <span class="hint">${hint}</span>` : ''}</li>`;
+  };
+  return `<h3>Đang mang</h3><ul>
+    ${Object.entries(player.weapons).map(([k, l]) => line(k, l, 'weapon')).join('')}
+    ${Object.entries(player.perks).map(([k, l]) => line(k, l, 'perk')).join('')}
+  </ul>`;
+}
+
 function openPause() {
   state.mode = 'pause';
   showModal('TẠM DỪNG', `
@@ -601,10 +521,12 @@ function openPause() {
           <li><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> di chuyển</li>
           <li><kbd>Space</kbd> lướt (né đòn)</li>
           <li><kbd>H</kbd> bật/tắt hitbox + pivot</li>
-          <li><kbd>B</kbd> gọi boss ra test</li>
+          <li><kbd>B</kbd> gọi Quái Khói ra test</li>
+          <li><kbd>N</kbd> gọi Đầu Lĩnh Cướp ra test</li>
           <li><kbd>K</kbd> xuất sprite sheet</li>
           <li><kbd>R</kbd> chơi lại</li>
         </ul>
+        ${buildList()}
       </div>
       <div>
         ${sheetInfo('Nhân vật chính', foxSheet, 'heroPreview')}
@@ -625,9 +547,29 @@ function resume() {
 }
 
 function gameOver() {
+  // Cửu Mệnh spends itself here: one free stand-up, and the swarm gets shoved off.
+  if (player.perks.revive && !player.revived) {
+    player.revived = true;
+    player.hp = Math.round(player.maxHp * 0.5);
+    player.invuln = 2.5;
+    for (const e of G.enemies) {
+      const dx = e.x - player.x;
+      const dy = e.y - player.y;
+      const l = Math.hypot(dx, dy) || 1;
+      if (l < 160) {
+        e.kx += (dx / l) * 900 / e.mass;
+        e.ky += (dy / l) * 900 / e.mass;
+      }
+    }
+    burst(player.x, player.y - 8, 50, '#ffe066', 130);
+    flashScreen(0.5);
+    shakeBy(8);
+    toast('🪶 Cửu Mệnh! Đứng dậy với 50% máu');
+    return;
+  }
   state.mode = 'dead';
   burst(player.x, player.y - 8, 30, '#f07b2c', 70);
-  showModal('GAME OVER', `<p class="big">Sống sót <b>${fmtTime(state.time)}</b> · <b>Lv.${player.level}</b> · Hạ <b>${state.kills}</b> quái</p>`, [
+  showModal('GAME OVER', `<p class="big">Sống sót <b>${fmtTime(state.time)}</b> · <b>Lv.${player.level}</b> · Hạ <b>${state.kills}</b> quái · <b>${player.gold}</b> vàng</p>${buildList()}`, [
     { label: 'Chơi lại (R)', onClick: newGame },
   ]);
 }
@@ -662,17 +604,29 @@ function toast(msg) {
 function handleKeys() {
   if (Input.hit('KeyH')) state.debug = !state.debug;
   if (Input.hit('KeyK')) exportSheet();
-  if (Input.hit('KeyB') && state.mode === 'play') spawnBoss();
+  if (Input.hit('KeyB') && state.mode === 'play') testSpawn('boss');
+  if (Input.hit('KeyN') && state.mode === 'play') testSpawn('captain');
   if (Input.hit('Escape')) {
     if (state.mode === 'play') openPause();
     else if (state.mode === 'pause') resume();
   }
   if (Input.hit('KeyR') && (state.mode === 'dead' || state.mode === 'pause')) newGame();
+  if (state.mode === 'chest' && (Input.hit('Space') || Input.hit('Enter'))) closeChest();
   if (state.mode === 'levelup') {
-    ['Digit1', 'Digit2', 'Digit3'].forEach((code, i) => {
-      if (Input.hit(code) && state.choices[i]) pickUpgrade(state.choices[i]);
+    ['Digit1', 'Digit2', 'Digit3', 'Digit4'].forEach((code, i) => {
+      if (Input.hit(code)) pickUpgrade(i);
     });
   }
+}
+
+// Debug shortcut: drop one of anything just off screen.
+function testSpawn(type) {
+  const a = Math.random() * Math.PI * 2;
+  const d = Math.hypot(cam.w, cam.h) / 2 + 20;
+  const x = Math.max(12, Math.min(WORLD.w - 12, player.x + Math.cos(a) * d));
+  const y = Math.max(12, Math.min(WORLD.h - 12, player.y + Math.sin(a) * d));
+  const e = spawnEnemy(G, type, x, y);
+  if (e) toast(`⚠ ${e.name} xuất hiện!`);
 }
 
 async function loadFirst(loaders) {
@@ -701,7 +655,11 @@ async function boot() {
     ]).then(sheet => sheet ?? buildFoxSheet()),
     loadFirst([() => loadGridSheet(SPRITES.boss.url, SPRITES.boss)]),
   ]);
-  slimeArt = buildSlimeArt();
+  enemyArt = buildEnemyArt();
+  pickupArt = buildPickupArt();
+  G.art = enemyArt;
+  G.pickupArt = pickupArt;
+  G.bossSheet = bossSheet;
   $('spriteSource').textContent = foxSheet.source.split('/').pop();
 
   newGame();
@@ -720,13 +678,19 @@ async function boot() {
 
   // Handy for poking at the game from DevTools.
   window.game = {
-    state,
+    state, G,
     get player() { return player; },
-    get enemies() { return enemies; },
+    get enemies() { return G.enemies; },
     get sheet() { return foxSheet; },
     get bossSheet() { return bossSheet; },
-    pick: i => pickUpgrade(state.choices[i]),
-    boss: () => spawnBoss(),
+    pick: i => pickUpgrade(i),
+    spawn: type => testSpawn(type),
+    give(key, levels = 1) {
+      for (let i = 0; i < levels; i++) applyChoice(player, { kind: key in WEAPONS ? 'weapon' : 'perk', key });
+      G.m = mods(player);
+      renderSlots();
+      return key in WEAPONS ? player.weapons[key] : player.perks[key];
+    },
     // Fast-forward the simulation, e.g. game.step(30)
     step(seconds, dt = 1 / 60) {
       for (let t = 0; t < seconds && state.mode === 'play'; t += dt) {
@@ -734,7 +698,7 @@ async function boot() {
         updateHud(dt);
       }
       render(1);
-      return { mode: state.mode, time: state.time, kills: state.kills, enemies: enemies.length, level: player.level, hp: player.hp };
+      return { mode: state.mode, time: state.time, kills: state.kills, enemies: G.enemies.length, level: player.level, hp: player.hp, gold: player.gold };
     },
   };
 }

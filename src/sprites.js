@@ -575,22 +575,282 @@ const SLIME = [
 const SLIME_SQUASH = SLIME.filter((_, i) => i !== 3);
 
 const SLIME_COLORS = {
-  green: { L: '#7ed957', D: '#3f9b3a', e: '#e8ffd8' },
-  purple: { L: '#b06cff', D: '#6b3bb8', e: '#f0e0ff' },
-  red: { L: '#ff6b6b', D: '#b83b3b', e: '#ffe0e0' },
+  slimeGreen: { L: '#7ed957', D: '#3f9b3a', e: '#e8ffd8' },
+  slimePurple: { L: '#b06cff', D: '#6b3bb8', e: '#f0e0ff' },
+  slimeBlue: { L: '#5ad1ff', D: '#2a7fb8', e: '#e0f7ff' },
+  slimeRed: { L: '#ff6b6b', D: '#b83b3b', e: '#ffe0e0' },
 };
 
-// 16x16 frames, feet at y = 15.
-export function buildSlimeArt() {
+// Wings up / wings down. Bats hover, so they are painted high in the cell.
+const BAT_A = [
+  '.oo........oo.',
+  'oWWo.oooo.oWWo',
+  'oWWWoobbooWWWo',
+  '.oWWWbeebWWWo.',
+  '..oWWbbbbWWo..',
+  '...oobbbboo...',
+  '.....obbo.....',
+  '......oo......',
+];
+const BAT_B = [
+  '..............',
+  'oWo........oWo',
+  'oWWo.oooo.oWWo',
+  'oWWWoobbooWWWo',
+  '.oWWWbeebWWWo.',
+  '..oWWbbbbWWo..',
+  '...oobbbboo...',
+  '.....obbo.....',
+];
+const BAT_PAL = { o: '#180f22', W: '#6b4a8f', b: '#3b2352', e: '#ff5a5a' };
+
+// A drifting flame-ghost: no legs, a tail that flickers between the two frames.
+const WISP_A = [
+  '....oooo....',
+  '..ooWWWWoo..',
+  '.oWWWWWWWWo.',
+  'oWWeeWWeeWWo',
+  'oWWeeWWeeWWo',
+  'oWWWWWWWWWWo',
+  '.oWWWWWWWWo.',
+  '..oWWWWWWo..',
+  '...ooWWoo...',
+  '..o.oWWo.o..',
+];
+const WISP_B = [
+  '....oooo....',
+  '..ooWWWWoo..',
+  '.oWWWWWWWWo.',
+  'oWWeeWWeeWWo',
+  'oWWeeWWeeWWo',
+  'oWWWWWWWWWWo',
+  '.oWWWWWWWWo.',
+  '..oWWWWWWo..',
+  '...oWWWWo...',
+  '..oo.oo.oo..',
+];
+const WISP_PAL = { o: '#0d2a33', W: '#7df6ff', e: '#0a3a44' };
+
+// Side-on tusked hog facing right: humped back, snout poking out, one tusk under the eye.
+// Frame B only swaps the legs — the charge wind-up is what sells the animation, not the walk.
+const BOAR_A = [
+  '...ooooooo......',
+  '..oBBBBBBBoo....',
+  '.oBBBBBBBBBBoo..',
+  '.oBBBBBBBBBBBBo.',
+  'oBBBBBBBBBBeBBSo',
+  'oBBBBBBBBBBBBSSo',
+  'oBBBBBBBBBBBWSSo',
+  '.oBBBBBBBBBBBBo.',
+  '.obbo.obbo......',
+  '..oo...oo.......',
+];
+const BOAR_B = [
+  ...BOAR_A.slice(0, 8),
+  '..obbo.obbo.....',
+  '...oo...oo......',
+];
+const BOAR_PAL = { o: '#2a1a10', B: '#a9743f', b: '#6b4423', S: '#d99a63', W: '#fff3e0', e: '#ff5a5a' };
+
+// Squat spitter with eyes on top; frame B is the squash before the spit.
+const TOAD_A = [
+  '..oo........oo..',
+  '.oGGo......oGGo.',
+  '.oGeGGGGGGGeGo..',
+  '.oGGGGGGGGGGGGo.',
+  'oGGGGGGGGGGGGGGo',
+  'oGGkkkkkkkkkkGGo',
+  'oGGGGGGGGGGGGGGo',
+  '.oDDGGGGGGGGDDo.',
+  '..oDDDDDDDDDDo..',
+  '...oooooooooo...',
+];
+const TOAD_B = TOAD_A.filter((_, i) => i !== 3);
+const TOAD_PAL = { o: '#1e2a10', G: '#8ec63f', D: '#5a8a28', e: '#2a3a14', k: '#3c2a12' };
+
+// Walking mine. The fuse is the only thing that moves.
+const PUFF_A = [
+  '.....ff.....',
+  '....oPPo....',
+  '..ooPPPPoo..',
+  '.oPPPPPPPPo.',
+  'oPPeePPeePPo',
+  'oPPPPPPPPPPo',
+  'oPPPPkkPPPPo',
+  '.oPPPPPPPPo.',
+  '..ooPPPPoo..',
+  '....oooo....',
+];
+const PUFF_B = [
+  '....f.f.....',
+  '....oPPo....',
+  '..ooPPPPoo..',
+  '.oPPPPPPPPo.',
+  'oPPeePPeePPo',
+  'oPPPPPPPPPPo',
+  'oPPPPkkPPPPo',
+  '.oPPPPPPPPo.',
+  '..ooPPPPoo..',
+  '....oooo....',
+];
+const PUFF_PAL = { o: '#2a1508', P: '#ff9f4a', k: '#3a2010', e: '#fff3e0', f: '#ffd23f' };
+
+// One humanoid grid for the whole bandit family — hat, masked face, tunic, boots. Only the
+// palette changes between a grunt, an archer, the treasure runner, the brute and the captain.
+const BANDIT_A = [
+  '...oooooo...',
+  '..oHHHHHHo..',
+  '.oHHHHHHHHo.',
+  '.oSSSSSSSSo.',
+  '.oSkSSSSkSo.',
+  '.oMMMMMMMMo.',
+  '..oMMMMMMo..',
+  '.oBBBBBBBBo.',
+  'oBBBBBBBBBBo',
+  'oBBBBBBBBBBo',
+  'oBBBBBBBBBBo',
+  '.oBBBBBBBBo.',
+  '.oLLo..oLLo.',
+  '.oooo..oooo.',
+];
+const BANDIT_B = [
+  ...BANDIT_A.slice(0, 12),
+  '..oLLoLLo...',
+  '..ooooooo...',
+];
+const BANDIT_PALS = {
+  bandit: { o: '#1d1108', H: '#5a3a24', S: '#e8b088', k: '#241a12', M: '#c94f3a', B: '#7a4a2e', L: '#3f2a1c' },
+  archer: { o: '#101c12', H: '#2f4a2a', S: '#e8b088', k: '#241a12', M: '#3f9b5a', B: '#40603a', L: '#26361f' },
+  mule: { o: '#2a1e06', H: '#8a6a1a', S: '#e8b088', k: '#241a12', M: '#ffd23f', B: '#c58f2a', L: '#5e4413' },
+  brute: { o: '#240c0c', H: '#3a1f1f', S: '#e0a07a', k: '#1a1010', M: '#d8d8d8', B: '#8c2f2f', L: '#4a1c1c' },
+  captain: { o: '#180f2a', H: '#2a1a4a', S: '#e8b088', k: '#1a1030', M: '#ffd23f', B: '#5a3f8c', L: '#31215c' },
+};
+
+// Every enemy sheet is 16×16 with the feet at y = 15, so swarm.js can draw them all the same way:
+// frames to animate, flash for the hit blink, frost for the slowed-down tint.
+// One row per enemy sheet: the two frames with the y they sit at, the palette, the x inset, and
+// the colour the game throws around as particles when the thing dies.
+const CRITTERS = {
+  ...Object.fromEntries(Object.entries(SLIME_COLORS).map(([key, colors]) => [key, {
+    frames: [[SLIME, 5], [SLIME_SQUASH, 6]], pal: { o: '#221428', k: '#140a1a', ...colors }, x: 1, color: colors.L,
+  }])),
+  bat: { frames: [[BAT_A, 3], [BAT_B, 3]], pal: BAT_PAL, x: 1, color: '#8d6bb5' },
+  wisp: { frames: [[WISP_A, 3], [WISP_B, 3]], pal: WISP_PAL, x: 2, color: '#7df6ff' },
+  boar: { frames: [[BOAR_A, 5], [BOAR_B, 5]], pal: BOAR_PAL, x: 0, color: '#a9743f' },
+  toad: { frames: [[TOAD_A, 5], [TOAD_B, 6]], pal: TOAD_PAL, x: 0, color: '#8ec63f' },
+  puff: { frames: [[PUFF_A, 5], [PUFF_B, 5]], pal: PUFF_PAL, x: 2, color: '#ff9f4a' },
+  ...Object.fromEntries(Object.entries(BANDIT_PALS).map(([key, pal]) => [key, {
+    frames: [[BANDIT_A, 1], [BANDIT_B, 1]], pal, x: 2, color: pal.M,
+  }])),
+};
+
+// What ENEMY_TYPES.art is allowed to name. Exported so a test can catch a typo without a canvas.
+export const ENEMY_ART_KEYS = Object.keys(CRITTERS);
+
+export function buildEnemyArt() {
   const out = {};
-  for (const [type, colors] of Object.entries(SLIME_COLORS)) {
-    const pal = { o: '#221428', k: '#140a1a', ...colors };
-    const frames = [[SLIME, 5], [SLIME_SQUASH, 6]].map(([grid, y]) => {
-      const c = makeCanvas(16, 16);
-      paint(c.getContext('2d'), grid, 1, y, pal);
-      return c;
+  for (const [key, c] of Object.entries(CRITTERS)) {
+    const frames = c.frames.map(([grid, y]) => {
+      const canvas = makeCanvas(16, 16);
+      paint(canvas.getContext('2d'), grid, c.x, y, c.pal);
+      return canvas;
     });
-    out[type] = { frames, flash: frames.map(f => silhouette(f, '#ffffff')), color: colors.L };
+    out[key] = {
+      frames,
+      flash: frames.map(f => silhouette(f, '#ffffff')),
+      frost: frames.map(f => silhouette(f, '#9fe8ff')),
+      color: c.color,
+    };
+  }
+  return out;
+}
+
+// Every grid row has to be the same length or paint() quietly drops pixels off the short rows.
+export function raggedGrids() {
+  const bad = [];
+  for (const [key, c] of Object.entries(CRITTERS)) {
+    for (const [grid] of c.frames) {
+      const w = grid[0].length;
+      if (grid.some(row => row.length !== w)) bad.push(key);
+    }
+  }
+  for (const [key, [grid]] of Object.entries(PICKUPS)) {
+    const w = grid[0].length;
+    if (grid.some(row => row.length !== w)) bad.push(key);
+  }
+  return [...new Set(bad)];
+}
+
+// ---- Pickups ---------------------------------------------------------------
+
+const HEART = [
+  '.oo...oo.',
+  'oRRo.oRRo',
+  'oRRRoRRRo',
+  'oRRRRRRRo',
+  '.oRRRRRo.',
+  '..oRRRo..',
+  '...oRo...',
+  '....o....',
+];
+const COIN = [
+  '..oooo..',
+  '.oGGGGo.',
+  'oGGYYGGo',
+  'oGYYYYGo',
+  'oGYYYYGo',
+  'oGGYYGGo',
+  '.oGGGGo.',
+  '..oooo..',
+];
+const MAGNET = [
+  '.oo....oo.',
+  'oMMo..oMMo',
+  'oMMo..oMMo',
+  'oMMo..oMMo',
+  'oMMooooMMo',
+  'oMMMMMMMMo',
+  'oMMMMMMMMo',
+  '.oMMMMMMo.',
+  '..oooooo..',
+];
+const BOMB = [
+  '........f.',
+  '.......f..',
+  '..oooo.f..',
+  '.oBBBBoo..',
+  'oBBwBBBBo.',
+  'oBBBBBBBo.',
+  'oBBBBBBBo.',
+  '.oBBBBBo..',
+  '..ooooo...',
+];
+const CHEST = [
+  '.oooooooooo.',
+  '.oGGGGGGGGo.',
+  '.oGkkkkkkGo.',
+  '.oooooooooo.',
+  '.oWWWWWWWWo.',
+  '.oWWWkkWWWo.',
+  '.oWWWkkWWWo.',
+  '.oWWWWWWWWo.',
+  '.oooooooooo.',
+];
+
+const PICKUPS = {
+  heart: [HEART, { o: '#3a0d14', R: '#ff5a6e' }],
+  coin: [COIN, { o: '#5a3a06', G: '#c28100', Y: '#ffd23f' }],
+  magnet: [MAGNET, { o: '#0d2436', M: '#5ad1ff' }],
+  bomb: [BOMB, { o: '#10131c', B: '#39415a', w: '#c9d1e0', f: '#ffd23f' }],
+  chest: [CHEST, { o: '#2a1a06', G: '#c28100', W: '#8a5a1e', k: '#ffd23f' }],
+};
+
+export function buildPickupArt() {
+  const out = {};
+  for (const [key, [grid, pal]] of Object.entries(PICKUPS)) {
+    const c = makeCanvas(grid[0].length, grid.length);
+    paint(c.getContext('2d'), grid, 0, 0, pal);
+    out[key] = c;
   }
   return out;
 }

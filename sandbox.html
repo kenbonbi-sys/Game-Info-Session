@@ -38,10 +38,13 @@
     .bar.dash { height: 6px; margin-top: 6px; }
     .bar.dash i { background: var(--cyan); transition: none; }
     #stats .row.small { margin-top: 8px; }
-    #slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
-    .slot { position: relative; height: 36px; border: 2px solid #33415f; border-radius: 6px; background: #121a30; display: grid; place-items: center; font-size: 18px; }
-    .slot b { position: absolute; right: 3px; bottom: 0; font-size: 11px; color: var(--gold); }
-    .slot.empty { opacity: 0.45; }
+    .rack { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 6px; }
+    .rack-label { margin-top: 9px; font-size: 11px; letter-spacing: 1px; color: var(--muted); }
+    .slot { position: relative; height: 32px; border: 2px solid #33415f; border-radius: 6px; background: #121a30; display: grid; place-items: center; font-size: 16px; }
+    .slot b { position: absolute; right: 2px; bottom: -1px; font-size: 10px; color: var(--gold); }
+    .slot.empty { opacity: 0.35; }
+    .slot.maxed { border-color: var(--cyan); }
+    .slot.evo { border-color: var(--gold); background: #2a2410; box-shadow: 0 0 8px rgba(255, 210, 63, 0.45); }
 
     #info { top: 12px; right: 12px; text-align: right; font-size: 13px; }
     #info .title { color: var(--gold); font-size: 16px; font-weight: 700; margin-bottom: 4px; }
@@ -69,6 +72,12 @@
     .choice .title { font-size: 18px; font-weight: 700; color: var(--cyan); }
     .choice .lvl { font-size: 12px; color: var(--gold); }
     .choice .desc { font-size: 13px; color: var(--muted); line-height: 1.4; }
+    .choice.perk .title { color: #9ef0b4; }
+    .choice.evo { border-color: var(--gold); background: linear-gradient(#3a2f10, #1c1608); box-shadow: 0 0 14px rgba(255, 210, 63, 0.4); }
+    .choice.evo .title { color: var(--gold); }
+    .choice.evo .lvl { color: #fff3c4; }
+    .loot { font-size: 17px; margin: 6px 0; }
+    .loot b { color: var(--gold); }
     .pause-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 22px; text-align: left; margin-bottom: 16px; }
     .pause-grid ul { margin: 0; padding-left: 18px; line-height: 2.1; font-size: 14px; white-space: nowrap; }
     .sheet-preview { overflow-x: auto; background: repeating-conic-gradient(#1a2440 0 25%, #121a30 0 50%) 0 0 / 12px 12px; border-radius: 8px; padding: 6px; }
@@ -81,16 +90,19 @@
 
   <div id="stats" class="panel">
     <div class="row"><span class="name">Fox (YOU)</span><span id="lv">Lv.1</span></div>
-    <div class="bar hp"><i id="hpFill"></i><span id="hpText">100/100</span></div>
+    <div class="bar hp"><i id="hpFill"></i><span id="hpText">130/130</span></div>
     <div class="bar xp"><i id="xpFill"></i><span id="xpText">0/6</span></div>
     <div class="bar dash" title="Lướt (Space)"><i id="dashFill"></i></div>
-    <div class="row small"><span>⏱ <b id="time">00:00</b></span><span>💀 <b id="kills">0</b></span></div>
-    <div id="slots"></div>
+    <div class="row small"><span>⏱ <b id="time">00:00</b></span><span>💀 <b id="kills">0</b></span><span>💰 <b id="gold">0</b></span></div>
+    <div class="rack-label">CHIÊU</div>
+    <div id="weaponSlots" class="rack"></div>
+    <div class="rack-label">PERK</div>
+    <div id="perkSlots" class="rack"></div>
   </div>
 
   <div id="info" class="panel">
     <div class="title">🦊 LOCAL TEST</div>
-    <div>Quái: <b id="enemyCount">0</b> · FPS <b id="fps">0</b></div>
+    <div>Quái: <b id="enemyCount">0</b> · Đợt <b id="wave">1</b> · FPS <b id="fps">0</b></div>
     <div class="small">Anim: <b id="animName">idle</b></div>
     <div class="small">Sprite: <b id="spriteSource">…</b></div>
   </div>
@@ -99,7 +111,8 @@
     <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> di chuyển</span>
     <span><kbd>Space</kbd> lướt</span>
     <span><kbd>Esc</kbd> tạm dừng</span>
-    <span><kbd>B</kbd> gọi boss</span>
+    <span><kbd>B</kbd> boss</span>
+    <span><kbd>N</kbd> đầu lĩnh</span>
     <span><kbd>H</kbd> hitbox</span>
     <span><kbd>K</kbd> xuất sprite</span>
   </div>

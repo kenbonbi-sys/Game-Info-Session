@@ -117,7 +117,7 @@ Terminal in ra các link:
 | `http://<IP-wifi>:5173` | Người chơi. Màn game tự hiện QR của link này |
 | `http://localhost:5173/host?key=xxxxxx` | **Bảng điều khiển**, mở trên màn laptop. Key đổi mỗi lần chạy server |
 | `http://localhost:5173/screen?key=xxxxxx` | **Màn game** cho máy chiếu (thường mở bằng nút trên bảng điều khiển) |
-| `http://localhost:5173/sandbox` | Bản swarm cũ, để test sprite |
+| `http://localhost:5173/sandbox` | **Fox Swarm** — màn chơi roguelike kiểu Vampire Survivors, cũng là chỗ test sprite |
 
 Không cần `npm install`, chỉ cần Node 18+. Muốn đổi cổng: `node server.js --port=5174`.
 Muốn cố định host key: đặt biến môi trường `HOST_KEY` trước khi chạy.
@@ -338,6 +338,47 @@ mất khi server ngủ dậy.
 
 File này không tải được từ trình duyệt nên người chơi không xem trộm đáp án được.
 
+## Fox Swarm (`/sandbox`)
+
+Màn chơi một người kiểu **Vampire Survivors**: cáo chỉ chạy, mọi chiêu tự đánh. Sống càng lâu quái
+càng đông; mỗi lần lên cấp chọn 1 trong 3 (4 nếu có Vận May Lv.3). Số liệu nằm gọn trong
+[src/entities.js](src/entities.js) — sửa bảng là đổi cân bằng, không phải sửa logic.
+
+**9 chiêu** (mang tối đa 6 cùng lúc). Chiêu đã kịch trần + perk đi kèm đạt Lv.3 thì hiện thêm lựa
+chọn **tiến hoá** viền vàng, đổi hẳn cách đánh:
+
+| Chiêu | Đánh thế nào | Perk cần | Tiến hoá |
+|---|---|---|---|
+| 🔥 Hỏa Hồ | Cầu lửa tự tìm quái gần nhất | Uy Lực | 🌋 Cửu Vĩ Hỏa — cầu lửa nổ lan |
+| 🔮 Ngọc Linh | Cầu xoay quanh cáo | Bao Phủ | 🌙 Nguyệt Luân — hai vành ngược chiều |
+| 🌀 Quét Đuôi | Nổ sát thương quanh mình, đẩy lùi | Tốc Chiêu | 🌪️ Bão Đuôi — quẫy hai vòng, gây choáng |
+| 🐾 Vuốt Gió | Vệt vuốt hình quạt về hướng đang quay mặt | Uy Lực | ⚔️ Song Trảo — bổ cả hai bên |
+| ⚡ Thiên Lôi | Sét giáng xuống quái ngẫu nhiên | Vận May | 🌩️ Lôi Vũ — nảy sang 2 con, luôn chí mạng |
+| ❄️ Băng Vụn | Chùm mảnh băng xuyên, làm chậm | Bội Kích | 🌨️ Bão Tuyết — mảnh vỡ ra tiếp |
+| 🌟 Hồ Quang | Vầng sáng đốt liên tục quanh cáo | Bao Phủ | 👁️ Nuốt Hồn — đốt trúng thì hút máu |
+| 🏮 Đèn Hồ Ly | Thả vũng lửa xuống đất | Hồi Máu | 🔆 Hỏa Ngục — vũng lửa nổ khi tắt |
+| 🎴 Lá Bùa | Bay vòng ra rồi quay về tay | Chân Gió | 💮 Bùa Truy Hồn — tự bám theo quái |
+
+**13 perk** (mang tối đa 6): Uy Lực, Tốc Chiêu, Bao Phủ, Bội Kích, Chân Gió, Sinh Lực, Giáp Vảy,
+Hồi Máu, Nam Châm, Vận May, Học Nhanh, Lướt Gió, và Cửu Mệnh — gục một lần rồi đứng dậy với 50% máu.
+
+**14 loại quái.** Nhớt xanh/tím/đá chỉ biết lao thẳng; dơi bay zíc zắc; bóng ma xuyên qua cây cối;
+heo lòi lùi lại lấy đà rồi húc; cóc độc và cướp bắn cung đứng xa nhả đạn — đạn của quái phải né bằng
+tay; nấm nổ chết là nổ, đứng gần thì cáo cũng ăn.
+
+**Băng cướp** là nhánh riêng: cướp thường lao vào, cướp bắn cung kèo xa, **Cướp Đầu Gấu** là elite có
+thanh máu, **Đầu Lĩnh Cướp** bắn nguyên vòng đạn 8 hướng và gọi thêm quân. Riêng **Cướp Áp Tải** ôm
+rương bỏ chạy — đuổi kịp trong 20 giây thì được rương, nâng thẳng 2–3 cấp chiêu; không kịp thì nó mất hút.
+
+**Lịch ra quái** trong [src/swarm.js](src/swarm.js): 90 giây đầu chỉ có quái chậm hơn cáo để còn kịp
+build, sau đó cứ vài chục giây một màn — bầy dơi, băng cướp phục kích, chuyến áp tải, hàng nấm nổ,
+Quái Khói, rồi Đầu Lĩnh Cướp ở phút 5. Hết lịch thì các màn đó quay vòng 45 giây một lần, quái khoẻ dần.
+
+Đồ rơi: ngọc EXP, vàng, tim hồi máu, 🧲 hút sạch ngọc trên màn, 💣 nổ sạch quái đang thấy.
+
+Phím tắt khi test: <kbd>H</kbd> hitbox · <kbd>B</kbd> gọi Quái Khói · <kbd>N</kbd> gọi Đầu Lĩnh ·
+<kbd>K</kbd> xuất sprite · <kbd>Esc</kbd> tạm dừng (có luôn danh sách đang mang).
+
 ## Cấu trúc
 
 ```
@@ -350,7 +391,11 @@ src/identity.js      chuẩn hoá domain, đọc bản xuất chiến dịch, lu
 data/roster.json     danh sách chiến dịch đã nạp (không có trong repo, sinh ra khi MC dán vào)
 fear.html            bàn phím gõ nỗi sợ (mở màn)       → src/fear.js, src/fear.css
 src/fear-cloud.js    đám mây chữ + đoạn phim triệu hồi Quái Vật (vẽ trên máy chiếu)
-sandbox.html         bản swarm cũ         → src/main.js
+sandbox.html         Fox Swarm, bản roguelike kiểu Vampire Survivors → src/main.js
+src/entities.js      số liệu của Fox Swarm: 9 chiêu + tiến hoá, 13 perk, 14 loại quái, class Player/Enemy
+src/weapons.js       9 chiêu bắn ra cái gì, đạn/vũng lửa/sét bay thế nào, vẽ hiệu ứng
+src/swarm.js         AI từng loại quái, lịch ra quái theo phút, băng cướp, rương và đồ rơi
+src/draw.js          mấy hàm vẽ dùng chung cho Fox Swarm (chữ pixel, bóng, thanh máu)
 src/arena-view.js    vẽ đấu trường trên máy chiếu: ụ súng, bảng tên, boss, đạn, phản đòn
 src/arena-scene.js   nền pixel của đấu trường, vẽ Canvas một lần
 src/config.js        sprite, bố cục 108 ụ, thứ tự xếp ụ, màu/hình 4 đáp án, vật phẩm
