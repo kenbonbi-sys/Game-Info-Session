@@ -2,11 +2,12 @@
 // views = frame order of a 360° turnaround strip.
 export const SPRITES = {
   hero: { url: 'assets/source/hero-360.svg', views: ['down-right', 'right', 'up-right', 'up', 'up-left', 'left', 'down-left'] },
-  // 7×3 grid PNG (168px cells, drawn 1:1): row 1 idle, row 2 taking a hit, row 3 breathing fire.
-  // Cleaned from a generated sheet whose "transparent" background was a painted checkerboard.
+  // 7×3 grid PNG (205×168 cells, drawn 1:1): row 1 idle, row 2 taking a hit, row 3 breathing fire.
+  // Built from assets/source/boss-smoke-raw.webp by tools/build-boss-sheet.py, which puts the
+  // smoke head at the same spot in every cell — the raw art is not on an even grid.
   boss: {
     url: 'assets/source/boss-smoke.png',
-    cols: 7, rows: 3, size: 168,
+    cols: 7, rows: 3, size: 205,
     pivot: { x: 0.5, y: 1 },
     anims: {
       idle: { frames: [0, 1, 2, 3, 4, 5, 6], fps: 8 },

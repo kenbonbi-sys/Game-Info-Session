@@ -6,8 +6,7 @@
 |---|---|---|
 | Nhân vật chính | `assets/source/hero-360.svg` | 7 hướng nhìn, frame 64×64 |
 | Logo lockup | `assets/source/learning-hub-x-research-lab.png` | Hiện trên thẻ vào phòng. Chữ đã đảo sang trắng để đọc được trên nền tối; con cáo, chữ "Learning" cam và vòng tròn xanh giữ nguyên màu gốc |
-| Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 168×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần) |
-
+| Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 205×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần). Dựng từ `boss-smoke-raw.webp`, xem [Thay sprite boss](#thay-sprite-boss) |
 | Vật phẩm | `assets/source/items/*.png` | 128×128, hiện ở thanh vật phẩm và trong clip hướng dẫn |
 | Icon thả chơi | `assets/source/reactions/*.png` | 192×192, 5 con cáo người chơi thả cho nhau xem lúc chờ |
 
@@ -26,8 +25,25 @@ python tools/optimize-assets.py
 File gốc nằm trong `assets/source/**/raw/` và không được deploy tới điện thoại; script đọc từ đó
 ghi đè bản đã ép. Đừng sửa tay bản đã ép — lần chạy script sau sẽ đè mất.
 
+## Thay sprite boss
+
 Boss dùng sheet PNG dạng lưới (`loadGridSheet`) như ụ súng: nền trong suốt, mỗi hàng là một animation.
 Nếu file gốc có nền checkerboard vẽ chết, phải tách nền (flood fill từ viền) trước khi đưa vào `assets/source/`.
+
+Bản vẽ boss do máy sinh ra **không nằm trên lưới chính xác**: 21 hình xếp 7×3 nhưng mỗi hình một
+bề ngang, frame thì sét toả sang một bên, frame thì phun lửa xuống dưới. Cắt thẳng theo
+`width / 7` là xén mất sét của frame này và dính sang ô bên cạnh. Nên:
+
+1. Chép bản vẽ gốc (giữ nguyên, đừng sửa) vào `assets/source/boss-smoke-raw.webp`.
+2. `python tools/build-boss-sheet.py`
+
+Script dò lưới thật từ **đầu khói** — khối màu tối đặc, thứ duy nhất có mặt ở cả 21 frame và
+không đổi chỗ khi sét hay lửa bùng ra — rồi đặt từng frame vào ô sao cho đầu khói nằm đúng một
+chỗ, cắt sát đáy (đáy ô là chỗ boss "đứng", `pivot.y = 1`). Nó in ra bề rộng ô; **chép con số
+đó vào `size` của `SPRITES.boss` trong [src/config.js](src/config.js)**, vì bản vẽ mới có thể
+rộng hẹp khác bản cũ. Frame nào bị xén script cũng báo.
+
+Layout khác 7×3 thì sửa `COLS`/`ROWS` trong script lẫn `cols`/`rows` trong config.
 
 Hero vẫn đọc từ SVG khi mở: lấy ảnh bitmap nhúng bên trong, dùng lớp mask làm nền trong suốt,
 tự phát hiện ảnh pixel bị phóng to bao nhiêu lần (hiện là ×3) rồi thu về đúng 1 pixel art = 1 pixel game.
