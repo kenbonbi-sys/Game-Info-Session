@@ -890,49 +890,224 @@ const BUSH = [
 ];
 const BUSH_PAL = { o: '#173a22', L: '#4fae4a', l: '#7fd66b', D: '#2f7a3a', T: '#7a4a2a' };
 
-export function buildProps() {
-  const rock = makeCanvas(16, 9);
-  paint(rock.getContext('2d'), ROCK, 0, 0, ROCK_PAL);
-  const bush = makeCanvas(20, 16);
-  paint(bush.getContext('2d'), BUSH, 0, 0, BUSH_PAL);
-  const tree = makeCanvas(40, 32);
-  tree.getContext('2d').drawImage(bush, 0, 0, 40, 32);
-  return {
-    rock: { img: rock, r: 7 },
-    bush: { img: bush, r: 3 },
-    tree: { img: tree, r: 6 },
-  };
+// A real tree: trunk, root flare, and a canopy with a lit top-left and a shaded underside.
+// The old one was the bush canvas drawn at 2x, which is why a quarter of the props used to be a
+// blurry copy of the prop standing next to them.
+const TREE = [
+  '.......oooooo.......',
+  '.....ooLLLLLLoo.....',
+  '...ooLLLLLLLLLLoo...',
+  '..oLLLLLlllLLLLLLo..',
+  '.oLLLLlllllllLLLLLo.',
+  '.oLLLlllllllllLLLLo.',
+  'oLLLLlllllllllLLLLLo',
+  'oLLLLLlllllllLLLLLLo',
+  'oDLLLLLlllllLLLLLLDo',
+  'oDDLLLLLLLLLLLLLLDDo',
+  'oDDDLLLLLLLLLLLLDDDo',
+  '.oDDDDLLLLLLLLDDDDo.',
+  '.oDDDDDDLLLLDDDDDDo.',
+  '..oDDDDDDDDDDDDDDo..',
+  '...ooDDDDDDDDDDoo...',
+  '.....oooTTTToo......',
+  '........oTTo........',
+  '........oTTo........',
+  '.......oTTTTo.......',
+  '......ooTTTTToo.....',
+  '.....oRRoooooRRo....',
+  '.....oooo...oooo....',
+];
+const TREE_PAL = { o: '#14301c', L: '#3f8f3c', l: '#63c057', D: '#255c2c', T: '#6b4526', R: '#4a2f1a' };
+
+// A narrow conifer, so a stand of trees has more than one silhouette in it.
+const PINE = [
+  '........oo........',
+  '.......oPPo.......',
+  '......oPPPPo......',
+  '.....oPppPPPo.....',
+  '....oPPppPPPPo....',
+  '...oPPPppPPPPPo...',
+  '.....oPPPPPPo.....',
+  '....oPPPppPPPo....',
+  '...oPPPppPPPPPo...',
+  '..oPPPPppPPPPPPo..',
+  '....oPPPPPPPPo....',
+  '...oPPPppPPPPPo...',
+  '..oPPPPppPPPPPPo..',
+  '.oPPPPPppPPPPPPPo.',
+  '..ooPPPPPPPPPPoo..',
+  '.....oooTToo......',
+  '........TT........',
+  '.......oTTo.......',
+  '......ooooooo.....',
+];
+const PINE_PAL = { o: '#10261a', P: '#2f6f3f', p: '#4a9455', T: '#4a2f1a' };
+
+// A cluster, not the single grey blob that used to be 35% of every prop on screen.
+const BOULDER = [
+  '....oooooo....',
+  '..ooggGGggoo..',
+  '.oggGGGGggsgo.',
+  'oggGGGgggssggo',
+  'oggggggggsssgo',
+  'ogsggggggsssgo',
+  '.osssgggsssso.',
+  '..oossssssoo..',
+  '...oooooooo...',
+];
+const STUMP = [
+  '..oooooo..',
+  '.oTTTTTTo.',
+  'oTtttttTTo',
+  'oTtRRRtTTo',
+  'oTtttttTTo',
+  'oTTTTTTTTo',
+  '.oTTTTTTo.',
+  '..oooooo..',
+];
+const STUMP_PAL = { o: '#2a1a0e', T: '#6b4526', t: '#8a5c33', R: '#4a2f1a' };
+
+const MUSHROOM = [
+  '..oooo..',
+  '.oRRRRo.',
+  'oRRwRRRo',
+  'oRRRRwRo',
+  '.oooooo.',
+  '..oWWo..',
+  '..oWWo..',
+  '.oooooo.',
+];
+const MUSHROOM_PAL = { o: '#3a1218', R: '#c9424a', w: '#f2e2d0', W: '#e8dcc6' };
+
+function fromGrid(grid, pal) {
+  const c = makeCanvas(grid[0].length, grid.length);
+  paint(c.getContext('2d'), grid, 0, 0, pal);
+  return c;
 }
 
-export function buildGrassTiles(rng) {
-  const tiles = [];
-  for (let i = 0; i < 6; i++) {
-    const c = makeCanvas(32, 32);
-    const g = c.getContext('2d');
-    g.fillStyle = '#5da84a';
-    g.fillRect(0, 0, 32, 32);
-    for (let n = 0; n < 26; n++) {
-      g.fillStyle = rng() < 0.5 ? '#4f9a3e' : '#6bb857';
-      g.fillRect(Math.floor(rng() * 32), Math.floor(rng() * 32), 1, 1);
-    }
-    if (rng() < 0.6) {
-      const x = 2 + Math.floor(rng() * 26);
-      const y = 3 + Math.floor(rng() * 26);
-      g.fillStyle = '#478c38';
-      g.fillRect(x, y, 1, 2);
-      g.fillRect(x + 2, y, 1, 2);
-      g.fillRect(x + 1, y - 1, 1, 3);
-    }
-    if (rng() < 0.25) {
-      const x = 2 + Math.floor(rng() * 28);
-      const y = 2 + Math.floor(rng() * 28);
-      g.fillStyle = rng() < 0.5 ? '#fff4a8' : '#ffd1e8';
-      g.fillRect(x - 1, y, 3, 1);
-      g.fillRect(x, y - 1, 1, 3);
-      g.fillStyle = '#e8a53a';
-      g.fillRect(x, y, 1, 1);
-    }
-    tiles.push(c);
-  }
-  return tiles;
+// Baked drop shadow: the prop's own silhouette, squashed and darkened, so every shadow on the
+// field shares one light direction instead of being an anti-aliased ellipse sized off the canvas.
+function bakeShadow(img) {
+  const h = Math.max(3, Math.round(img.height * 0.28));
+  const c = makeCanvas(img.width, h);
+  const g = c.getContext('2d');
+  g.globalAlpha = 0.3;
+  g.drawImage(silhouette(img, '#0d1a12'), 0, 0, img.width, h);
+  return c;
 }
+
+export function buildProps() {
+  const art = {
+    rock: { img: fromGrid(ROCK, ROCK_PAL), r: 7 },
+    boulder: { img: fromGrid(BOULDER, ROCK_PAL), r: 8 },
+    bush: { img: fromGrid(BUSH, BUSH_PAL), r: 4 },
+    tree: { img: fromGrid(TREE, TREE_PAL), r: 5 },
+    pine: { img: fromGrid(PINE, PINE_PAL), r: 5 },
+    stump: { img: fromGrid(STUMP, STUMP_PAL), r: 5 },
+    mushroom: { img: fromGrid(MUSHROOM, MUSHROOM_PAL), r: 3 },
+  };
+  for (const p of Object.values(art)) p.shadow = bakeShadow(p.img);
+  return art;
+}
+
+// ---- Terrain ---------------------------------------------------------------
+// Four ground materials the world is painted from. Each is a flat base plus speckle, so a baked
+// chunk can blend two of them through a dither mask and still land on whole pixels.
+export const MATERIALS = [
+  { key: 'meadow', base: '#5da84a', dark: '#4f9a3e', light: '#6bb857', speck: '#478c38' },
+  { key: 'moss', base: '#48924a', dark: '#3a7b40', light: '#5fae5c', speck: '#2f6b38' },
+  { key: 'dirt', base: '#8a7047', dark: '#755d3a', light: '#9d8256', speck: '#634d2f' },
+  { key: 'shale', base: '#6f7386', dark: '#5c6072', light: '#848a9c', speck: '#4a4e5e' },
+];
+
+// 4x4 ordered-dither thresholds, used to break the boundary between two materials into pixel
+// stipple instead of the soft alpha ramp a gradient would give.
+const BAYER = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
+
+// Little things stamped into the baked ground: hundreds per screen at zero per-frame cost.
+const SCATTER = {
+  pebble: ['.oo.', 'oGGo', 'oGgo', '.oo.'],
+  twig: ['..oo', '.oT.', 'oT..', 'o...'],
+  blade: ['.o.', 'oLo', 'oLo', '.o.'],
+  flower: ['.F.', 'FYF', '.F.'],
+  bone: ['o.o', 'oWo', '.W.', 'oWo'],
+  crack: ['o...', '.oo.', '..o.', '..oo'],
+};
+const SCATTER_PAL = {
+  o: 'rgba(30,38,28,0.45)', G: '#8d93a2', g: '#6a7080', T: '#6b4a2a',
+  L: '#7fd66b', F: '#e8e3a0', Y: '#e8a53a', W: '#d8d4c4',
+};
+
+function stampScatter(g, kind, x, y, rng) {
+  const grid = SCATTER[kind];
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      const color = SCATTER_PAL[grid[r][c]];
+      if (!color) continue;
+      g.fillStyle = color;
+      g.fillRect(x + c, y + r, 1, 1);
+    }
+  }
+  void rng;
+}
+
+// Bakes one chunk of terrain into a single canvas, `size` tiles square at 32px per tile.
+//
+// Material is sampled per 2x2 pixel block rather than per tile, which is the whole trick: a
+// tile-resolution material map can only produce 32px staircase edges no amount of dithering
+// hides, while sampling at 2px lets the noise itself draw the coastline. The ordered dither is
+// then only applied in the narrow band where two materials are close, to stipple the seam.
+export function bakeChunk(size, tiles, materialAtPx, rng) {
+  const px = size * 32;
+  const originX = tiles.x * 32;
+  const originY = tiles.y * 32;
+  const c = makeCanvas(px, px);
+  const g = c.getContext('2d');
+  const B = 2;
+
+  for (let y = 0; y < px; y += B) {
+    for (let x = 0; x < px; x += B) {
+      const wx = originX + x;
+      const wy = originY + y;
+      const s = materialAtPx(wx, wy);
+      let m = MATERIALS[s.index];
+      // Inside the transition band, stipple the two materials together through the Bayer matrix.
+      if (s.other >= 0 && s.edge < 1) {
+        const cover = (1 - s.edge) * 16;
+        if (BAYER[(y >> 1) & 3][(x >> 1) & 3] < cover) m = MATERIALS[s.other];
+      }
+      const r = rng();
+      g.fillStyle = r < 0.16 ? m.dark : r < 0.3 ? m.light : m.base;
+      g.fillRect(x, y, B, B);
+    }
+  }
+
+  // Single-pixel speckle on top, so the 2px blocks do not read as a grid of their own.
+  for (let n = 0; n < px * 3; n++) {
+    const x = (rng() * px) | 0;
+    const y = (rng() * px) | 0;
+    const m = MATERIALS[materialAtPx(originX + x, originY + y).index];
+    g.fillStyle = rng() < 0.5 ? m.speck : m.light;
+    g.fillRect(x, y, 1, 1);
+  }
+
+  // Scatter last, in chunk space so it straddles tile seams — which is what finally stops the
+  // 32px lattice of the old tile set from reading at all.
+  const count = 30 + ((rng() * 20) | 0);
+  for (let i = 0; i < count; i++) {
+    const x = (rng() * (px - 4)) | 0;
+    const y = (rng() * (px - 4)) | 0;
+    const mat = MATERIALS[materialAtPx(originX + x, originY + y).index].key;
+    // Bones and cracks belong on stone and dirt, blades and flowers on the green.
+    const pool = mat === 'shale' ? ['pebble', 'crack', 'bone'] :
+      mat === 'dirt' ? ['pebble', 'twig', 'crack', 'bone'] : ['blade', 'blade', 'flower', 'twig', 'pebble'];
+    stampScatter(g, pool[(rng() * pool.length) | 0], x, y, rng);
+  }
+  return c;
+}
+

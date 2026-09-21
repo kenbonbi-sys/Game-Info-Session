@@ -459,7 +459,7 @@ function collect(G, g) {
         hits++;
       }
       G.shakeBy(7);
-      G.flashScreen(0.35);
+      G.flashScreen(0.45, '#ffe9b0');
       G.toast(`💣 Nổ tung ${hits} con quái!`);
       break;
     }

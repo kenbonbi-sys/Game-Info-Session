@@ -8,6 +8,7 @@ import {
 import { updateWeapons, updateWeaponFx, drawGroundFx, drawWeaponFx } from './weapons.js';
 import { runDirector, updateEnemies, updateFoeShots, updateDrops, onEnemyDeath, spawnEnemy, drawEnemy, drawFoeShots, drawDrops } from './swarm.js';
 import { drawText, pixelDot, rand, shadow } from './draw.js';
+import { createPostFx } from './postfx.js';
 import { SPRITES } from './config.js';
 
 const $ = id => document.getElementById(id);
@@ -15,7 +16,14 @@ const canvas = $('game');
 const ctx = canvas.getContext('2d');
 const cam = { x: 0, y: 0, w: 0, h: 0 };
 const enemyHash = new SpatialHash(24);
-const state = { mode: 'loading', time: 0, kills: 0, debug: false, shake: 0, flash: 0, choices: [] };
+// shake is trauma, not an amplitude: it decays on its own curve and drives a *directional*
+// offset, so a hit from the left no longer shakes identically to a hit from the right.
+const state = {
+  mode: 'loading', time: 0, kills: 0, debug: false, choices: [],
+  shake: 0, shakeAngle: 0, flash: 0, flashColor: '#ffffff', chroma: 0, hitstop: 0,
+};
+const postfx = createPostFx();
+const lights = [];
 const MAX_ENEMIES = 450;
 const MAX_PARTICLES = 900;
 const MAX_GEMS = 400;
@@ -52,6 +60,10 @@ function resize() {
   ctx.imageSmoothingEnabled = false;
   cam.w = canvas.width;
   cam.h = canvas.height;
+  postfx.resize(cam.w, cam.h);
+  // The HUD builds every border, gap and font size off one game pixel, so it stops looking like
+  // a web page sitting on top of the game and starts looking like part of it.
+  document.documentElement.style.setProperty('--px', `${scale}px`);
 }
 
 function compact(arr, keep) {
@@ -118,12 +130,19 @@ function onScreen(o, m = 0) {
   return o.x > cam.x - m && o.x < cam.x + cam.w + m && o.y > cam.y - m && o.y < cam.y + cam.h + m * 2;
 }
 
-function shakeBy(amount) {
-  state.shake = Math.max(state.shake, amount);
+// angle is where the force came FROM; the camera kicks away from it.
+function shakeBy(amount, angle) {
+  if (amount > state.shake) {
+    state.shake = amount;
+    if (angle !== undefined) state.shakeAngle = angle;
+  }
 }
 
-function flashScreen(amount) {
-  state.flash = Math.max(state.flash, amount);
+function flashScreen(amount, color = '#ffffff') {
+  if (amount >= state.flash) {
+    state.flash = amount;
+    state.flashColor = color;
+  }
 }
 
 function hurtPlayer(amount, fx, fy) {
@@ -131,7 +150,9 @@ function hurtPlayer(amount, fx, fy) {
   if (!taken) return;
   G.texts.push({ x: player.x, y: player.y - player.hitY * 2 - 6, text: `-${taken}`, life: 0.7, color: '#ff6b6b' });
   burst(fx ?? player.x, fy ?? player.y - player.hitY, 8, '#ff6b6b');
-  shakeBy(3);
+  shakeBy(3 + taken * 0.12, Math.atan2((fy ?? player.y) - player.y, (fx ?? player.x) - player.x));
+  state.chroma = Math.max(state.chroma, Math.min(1, taken / 25));
+  flashScreen(Math.min(0.22, taken / 90), '#ff4d5e');
 }
 
 function hit(e, dmg, nx, ny, knock, opts = {}) {
@@ -285,17 +306,79 @@ function drawDebug(drawables) {
   ctx.fillRect(px, py - 2, 1, 5);
 }
 
+// Everything in the scene that should light the world around it. Collected here rather than
+// registered by the weapon and enemy modules, so those stay unaware a lighting pass exists.
+function collectLights() {
+  lights.length = 0;
+  const pulse = 0.85 + Math.sin(state.time * 9) * 0.15;
+
+  for (const z of G.zones) {
+    const fade = Math.min(1, z.life / 0.6);
+    lights.push({ x: z.x, y: z.y, r: z.r * 2.4 * pulse, color: '#ff7a2b', alpha: 0.55 * fade });
+  }
+  for (const p of G.shots) {
+    if (!onScreen(p, 30)) continue;
+    const cold = p.kind === 'frost';
+    lights.push({
+      x: p.x, y: p.y, r: cold ? 26 : 34,
+      color: cold ? '#7cc7ff' : '#ff9a3c', alpha: cold ? 0.45 : 0.6,
+    });
+  }
+  for (const b of G.bolts) {
+    const t = b.life / b.max;
+    lights.push({ x: b.x, y: b.y, r: b.r * 5 * t, color: '#fdf6a0', alpha: t });
+    lights.push({ x: b.x, y: b.y - 40, r: b.r * 3 * t, color: '#cfe4ff', alpha: t * 0.7 });
+  }
+  for (const r of G.ripples) {
+    const t = r.life / r.max;
+    lights.push({ x: r.x, y: r.y, r: r.r * 2.2 * (1.4 - t * 0.4), color: r.color, alpha: t });
+  }
+  for (const o of player.orbs) {
+    lights.push({ x: o.x, y: o.y, r: o.big ? 28 : 20, color: '#c79bff', alpha: 0.5 });
+  }
+  if (player.auraRadius > 0) {
+    lights.push({ x: player.x, y: player.y - player.hitY / 2, r: player.auraRadius * 1.35 * pulse, color: '#ffc861', alpha: 0.4 });
+  }
+  if (player.spinFx > 0) {
+    const t = player.spinFx / 0.3;
+    lights.push({ x: player.x, y: player.y - player.hitY / 2, r: player.spinRadius * 1.7 * t, color: '#ffbe6e', alpha: t * 0.6 });
+  }
+  if (player.dashing) {
+    lights.push({ x: player.x, y: player.y - player.hitY, r: 40, color: '#fff3e0', alpha: 0.5 });
+  }
+  for (const c of G.claws) {
+    const t = c.life / c.max;
+    lights.push({ x: c.x + Math.cos(c.a) * c.reach * 0.6, y: c.y + Math.sin(c.a) * c.reach * 0.4, r: c.reach * 0.9 * t, color: '#fff3e0', alpha: t * 0.5 });
+  }
+  // Loot glints, so the field of gems reads as treasure rather than as litter.
+  for (const g of G.drops) {
+    if (!onScreen(g, 20)) continue;
+    const c = g.kind === 'heart' ? '#ff6b6b' : g.kind === 'magnet' ? '#5ad1ff' : g.kind === 'bomb' ? '#9aa6bd' : '#ffd23f';
+    lights.push({ x: g.x, y: g.y, r: g.kind === 'chest' ? 44 : 22, color: c, alpha: 0.8 });
+  }
+  // Elites carry their own menace light.
+  for (const e of G.enemies) {
+    if (!e.elite || !onScreen(e, 40)) continue;
+    lights.push({ x: e.x, y: e.y - e.hitY, r: e.boss ? 70 : 48, color: e.boss ? '#ff5a5a' : '#ffa04a', alpha: 0.55 });
+  }
+  return lights;
+}
+
 function render(dt) {
   const k = 1 - Math.exp(-dt * 10);
   cam.x += (player.x - cam.w / 2 - cam.x) * k;
   cam.y += (player.y - 8 - cam.h / 2 - cam.y) * k;
 
-  ctx.fillStyle = '#1f3d2b';
+  ctx.fillStyle = '#12211c';
   ctx.fillRect(0, 0, cam.w, cam.h);
   ctx.save();
-  const sx = state.shake ? rand(-state.shake, state.shake) : 0;
-  const sy = state.shake ? rand(-state.shake, state.shake) : 0;
-  ctx.translate(Math.round(-cam.x + sx), Math.round(-cam.y + sy));
+  // Directional kick plus a little noise, instead of pure axis-uniform jitter.
+  const s = state.shake;
+  const sx = s ? Math.cos(state.shakeAngle) * -s + rand(-s, s) * 0.5 : 0;
+  const sy = s ? Math.sin(state.shakeAngle) * -s + rand(-s, s) * 0.5 : 0;
+  const camX = Math.round(-cam.x + sx);
+  const camY = Math.round(-cam.y + sy);
+  ctx.translate(camX, camY);
 
   world.drawGround(ctx, cam);
   drawGroundFx(ctx, G);
@@ -318,10 +401,17 @@ function render(dt) {
   if (state.debug) drawDebug(drawables);
   ctx.restore();
 
-  if (state.flash > 0) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.6, state.flash)})`;
-    ctx.fillRect(0, 0, cam.w, cam.h);
-  }
+  postfx.composite(ctx, {
+    lights: collectLights(),
+    camX, camY,
+    time: state.time,
+    flash: state.flash > 0 ? { a: state.flash, color: state.flashColor } : null,
+    chroma: state.chroma,
+    grade: 1,
+  });
+
+  // These decay in render, not update, so they still resolve while the game is paused.
+  state.chroma = Math.max(0, state.chroma - dt * 2.5);
 }
 
 // ---- HUD & menus -----------------------------------------------------------
@@ -442,7 +532,7 @@ function pickUpgrade(i) {
   state.mode = 'play';
   if (choice.kind === 'evo') {
     toast(`✨ ${WEAPONS[choice.key].evo.name} — tiến hoá!`);
-    flashScreen(0.3);
+    flashScreen(0.35, '#ffd23f');
     burst(player.x, player.y - 8, 40, '#ffd23f', 110);
   } else {
     burst(player.x, player.y - 8, 16, '#ffe066', 60);
@@ -562,7 +652,7 @@ function gameOver() {
       }
     }
     burst(player.x, player.y - 8, 50, '#ffe066', 130);
-    flashScreen(0.5);
+    flashScreen(0.5, '#fff3c4');
     shakeBy(8);
     toast('🪶 Cửu Mệnh! Đứng dậy với 50% máu');
     return;
