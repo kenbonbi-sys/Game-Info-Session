@@ -4,7 +4,7 @@ Game quiz đánh boss cho event. Laptop của admin xuất **hai màn hình**: m
 
 - **Bảng điều khiển (`/host`, màn laptop):** mọi nút điều khiển, câu hỏi hiện tại kèm **đáp án đúng** (chỉ admin thấy), số người chọn từng ô theo thời gian thực, máu boss, phát bắn và tốc độ bắn, trạng thái máy chiếu (đã kết nối hay chưa), danh sách người chơi (online, ụ, đúng/sai câu này, điểm), nhật ký hoạt động, tiến trình 15 câu và khung **xem trước** đúng những gì máy chiếu đang hiện.
 - **Màn game (`/screen`, máy chiếu):** không có nút nào. Thiết kế cố định **1920 × 1080**, tự co giãn vừa mọi màn hình (dư thì viền đen). Đấu trường ngang: Quái Vật Dễ Sợ bay trên lò phản ứng ở trên, bên dưới là **108 ụ súng** (6 hàng × 3 dãy, mỗi dãy 6 ụ, có 2 lối đi). Mỗi ụ có bảng tên người chơi. Nền pixel vẽ một lần trong [src/arena-scene.js](src/arena-scene.js); toạ độ ụ, lối đi, boss nằm trong `ARENA` ở [src/config.js](src/config.js).
-- **Điện thoại (`/`):** nhập tên là có ngay một ụ (xếp từ giữa các hàng gần boss ra ngoài). Khi có câu hỏi, điện thoại chỉ hiện **4 ô màu + hình (A ▲ đỏ, B ◆ xanh dương, C ● vàng, D ■ xanh lá)**, không có chữ; câu hỏi và nội dung đáp án đọc trên màn hình lớn. Tối đa 108 người có ụ; người thứ 109 trở đi vẫn chơi, có điểm và bắn từ chân lối đi.
+- **Điện thoại (`/`):** gõ **domain mail công ty** (phần trước @, ví dụ `khang.pham2`) là có ngay một ụ (xếp từ giữa các hàng gần boss ra ngoài). Domain đó là khoá để [ghép ván chơi về danh sách LMS](#ghép-người-chơi-với-danh-sách-lms). Khi có câu hỏi, điện thoại chỉ hiện **4 ô màu + hình (A ▲ đỏ, B ◆ xanh dương, C ● vàng, D ■ xanh lá)**, không có chữ; câu hỏi và nội dung đáp án đọc trên màn hình lớn. Tối đa 108 người có ụ; người thứ 109 trở đi vẫn chơi, có điểm và bắn từ chân lối đi.
 
 ## Mở màn: Quái Vật được sinh ra từ đâu
 
@@ -78,7 +78,9 @@ Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu c�
 2. Nút **Vào chơi** mở khoá ngay khi con Buddy tải xong (45 KB); ba tấm sprite nặng hơn tải tiếp ở
    nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang chạy chứ không treo. Hướng dẫn
    mở trước khi hình về tới thì chữ vẫn đọc được, chỉ ô hình chờ và đồng hồ chưa chạy.
-3. Nhập tên → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra).
+3. Gõ **domain** của mình → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra). Nếu MC đã nạp
+   danh sách LMS thì ngay dưới ô nhập hiện tên thật của bạn để xác nhận gõ đúng; gõ lệch thì nó
+   gợi ý đúng người để chạm một cái là sửa xong.
 4. Trong lúc chờ MC bấm bắt đầu, dưới màn hình có **hàng 5 icon cáo** — thả cái nào thì cả hội
    trường thấy cáo đó bay lên trên máy mình, **và icon đó nhảy lên ngay trên ụ súng mang tên
    người thả** ở màn chiếu lẫn khung xem trước của MC. Chỉ mở ở phòng chờ; game bắt đầu là hàng
@@ -179,6 +181,60 @@ khởi động thì server vẫn lên, chạy tạm bản trong repo và in cả
 `SUPABASE_KEY` là service key, bỏ qua mọi RLS — chỉ để trong biến môi trường, đừng commit và
 đừng để lọt vào code chạy ở trình duyệt.
 
+## Ghép người chơi với danh sách LMS
+
+Ô nhập tên không hỏi biệt danh: hội trường gõ **domain mail công ty**, tức phần trước dấu @ của
+`khang.pham2@mservice.com.vn` hay `khang.pham2@momo.com.vn` — cùng một `khang.pham2`. Nhờ vậy ván
+chơi này và bản xuất của LMS có chung một khoá, và sau buổi biết được ai đã làm gì.
+
+Bản xuất của LMS dán vào thẻ **🔗 Ghép LMS** trên bảng điều khiển. Dán **trước** buổi hay **sau**
+buổi đều cùng màn hình đó, chỉ khác chỗ nó giúp được bao nhiêu:
+
+| Nạp lúc nào | Được gì |
+|---|---|
+| **Trước buổi** (nên làm) | Điện thoại soát ngay trong lúc người ta gõ: gõ đúng thì hiện tên thật để xác nhận, gõ lệch thì gợi ý đúng người, chạm một cái là sửa. Bảng tên trên ụ súng và bảng xếp hạng hiện tên thật thay vì domain |
+| **Sau buổi** | Vẫn ghép lại được hết từ domain đã ghi, chỉ là mấy người gõ sai phải ghép tay |
+
+Dán được: cả bảng copy từ Excel (ngăn bằng tab), file CSV tải về, hay chỉ một cột địa chỉ. Server
+tự tìm cột email, cột tên và cột phòng ban, đọc được cả `khang.pham2@momo.com.vn`, `khang.pham2`
+lẫn `Phạm Khang <khang.pham2@momo.com.vn>`, bỏ dòng trùng và dòng không có địa chỉ.
+
+Máy tự ghép được ba kiểu, còn lại để MC quyết:
+
+- **khớp** — gõ đúng y.
+- **khớp khi bỏ dấu chấm** — `khangpham2` về `khang.pham2`, chỉ nhận khi trong cả danh sách không
+  còn ai khác trùng khoá.
+- **MC ghép tay** — dòng chưa ghép hiện sẵn mấy cái tên gần giống để bấm một phát, hoặc gõ tên
+  người vào ô tìm (gõ "Thu Thảo" cũng ra). Trùng ai đó đã ghép rồi thì server từ chối.
+
+Trước khi so, mọi chuỗi đều được đưa về một dạng: bỏ dấu tiếng Việt, viết thường, cắt phần sau @,
+đổi dấu cách thành dấu chấm, bỏ ký tự lạ. Nên `Khang.Pham2@momo.com.vn`, `KHANG PHAM2` và
+`khang.phạm2` đều là `khang.pham2`.
+
+**Không có gì chặn ai ở cửa.** Gõ một domain không có trong danh sách vẫn vào chơi được ngay, chỉ
+là dòng chữ dưới ô nhập nhắc một câu và nhật ký của MC ghi lại. Một ký tự gõ sai không được phép
+làm ai đó đứng ngoài buổi chơi.
+
+Thêm hai thứ đi kèm domain:
+
+- **Vào lại là về đúng chỗ cũ.** Máy hết pin, lỡ tắt trình duyệt, quét lại QR — gõ đúng domain cũ
+  là nhận lại ụ và điểm của chính mình (chỉ khi máy cũ đã rớt mạng). Bản ghép vì thế có một dòng
+  cho một người, chứ không phải ba dòng cho ba lần vào.
+- **Hai máy cùng một domain** thì vẫn cho chơi nhưng nhật ký cảnh báo, và bảng ghép đánh dấu dòng
+  đó để MC biết mà xử lý.
+
+**Tải CSV** giờ có sẵn các cột `domain` (người ta tự gõ), `lms_email`, `lms_name`, `lms_unit` và
+`match` — giữ cả hai đầu để sau này còn soát lại được, chứ không phải tin một cột đã bị sửa.
+
+Danh sách nằm ở `data/roster.json`, **không nằm trong repo** (đây là dữ liệu nhân sự, `.gitignore`
+đã chặn). Chạy trên hosting thì nó lưu lên Supabase cùng bảng với bộ câu hỏi, ở dòng
+`<SUPABASE_ROW>:roster`, nên container ngủ dậy vẫn còn — xem [Giữ bộ câu hỏi bằng
+Supabase](#giữ-bộ-câu-hỏi-bằng-supabase), không cần tạo thêm bảng nào.
+
+Đường `/api/lookup` mà điện thoại gọi là đường công khai (ai quét được QR là gọi được), nên nó chỉ
+xác nhận cái người ta đã gõ gần đúng sẵn: gợi ý chỉ hiện khi lệch một hai ký tự, tối đa 3 cái, và
+mỗi máy tối đa 60 lượt một phút. Nó không bao giờ trả về một danh sách để dò dần.
+
 ## Setup hai màn hình
 
 1. Cắm máy chiếu, chỉnh Windows sang **Extend** (Win + P → Mở rộng), không dùng Duplicate.
@@ -194,7 +250,8 @@ Máy chiếu nối với máy khác cũng được: bấm **sao chép** link mà
 |---|---|
 | Nút cam lớn / Enter / → / Space | Làm bước tiếp theo, nhãn nút ghi rõ: Bắt đầu game → Khoá & hiện đáp án → Cho cả hội trường bắn → Sang câu sau → Chơi lại |
 | **Tự chuyển: BẬT/TẮT** | Tắt thì game dừng chờ admin ở màn đáp án và sau lượt bắn |
-| **Tải CSV**, **Reset** | Xuất điểm từng người (có cột số phát bắn), về phòng chờ |
+| **Tải CSV**, **Reset** | Xuất điểm từng người (kèm domain, địa chỉ LMS và số phát bắn), về phòng chờ |
+| **🔗 Ghép LMS** | Nạp bản xuất của LMS và ghép người chơi về đúng người trong đó. Con số cam trên nút là số người chưa ghép được |
 | Ô chọn link (khi laptop có nhiều mạng) | Đổi link và QR mà màn game hiển thị |
 
 Người chơi trên laptop: phím 1–4 chọn đáp án, Space/Enter để bắn.
@@ -207,6 +264,8 @@ Người chơi trên laptop: phím 1–4 chọn đáp án, Space/Enter để b�
 - Test đủ bộ hai màn hình: bảng điều khiển trên laptop, màn game fullscreen trên máy chiếu, có tiếng.
 - Lượt bắn gửi nhiều request (mỗi người ~4 request/giây trong 6 giây): nên thử với nhiều máy trên đúng wifi event.
 - Kết thúc game bấm **Tải CSV** để lấy danh sách điểm và đáp án từng người (trao quà Top 5).
+- Có danh sách LMS trước buổi thì nạp sẵn ở **🔗 Ghép LMS**: điện thoại soát domain ngay lúc người
+  ta gõ, nên tới lúc xuất CSV gần như không còn ai phải ghép tay.
 
 ## Luật tính điểm
 
@@ -237,6 +296,8 @@ data/questions.json  bộ câu hỏi + đáp án
 host.html            bảng điều khiển admin (màn laptop) → src/host.js, src/host.css
 screen.html          màn game 1920×1080 (máy chiếu)    → src/screen.js, src/screen.css
 index.html           tay cầm điện thoại                → src/play.js, src/play.css
+src/identity.js      chuẩn hoá domain, đọc bản xuất LMS, dò ghép (dùng chung server + trình duyệt)
+data/roster.json     danh sách LMS đã nạp (không có trong repo, sinh ra khi MC dán vào)
 fear.html            bàn phím gõ nỗi sợ (mở màn)       → src/fear.js, src/fear.css
 src/fear-cloud.js    đám mây chữ + đoạn phim triệu hồi Quái Vật (vẽ trên máy chiếu)
 sandbox.html         bản swarm cũ         → src/main.js

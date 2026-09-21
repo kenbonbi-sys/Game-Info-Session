@@ -2,6 +2,7 @@
 // connected, whether the projector is up, and a preview of what the audience sees. The projector
 // itself (/screen) only shows the game.
 import { ANSWERS, shapeSvg } from './config.js';
+import { normalizeDomain } from './identity.js';
 
 const $ = id => document.getElementById(id);
 const PHASE_NAME = {
@@ -152,6 +153,23 @@ function onState(s) {
   renderTimeline();
   renderQuestion();
   renderRoster();
+  renderMapBadge();
+}
+
+// Bảng ghép mở sẵn trong lúc hội trường còn đang vào phòng: mỗi người mới là một dòng mới, nên
+// kéo lại báo cáo — gom lại một nhịp để cả trăm người vào cùng lúc không thành cả trăm lượt hỏi.
+let mapRefresh = 0;
+function renderMapBadge() {
+  const lms = state?.lms;
+  const behind = lms ? Math.max(0, lms.players - lms.matched) : 0;
+  $('mapBadge').hidden = !lms?.size || !behind;
+  $('mapBadge').textContent = behind;
+  $('mapBtn').title = !lms?.size
+    ? 'Chưa nạp danh sách LMS — dán bản xuất vào đây, trước hay sau buổi đều được'
+    : `${lms.matched}/${lms.players} người chơi đã ghép được về LMS`;
+  if ($('mapper').hidden) return;
+  clearTimeout(mapRefresh);
+  mapRefresh = setTimeout(() => loadMapping().catch(() => { /* mở lại là có */ }), 600);
 }
 
 // ---- Rendering -------------------------------------------------------------------------
@@ -327,8 +345,8 @@ function renderRoster() {
   const query = $('search').value.trim().toLocaleLowerCase('vi');
   const inRound = ['reading', 'question', 'reveal', 'fire'].includes(s.phase);
   const rows = s.roster
-    .map((r, i) => ({ rank: i + 1, n: r[0], name: r[1], turret: r[2], online: r[3], score: r[4], status: r[6], roundShots: r[7], shots: r[8] }))
-    .filter(r => !query || r.name.toLocaleLowerCase('vi').includes(query));
+    .map((r, i) => ({ rank: i + 1, n: r[0], name: r[1], turret: r[2], online: r[3], score: r[4], status: r[6], roundShots: r[7], shots: r[8], domain: r[9] ?? '', match: r[10] ?? 'none' }))
+    .filter(r => !query || r.name.toLocaleLowerCase('vi').includes(query) || r.domain.includes(query));
   $('rosterCount').textContent = s.roster.length;
   $('rosterEmpty').hidden = rows.length > 0;
   $('rosterEmpty').textContent = s.roster.length ? 'Không có ai khớp tên này.' : 'Chưa có ai vào phòng.';
@@ -348,8 +366,12 @@ function renderRoster() {
       const td = document.createElement('td');
       if (cls) td.className = cls;
       if (cls === 'name') {
+        // Cái người ta gõ nằm ngay dưới tên: ghép được thì đọc cho vui, chưa ghép thì đây là chỗ
+        // MC nhìn ra ai gõ sai mà nhắc ngay tại chỗ, thay vì để dành tới lúc xuất CSV.
+        const unmatched = state.lms?.size && r.match === 'none';
         td.append(Object.assign(document.createElement('i'), { className: 'dot' }), text);
-        td.title = `${text}${r.online ? '' : ' (mất kết nối)'}`;
+        if (r.domain) td.append(Object.assign(document.createElement('small'), { className: `domain${unmatched ? ' off-list' : ''}`, textContent: unmatched ? `⚠ ${r.domain}` : r.domain }));
+        td.title = `${text} · ${r.domain}${unmatched ? ' — không có trong danh sách LMS' : ''}${r.online ? '' : ' (mất kết nối)'}`;
       } else if (text === null) {
         const chip = Object.assign(document.createElement('span'), { className: `st ${status}`, textContent: STATUS_LABEL[status] ?? (status === 'pending' ? 'Chưa chọn' : '–') });
         td.append(chip);
@@ -704,6 +726,253 @@ function downloadDraft() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// ---- Ghép LMS ----------------------------------------------------------------------------
+// Mỗi người chơi gõ domain mail công ty, nên ván chơi và bản xuất của LMS có chung một khoá.
+// Màn này làm hai việc trên cùng một dữ liệu: nạp bản xuất (trước buổi thì điện thoại soát ngay
+// lúc người ta gõ; sau buổi thì ghép lại từ domain đã ghi), và ghép tay những người máy chịu thua.
+let report = null;
+let mapTab = 'unmatched';
+let mapSig = '';
+
+async function hostGet(path) {
+  const res = await fetch(`/api/host/${path}${path.includes('?') ? '&' : '?'}${keyParam}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
+  return res.json();
+}
+
+// force: người dùng vừa bấm gì đó nên phải vẽ lại ngay. Không có force là nhịp nền tự kéo về,
+// và nhịp đó phải nhường chỗ cho ai đang gõ dở trong ô tìm.
+async function loadMapping(force = false) {
+  report = await hostGet('mapping');
+  renderMapper(force);
+}
+
+async function openMapper() {
+  try {
+    await loadMapping(true);
+    $('mapper').hidden = false;
+    $('mapperClose').focus();
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
+}
+
+function mapperMsg(text, tone = '') {
+  const el = $('mapperMsg');
+  el.textContent = text;
+  el.dataset.tone = tone;
+}
+
+function personLabel(person) {
+  return [person.name || person.domain, person.unit].filter(Boolean).join(' · ');
+}
+
+// Ghép tay: đổi trên server trước, rồi mới vẽ lại từ báo cáo mới — để không bao giờ hiện một
+// đường ghép mà server không có.
+async function assign(pid, domain) {
+  try {
+    const res = await fetch(`/api/host/assign?${keyParam}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pid, domain }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
+    await loadMapping(true);
+    toast(domain ? `Đã ghép về ${domain}` : 'Đã bỏ ghép, để máy dò lại', 'good');
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
+}
+
+function chips(people, onPick) {
+  const row = document.createElement('div');
+  row.className = 'map-fixes';
+  for (const person of people) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = person.email;
+    btn.append(person.domain, Object.assign(document.createElement('small'), { textContent: person.name ? ` · ${person.name}` : '' }));
+    btn.addEventListener('click', () => onPick(person));
+    row.append(btn);
+  }
+  return row;
+}
+
+// Ô tìm trong danh sách. Cả danh sách nằm trên server nên mỗi lần gõ chỉ kéo về 8 dòng khớp nhất:
+// vào datalist để gõ tiếp cho nhanh, và vào nút bấm bên dưới cho ai gõ tên chứ không gõ domain.
+function searchBox(row, results) {
+  const wrap = document.createElement('div');
+  wrap.className = 'map-search';
+  const list = Object.assign(document.createElement('datalist'), { id: `lms-${row.pid}` });
+  const input = Object.assign(document.createElement('input'), {
+    type: 'search', placeholder: 'Tìm trong LMS theo tên hoặc domain…', autocomplete: 'off',
+  });
+  input.setAttribute('list', list.id);
+  const btn = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Ghép' });
+
+  const find = async () => (await hostGet(`people?q=${encodeURIComponent(input.value.trim())}`)).people;
+  let timer = 0;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        list.replaceChildren(...(await find()).map(person => Object.assign(document.createElement('option'), {
+          value: person.domain, label: personLabel(person),
+        })));
+      } catch { /* gõ tiếp là hỏi lại */ }
+    }, 250);
+  });
+  // Gõ tên người ("Thu Thảo") rồi bấm Ghép cũng phải chạy, không chỉ gõ đúng domain. Nhiều người
+  // cùng khớp thì hiện ra để MC chọn, chứ không đoán hộ một người rồi ghi vào báo cáo.
+  const commit = async () => {
+    const q = input.value.trim();
+    if (!q) return;
+    try {
+      const people = await find();
+      const exact = people.find(person => person.domain === normalizeDomain(q));
+      if (exact || people.length === 1) return assign(row.pid, (exact ?? people[0]).domain);
+      if (!people.length) return toast(`Không tìm thấy "${q}" trong danh sách LMS`, 'bad');
+      results.replaceChildren(chips(people, person => assign(row.pid, person.domain)));
+    } catch (err) {
+      toast(err.message, 'bad');
+    }
+  };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+  btn.addEventListener('click', commit);
+  wrap.append(input, list, btn);
+  return wrap;
+}
+
+function mapRow(row) {
+  const el = document.createElement('div');
+  el.className = 'map-row';
+  const who = document.createElement('div');
+  who.className = 'map-who';
+  who.append(
+    Object.assign(document.createElement('b'), { textContent: row.name }),
+    Object.assign(document.createElement('span'), { className: 'domain', textContent: row.domain }),
+    Object.assign(document.createElement('span'), {
+      className: 'meta',
+      textContent: `#${row.n} · ${fmt(row.score)} điểm · ${row.correct} câu đúng${row.online ? '' : ' · đã rời'}`,
+    }),
+  );
+  if (row.duplicate) who.append(Object.assign(document.createElement('span'), { className: 'dup', textContent: '⚠ domain này có hai người trong phòng' }));
+
+  const to = document.createElement('div');
+  to.className = 'map-to';
+  if (row.lms) {
+    const hit = document.createElement('div');
+    hit.className = 'map-hit';
+    hit.append(
+      '✔ ',
+      Object.assign(document.createElement('b'), { textContent: row.lms.email }),
+      Object.assign(document.createElement('span'), {
+        className: 'how',
+        textContent: ` — ${personLabel(row.lms)} · ${row.match === 'manual' ? 'MC ghép tay' : row.match === 'key' ? 'khớp khi bỏ dấu chấm' : 'khớp'}`,
+      }),
+    );
+    to.append(hit);
+    const undo = document.createElement('div');
+    undo.className = 'map-fixes';
+    const btn = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Bỏ ghép' });
+    btn.addEventListener('click', () => assign(row.pid, null));
+    undo.append(btn);
+    to.append(undo);
+  } else {
+    const results = document.createElement('div');
+    if (row.near.length) results.append(chips(row.near, person => assign(row.pid, person.domain)));
+    to.append(results, searchBox(row, results));
+  }
+  el.append(who, to);
+  return el;
+}
+
+function renderMapper(force = false) {
+  if (!report) return;
+  const { roster, matched, unmatched, absent } = report;
+  const when = roster.updatedAt ? new Date(roster.updatedAt).toLocaleString('vi-VN', { hour12: false }) : '';
+  $('mapperMeta').textContent = roster.size
+    ? `${fmt(roster.size)} người trong LMS · ${fmt(absent)} người không chơi · nạp lúc ${when}`
+    : 'Chưa nạp danh sách LMS';
+  $('missCount').textContent = unmatched.length;
+  $('hitCount').textContent = matched.length;
+  $('tabMiss').setAttribute('aria-selected', String(mapTab === 'unmatched'));
+  $('tabHit').setAttribute('aria-selected', String(mapTab === 'matched'));
+  const rows = mapTab === 'unmatched' ? unmatched : matched;
+  // Hội trường vẫn đang vào phòng trong lúc MC ghép tay, nên báo cáo mới về liên tục. Chỉ vẽ lại
+  // khi thật sự khác, và không vẽ lại khi con trỏ đang nằm trong một ô tìm đang gõ dở — nút vừa
+  // bấm thì vẫn phải vẽ, vì chính nó vừa làm dòng đó đổi chỗ.
+  const sig = `${mapTab}|${rows.map(r => `${r.pid}${r.match}${r.lms?.domain ?? ''}${r.near.map(n => n.domain)}`).join('|')}`;
+  if (sig !== mapSig && (force || !$('mapperList').querySelector('input:focus'))) {
+    mapSig = sig;
+    $('mapperList').replaceChildren(...rows.map(mapRow));
+  }
+  $('mapperEmpty').hidden = rows.length > 0;
+  $('mapperEmpty').textContent = !matched.length && !unmatched.length
+    ? 'Chưa có ai vào phòng.'
+    : mapTab === 'unmatched'
+      ? (roster.size ? '🎉 Ai trong phòng cũng đã ghép được về LMS.' : 'Nạp danh sách LMS ở cột bên trái để bắt đầu ghép.')
+      : 'Chưa ghép được ai.';
+  $('mapperClear').hidden = !roster.size;
+}
+
+async function loadRosterText(text, source) {
+  if (!text.trim()) return mapperMsg('Dán danh sách vào ô trên đã nhé.', 'bad');
+  mapperMsg('Đang nạp…');
+  $('mapperLoad').disabled = true;
+  try {
+    const res = await fetch(`/api/host/roster?${keyParam}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, source }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Lỗi ${res.status}`);
+    const notes = [
+      `Đã nạp ${fmt(data.size)} người`,
+      data.duplicates ? `bỏ ${data.duplicates} dòng trùng` : '',
+      data.skipped ? `bỏ ${data.skipped} dòng không có địa chỉ` : '',
+      data.remote ? 'đã lưu lên Supabase' : 'lưu trên máy chạy server',
+    ].filter(Boolean);
+    mapperMsg(`${notes.join(' · ')}.`, 'good');
+    await loadMapping(true);
+  } catch (err) {
+    mapperMsg(err.message, 'bad');
+  } finally {
+    $('mapperLoad').disabled = false;
+  }
+}
+
+async function clearRoster() {
+  if (!confirm('Xoá danh sách LMS khỏi server? Người chơi đã ghép sẽ về trạng thái chưa ghép.')) return;
+  try {
+    const res = await fetch(`/api/host/roster?${keyParam}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
+    mapperMsg('Đã xoá danh sách.', '');
+    await loadMapping(true);
+  } catch (err) {
+    mapperMsg(err.message, 'bad');
+  }
+}
+
+function bindMapper() {
+  $('mapBtn').addEventListener('click', openMapper);
+  $('mapperClose').addEventListener('click', () => { $('mapper').hidden = true; });
+  $('mapper').addEventListener('keydown', e => { if (e.key === 'Escape') $('mapper').hidden = true; });
+  $('mapperLoad').addEventListener('click', () => loadRosterText($('mapperPaste').value, 'dán tay'));
+  $('mapperClear').addEventListener('click', clearRoster);
+  $('mapperFile').addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    $('mapperPaste').value = text.length > 200000 ? `${text.slice(0, 200000)}…` : text;
+    await loadRosterText(text, file.name);
+    e.target.value = '';
+  });
+  $('tabMiss').addEventListener('click', () => { mapTab = 'unmatched'; renderMapper(true); });
+  $('tabHit').addEventListener('click', () => { mapTab = 'matched'; renderMapper(true); });
+}
+
 function bindEditor() {
   $('editBtn').addEventListener('click', openEditor);
   $('editorClose').addEventListener('click', closeEditor);
@@ -719,6 +988,8 @@ function bindEditor() {
 
 function boot() {
   bindEditor();
+  bindMapper();
+  $('mapperCsv').href = `/api/host/results.csv?${keyParam}`;
   $('nextBtn').addEventListener('click', next);
   $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
@@ -748,7 +1019,7 @@ function boot() {
   addEventListener('keydown', e => {
     // Typing in the search box or pressing a focused button must not also advance the game,
     // and neither must anything done while the question editor is open over the dashboard.
-    if (!$('editor').hidden) return;
+    if (!$('editor').hidden || !$('mapper').hidden) return;
     if (e.target instanceof Element && e.target.closest('button, a, input, select, textarea')) return;
     if (e.repeat || !['Enter', 'NumpadEnter', 'ArrowRight', 'Space'].includes(e.code)) return;
     e.preventDefault();

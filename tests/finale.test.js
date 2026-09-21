@@ -25,7 +25,7 @@ async function gameFor(t, { chargeSeconds = 60, finale = fixtureQuestion } = {})
   await mkdir(join(dir, 'src'));
   await mkdir(join(dir, 'data'));
   await mkdir(join(dir, 'assets', 'video'), { recursive: true });
-  await Promise.all(['server.js', 'package.json', 'src/config.js', 'src/finale-config.js'].map(file => copyFile(join(root, file), join(dir, file))));
+  await Promise.all(['server.js', 'package.json', 'src/config.js', 'src/finale-config.js', 'src/identity.js'].map(file => copyFile(join(root, file), join(dir, file))));
   await writeFile(join(dir, 'data', 'questions.json'), JSON.stringify({
     readSeconds: 0.08, timePerQuestion: 0.08, revealSeconds: 0.08, fireSeconds: 0.08,
     chargeSeconds, shuffleOptions: false, questions: [fixtureQuestion], finale,
@@ -151,7 +151,9 @@ test('server finale sequencing and reconnects', { concurrency: 4, timeout: 45000
       assert.equal(resumedClip.phaseAt, victory.phaseAt);
       const end = await app.state('end');
       assert.ok(end.phaseAt - victory.phaseAt >= FINALE.victorySeconds * 1000 - 20, 'Top 5 must wait for the full clip');
-      assert.equal(end.top[0].name, 'test.fox');
+      // Người chơi gõ domain ("test.fox"); bảng vinh danh hiện tên đọc được dựng từ domain đó,
+      // vì danh sách LMS chưa được nạp nên chưa biết tên thật.
+      assert.equal(end.top[0].name, 'Test Fox');
       assert.equal((await phone.waitFor(m => m.type === 'state' && m.phase === 'end')).phaseAt, end.phaseAt);
       const phases = app.screen.messages.filter(m => m.type === 'state').map(m => m.phase);
       assert.deepEqual(phases.filter((phase, i) => phase !== phases[i - 1]).slice(-4), ['charge', 'unleash', 'victory', 'end']);

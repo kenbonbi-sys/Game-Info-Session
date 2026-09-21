@@ -13,6 +13,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO, REACTIONS } from './src/config.js';
 import { FINALE } from './src/finale-config.js';
+import { normalizeDomain, prettyName, shortName, fullEmail, parseRoster, buildIndex, EMPTY_INDEX, lookup, nearest, search, MATCHED } from './src/identity.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const argPort = process.argv.find(a => a.startsWith('--port='))?.slice('--port='.length);
@@ -207,6 +208,131 @@ async function hydrateQuizFromSupabase() {
     console.error(`⚠ Supabase không đọc được (${err.message}) — dùng tạm bộ câu hỏi trong repo.`);
     return 'error';
   }
+}
+
+// ---- Danh sách LMS -------------------------------------------------------------
+// Ô nhập tên hỏi domain mail công ty ("khang.pham2"), nên mỗi ván chơi là một cột khoá ghép được
+// với bản xuất của LMS. Danh sách này là bản xuất đó, dán vào bảng điều khiển:
+//   · dán TRƯỚC buổi → điện thoại soát ngay lúc gõ, ai gõ sai biết liền và sửa tại chỗ;
+//   · dán SAU buổi   → vẫn ghép được hết, chỉ là phải ghép tay mấy người gõ sai.
+// Không dán gì thì mọi thứ chạy y như cũ, chỉ là CSV chỉ có cột domain người ta tự gõ.
+const ROSTER_FILE = join(root, 'data', 'roster.json');
+const SUPABASE_ROSTER_ROW = `${SUPABASE_ROW}:roster`;
+const EMPTY_ROSTER = { updatedAt: null, source: '', people: [] };
+
+let roster = EMPTY_ROSTER;
+let rosterIndex = EMPTY_INDEX;
+
+function validateRoster(data) {
+  const people = (Array.isArray(data?.people) ? data.people : []).flatMap(p => {
+    const domain = normalizeDomain(p?.domain ?? p?.email);
+    return domain ? [{
+      domain,
+      email: String(p?.email ?? '').trim().toLowerCase() || fullEmail(domain),
+      name: String(p?.name ?? '').trim(),
+      unit: String(p?.unit ?? '').trim(),
+    }] : [];
+  });
+  return { updatedAt: data?.updatedAt ?? new Date().toISOString(), source: String(data?.source ?? '').slice(0, 120), people };
+}
+
+// Đổi mỗi lần nạp danh sách mới: gợi ý đã tính cho từng người chơi chỉ hết hạn khi danh sách đổi.
+let rosterStamp = 0;
+
+function useRoster(data) {
+  roster = validateRoster(data);
+  rosterIndex = buildIndex(roster.people);
+  rosterStamp++;
+  return roster;
+}
+
+// Dò gần đúng phải quét cả danh sách, mà bảng ghép thì kéo lại mỗi khi có người mới vào phòng.
+// Kết quả chỉ phụ thuộc domain và danh sách, nên tính một lần rồi giữ lại cho tới lần nạp sau.
+function nearPeople(p) {
+  if (p.nearAt !== rosterStamp) {
+    p.nearAt = rosterStamp;
+    p.nearList = nearest(rosterIndex, p.domain, { limit: 6, prefix: true });
+  }
+  return p.nearList;
+}
+
+function writeRosterFile(data) {
+  const tmp = `${ROSTER_FILE}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  renameSync(tmp, ROSTER_FILE);
+}
+
+// Danh sách là dữ liệu nhân sự và có thể vài nghìn dòng: nó không nằm trong repo. Trên hosting ổ
+// đĩa là tạm nên Supabase mới là bản thật, y hệt cách bộ câu hỏi đang làm.
+async function loadRoster() {
+  if (REMOTE_QUIZ) {
+    try {
+      const res = await supabaseFetch(`${SUPABASE_TABLE}?id=eq.${encodeURIComponent(SUPABASE_ROSTER_ROW)}&select=data`);
+      const remote = (await res.json())[0]?.data;
+      if (remote) {
+        useRoster(remote);
+        try { writeRosterFile(roster); } catch { /* ổ đĩa chỉ là cache */ }
+        return;
+      }
+    } catch (err) {
+      console.error(`⚠ Supabase không đọc được danh sách LMS (${err.message}) — dùng bản trong container.`);
+    }
+  }
+  try {
+    useRoster(JSON.parse(readFileSync(ROSTER_FILE, 'utf8').replace(/^﻿/, '')));
+  } catch {
+    useRoster(EMPTY_ROSTER);
+  }
+}
+
+async function saveRoster(data) {
+  const clean = validateRoster(data);
+  if (REMOTE_QUIZ) {
+    await supabaseFetch(`${SUPABASE_TABLE}?on_conflict=id`, {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: SUPABASE_ROSTER_ROW, data: clean, updated_at: clean.updatedAt }),
+    });
+  }
+  try {
+    writeRosterFile(clean);
+  } catch (err) {
+    // Có Supabase thì file chỉ là cache của container: ổ đĩa hỏng không được phép chặn MC nạp
+    // danh sách. Không có Supabase thì file chính là bản thật, hỏng là phải báo.
+    if (!REMOTE_QUIZ) throw err;
+    console.error(`⚠ Không ghi được data/roster.json (${err.message}) — bản trên Supabase vẫn đúng.`);
+  }
+  useRoster(clean);
+  return roster;
+}
+
+// Ai trong phòng cũng dò lại, trừ người MC đã chỉ tay: chỉ tay là quyết định của người, không được
+// để một lần dán danh sách đè lên.
+function applyIdentity(p) {
+  if (p.match === 'manual') return p;
+  const hit = lookup(rosterIndex, p.domain);
+  p.match = MATCHED.has(hit.how) ? hit.how : 'none';
+  p.lms = hit.person ?? null;
+  p.name = shortName(p.lms?.name || prettyName(p.domain));
+  return p;
+}
+
+function rematchPlayers() {
+  for (const p of players.values()) applyIdentity(p);
+  if (players.size) broadcastScreens(seatsMessage());
+  refreshHost();
+}
+
+function rosterMeta() {
+  const board = [...players.values()];
+  return {
+    size: rosterIndex.size,
+    updatedAt: roster.updatedAt,
+    source: roster.source,
+    remote: REMOTE_QUIZ,
+    matched: board.filter(p => MATCHED.has(p.match)).length,
+    players: board.length,
+  };
 }
 
 function loadQuiz() {
@@ -569,7 +695,8 @@ function stateFor(role) {
       screens: screenStreams.size,
       bossFellAt: game.boss.fellAt,
       turrets: TURRET_SLOTS,
-      roster: board.map(p => [p.n, p.name, p.turret, isOnline(p) ? 1 : 0, p.score, p.correct, roundStatus(p), p.roundShots, p.shots]),
+      roster: board.map(p => [p.n, p.name, p.turret, isOnline(p) ? 1 : 0, p.score, p.correct, roundStatus(p), p.roundShots, p.shots, p.domain, p.match]),
+      lms: rosterMeta(),
     });
   }
   return s;
@@ -1001,23 +1128,121 @@ function hostAction(action) {
   }
 }
 
+const joinPayload = p => ({
+  pid: p.pid, n: p.n, name: p.name, domain: p.domain, turret: p.turret, match: p.match,
+  lms: p.lms ? { name: p.lms.name, email: p.lms.email } : null,
+});
+
 function joinPlayer(body) {
-  const name = String(body.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 20);
+  const domain = normalizeDomain(body.name ?? body.domain);
   let p = typeof body.pid === 'string' ? players.get(body.pid) : undefined;
+  // Hết pin, lỡ xoá tab, quét lại QR: cùng một domain mà người cũ đang rớt mạng thì đó là chính
+  // họ quay lại — trả về đúng ụ và đúng điểm, và bản ghép sau buổi chỉ có một dòng cho một người.
+  if (!p && domain) {
+    const back = [...players.values()].find(o => o.domain === domain && !isOnline(o));
+    if (back) {
+      p = back;
+      logEvent(`${p.name} (${domain}) vào lại phòng · giữ nguyên ${p.score.toLocaleString('vi-VN')} điểm${p.turret >= 0 ? ` và ụ ${p.turret + 1}` : ''}`, 'join');
+    }
+  }
   if (!p) {
-    if (!name) return [400, { error: 'Nhập tên để vào chơi' }];
-    p = freshStats({ pid: randomUUID(), n: nextPlayerNo++, name, turret: -1 });
+    if (!domain) {
+      const typed = String(body.name ?? '').trim();
+      return [400, { error: typed ? 'Domain chỉ gồm chữ, số và dấu chấm — ví dụ: khang.pham2' : 'Nhập domain của bạn để vào chơi' }];
+    }
+    const twin = [...players.values()].find(o => o.domain === domain);
+    p = applyIdentity(freshStats({ pid: randomUUID(), n: nextPlayerNo++, domain, name: domain, match: 'none', lms: null, turret: -1 }));
     players.set(p.pid, p);
     autoSeat(p);
-    logEvent(`${name} vào phòng · ${p.turret >= 0 ? `ụ ${p.turret + 1}` : 'hết ụ, bắn từ lối đi'}`, 'join');
+    logEvent(`${p.name} (${domain}) vào phòng · ${p.turret >= 0 ? `ụ ${p.turret + 1}` : 'hết ụ, bắn từ lối đi'}`, 'join');
+    if (twin) logEvent(`⚠ ${domain} đang mở trên hai máy — ghép LMS sẽ thấy hai dòng cho một người`, 'warn');
+    if (rosterIndex.size && p.match === 'none') logEvent(`⚠ ${domain} không có trong danh sách LMS — ghép tay ở bảng ghép`, 'warn');
     broadcastScreens(seatsMessage());
     refreshHost();
-  } else if (name && name !== p.name) {
-    logEvent(`${p.name} đổi tên thành ${name}`, 'info');
-    p.name = name;
+  } else if (domain && domain !== p.domain) {
+    const was = p.name;
+    p.domain = domain;
+    p.match = 'none';
+    applyIdentity(p);
+    logEvent(`${was} đổi domain thành ${domain}`, 'info');
     if (p.turret >= 0) broadcastScreens(seatsMessage());
+    refreshHost();
   }
-  return [200, { pid: p.pid, n: p.n, name: p.name, turret: p.turret }];
+  return [200, joinPayload(p)];
+}
+
+// Ô nhập tên trên điện thoại hỏi đường này trong lúc người ta gõ. Đây là đường công khai (ai quét
+// được QR là gọi được), nên nó chỉ xác nhận cái người gõ đã gần đúng sẵn: gợi ý chỉ hiện khi lệch
+// một hai ký tự, không bao giờ trả về một danh sách để dò dần.
+const lookupHits = new Map();   // IP → [số lượt trong cửa sổ, mốc thời gian]
+const LOOKUP_PER_MINUTE = 60;
+
+function lookupDomain(req, raw) {
+  // Sau proxy của Render, remoteAddress là IP của chính proxy — cả hội trường dùng chung một rổ
+  // và đếm tới 40 là khoá hết cả phòng. Lấy hop đầu của x-forwarded-for để mỗi máy một rổ.
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+  const who = forwarded || req.socket.remoteAddress || '?';
+  const now = Date.now();
+  const seen = lookupHits.get(who);
+  if (!seen || now - seen[1] > 60000) lookupHits.set(who, [1, now]);
+  else if (++seen[0] > LOOKUP_PER_MINUTE) return [429, { on: true, busy: true }];
+  if (lookupHits.size > 500) for (const [k, v] of lookupHits) if (now - v[1] > 60000) lookupHits.delete(k);
+
+  const hit = lookup(rosterIndex, raw);
+  return [200, {
+    on: rosterIndex.size > 0,
+    domain: hit.domain,
+    ok: MATCHED.has(hit.how),
+    how: hit.how,
+    name: hit.person?.name ?? '',
+    unit: hit.person?.unit ?? '',
+    near: hit.near.map(person => ({ domain: person.domain, name: person.name })),
+  }];
+}
+
+// Bảng ghép của MC: ai trong phòng ghép được, ai chưa, và ai trong LMS thì hôm nay không chơi.
+function mappingReport() {
+  const board = leaderboard();
+  const taken = new Set(board.map(p => p.lms?.domain).filter(Boolean));
+  const seen = new Map();
+  for (const p of board) seen.set(p.domain, (seen.get(p.domain) ?? 0) + 1);
+  const row = p => ({
+    pid: p.pid, n: p.n, name: p.name, domain: p.domain, match: p.match, score: p.score,
+    correct: p.correct, shots: p.shots, online: isOnline(p) ? 1 : 0, duplicate: seen.get(p.domain) > 1 ? 1 : 0,
+    lms: p.lms ? { domain: p.lms.domain, email: p.lms.email, name: p.lms.name, unit: p.lms.unit } : null,
+    near: MATCHED.has(p.match) ? [] : nearPeople(p)
+      .filter(person => !taken.has(person.domain))
+      .slice(0, 4)
+      .map(person => ({ domain: person.domain, email: person.email, name: person.name, unit: person.unit })),
+  });
+  return {
+    roster: rosterMeta(),
+    matched: board.filter(p => MATCHED.has(p.match)).map(row),
+    unmatched: board.filter(p => !MATCHED.has(p.match)).map(row),
+    absent: rosterIndex.people.filter(person => !taken.has(person.domain)).length,
+  };
+}
+
+// MC chỉ tay một người trong LMS cho một người chơi (hoặc bỏ chỉ định, cho về dò tự động).
+function assignPlayer({ pid, domain }) {
+  const p = players.get(pid);
+  if (!p) return [404, { error: 'Không còn người chơi này' }];
+  if (domain === null || domain === '') {
+    p.match = 'none';
+    applyIdentity(p);
+  } else {
+    const person = rosterIndex.byDomain.get(normalizeDomain(domain));
+    if (!person) return [400, { error: 'Không có ai trong danh sách LMS với domain này' }];
+    const clash = [...players.values()].find(o => o !== p && o.lms?.domain === person.domain);
+    if (clash) return [409, { error: `${person.email} đã ghép cho người chơi gõ "${clash.domain}" — bỏ ghép người đó trước` }];
+    p.match = 'manual';
+    p.lms = person;
+    p.name = shortName(person.name || prettyName(p.domain));
+    logEvent(`MC ghép ${p.domain} → ${person.email}`, 'info');
+  }
+  if (p.turret >= 0) broadcastScreens(seatsMessage());
+  refreshHost();
+  return [200, { ok: true, match: p.match, name: p.name }];
 }
 
 function submitAnswer(p, index, choice) {
@@ -1091,14 +1316,22 @@ function useItem(p, item) {
   return [200, { item, removed, items: p.items, armed: p.armed }];
 }
 
+const MATCH_LABEL = { exact: 'khớp', key: 'khớp (thiếu dấu chấm)', manual: 'MC ghép tay', none: 'chưa ghép' };
+
+// Cột đầu là domain người ta tự gõ, cột sau là người trong LMS mà nó ghép về — giữ cả hai để sau
+// buổi còn soát lại được, chứ không phải tin một cột đã bị sửa.
 function resultsCsv() {
   const cell = v => {
-    const s = String(v);
+    const s = String(v ?? '');
     return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
   };
-  const header = ['rank', 'name', 'score', 'correct', 'time_s', 'shots', ...game.round.map(q => q.id)];
+  const header = [
+    'rank', 'domain', 'lms_email', 'lms_name', 'lms_unit', 'match', 'name',
+    'score', 'correct', 'time_s', 'shots', ...game.round.map(q => q.id),
+  ];
   const rows = leaderboard().map((p, i) => [
-    i + 1, p.name, p.score, p.correct, (p.timeMs / 1000).toFixed(1), p.shots,
+    i + 1, p.domain, p.lms?.email ?? '', p.lms?.name ?? '', p.lms?.unit ?? '', MATCH_LABEL[p.match] ?? p.match, p.name,
+    p.score, p.correct, (p.timeMs / 1000).toFixed(1), p.shots,
     ...game.round.map((q, qi) => {
       const a = p.picks[qi]?.choice;
       return a === undefined ? '' : `${LETTERS[a]} ${a === q.answer ? '✔' : '✘'}`;
@@ -1114,14 +1347,26 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readJson(req) {
+// Mặc định chật, vì mọi đường của điện thoại đều chỉ gửi vài chục byte. Riêng danh sách LMS là cả
+// một bản xuất nhân sự dán vào, nên nó tự khai trần rộng hơn.
+async function readJson(req, limit = 16_000) {
   const chunks = [];
   let size = 0;
+  let over = false;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 16_000) throw new Error('Body too large');
-    chunks.push(chunk);
+    // Quá cỡ thì vẫn đọc cho hết rồi mới từ chối: cắt ngang lúc client còn đang gửi thì nó nhận
+    // được "connection reset" chứ không phải câu báo lỗi mình vừa viết ra.
+    if (over) {
+      if (size > limit * 4 + 1_000_000) { req.destroy(); break; }
+    } else if (size > limit) {
+      over = true;
+      chunks.length = 0;
+    } else {
+      chunks.push(chunk);
+    }
   }
+  if (over) throw new Error('Body too large');
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
@@ -1168,6 +1413,8 @@ function openHostStream(req, res, view) {
 
 async function handleApi(req, res, url, path) {
   if (path === '/api/join' && req.method === 'POST') return json(res, ...joinPlayer(await readJson(req)));
+  // Soát domain trong lúc người ta còn đang gõ, trước khi bấm Vào chơi.
+  if (path === '/api/lookup') return json(res, ...lookupDomain(req, url.searchParams.get('d')));
 
   // Đoạn mở màn có đường riêng: nó chạy trước game cả tiếng, không dính gì tới ụ súng hay điểm.
   if (path === '/api/fear/join' && req.method === 'POST') return json(res, ...fearJoin());
@@ -1262,6 +1509,54 @@ async function handleApi(req, res, url, path) {
       broadcastHost();
       return json(res, 200, { ok: true, applied, remote: REMOTE_QUIZ, count: clean.order.length });
     }
+    // ---- Ghép danh sách LMS ----
+    if (action === 'mapping' && req.method === 'GET') return json(res, 200, mappingReport());
+    if (action === 'people' && req.method === 'GET') {
+      // Ô tìm của MC: cả danh sách nằm trên server, chỉ 8 dòng khớp mới đi qua đường truyền.
+      const taken = new Set([...players.values()].map(p => p.lms?.domain).filter(Boolean));
+      return json(res, 200, {
+        people: search(rosterIndex, url.searchParams.get('q'), 20)
+          .filter(person => !taken.has(person.domain))
+          .slice(0, 8)
+          .map(person => ({ domain: person.domain, email: person.email, name: person.name, unit: person.unit })),
+      });
+    }
+    if (action === 'roster' && req.method === 'POST') {
+      // Vài nghìn nhân sự dán một lượt: 8 MB đủ cho cỡ 80 nghìn dòng, vẫn chặn được ai dán nhầm
+      // cả file Excel nhị phân vào đây.
+      let body;
+      try {
+        body = await readJson(req, 8_000_000);
+      } catch (err) {
+        return json(res, 413, { error: err.message === 'Body too large' ? 'Danh sách quá lớn (>8 MB) — xuất lại chỉ cột email, tên và phòng ban' : err.message });
+      }
+      const parsed = parseRoster(body.text ?? '');
+      if (!parsed.people.length) return json(res, 400, { error: 'Không đọc ra địa chỉ nào — dán lại cột email hoặc cả bảng từ Excel' });
+      try {
+        await saveRoster({ people: parsed.people, source: String(body.source ?? 'dán tay').slice(0, 120), updatedAt: new Date().toISOString() });
+      } catch (err) {
+        return json(res, 500, { error: `Không lưu lên Supabase được nên chưa đổi gì: ${err.message}` });
+      }
+      rematchPlayers();
+      logEvent(`Nạp danh sách LMS: ${parsed.people.length} người${parsed.duplicates ? `, bỏ ${parsed.duplicates} dòng trùng` : ''}`, 'good');
+      return json(res, 200, { ok: true, ...rosterMeta(), skipped: parsed.skipped, duplicates: parsed.duplicates, columns: parsed.columns });
+    }
+    if (action === 'roster' && req.method === 'DELETE') {
+      try {
+        await saveRoster(EMPTY_ROSTER);
+      } catch (err) {
+        return json(res, 500, { error: `Không xoá trên Supabase được: ${err.message}` });
+      }
+      for (const p of players.values()) p.match = 'none';
+      rematchPlayers();
+      logEvent('Đã xoá danh sách LMS', 'warn');
+      return json(res, 200, { ok: true, ...rosterMeta() });
+    }
+    if (action === 'assign' && req.method === 'POST') {
+      const body = await readJson(req);
+      return json(res, ...assignPlayer({ pid: String(body.pid ?? ''), domain: body.domain ?? null }));
+    }
+
     if (action === 'joinurl' && req.method === 'POST') {
       const { url: chosen } = await readJson(req);
       if (!JOIN_URLS.includes(chosen)) return json(res, 400, { error: 'Link không hợp lệ' });
@@ -1352,6 +1647,7 @@ server.on('error', err => {
 
 const quizSource = await hydrateQuizFromSupabase();
 if (quizSource === 'pulled') game.quiz = loadQuiz();
+await loadRoster();
 
 server.listen(PORT, () => {
   const unconfirmed = game.quiz.questions.filter(q => q.answerConfirmed === false).map(q => q.id);
@@ -1370,5 +1666,8 @@ server.listen(PORT, () => {
   }[quizSource];
   console.log(`  Bộ câu hỏi: ${game.quiz.questions.length} câu, ${game.quiz.time}s trả lời + ${game.quiz.fire}s bắn/câu, ${TURRET_SLOTS} ụ súng`);
   console.log(`  Lưu ở: ${store}`);
+  console.log(rosterIndex.size
+    ? `  Danh sách LMS: ${rosterIndex.size} người — điện thoại soát domain ngay lúc gõ`
+    : '  Danh sách LMS: chưa có — dán vào "Ghép LMS" trên bảng điều khiển (trước hoặc sau buổi đều được)');
   if (unconfirmed.length) console.log(`  ⚠ Đáp án cần team xác nhận: ${unconfirmed.join(', ')}`);
 });

@@ -105,8 +105,9 @@
       </svg></div>
       <h1 id="joinTitle">Cùng <b>Buddy</b><span>đánh bay <em>“Dễ Sợ”</em></span></h1>
       <button id="guideBtn" type="button" class="guide-btn" aria-haspopup="dialog"><span class="guide-play" aria-hidden="true"></span>Xem lại hướng dẫn</button>
-      <label class="name-label" for="nameInput">Tên domain của bạn</label>
-      <input id="nameInput" name="nickname" maxlength="20" placeholder="Ví dụ: khang.pham2" autocomplete="username" enterkeyhint="go" aria-describedby="joinError" required>
+      <label class="name-label" for="nameInput">Domain mail công ty của bạn<small>phần trước dấu @ — ví dụ <b>khang.pham2</b></small></label>
+      <input id="nameInput" name="nickname" maxlength="40" placeholder="khang.pham2" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="nameCheck joinError" required>
+      <p id="nameCheck" class="name-check" role="status" hidden></p>
       <button id="joinBtn" type="submit" class="cta-ledge" disabled>Đang tải…</button>
       <p id="loadState" class="load-state" role="status"><i class="load-bar"><b id="loadFill"></b></i><span id="loadText">Đang tải hình ảnh…</span></p>
       <p id="joinError" class="error" role="alert"></p>

@@ -222,9 +222,23 @@ button { transition: transform 130ms, filter 130ms; }
 .dialog .guide-caption { min-height: 3.2em; margin: 10px 0 14px; color: #d3deea; }
 .guide-dialog .cta-ledge { width: 100%; }
 .name-label { display: block; text-align: left; font: 550 12px var(--font-sans); color: #ffffff; }
+.name-label small { display: block; margin-top: 2px; color: #9fb1c4; font-weight: 500; }
+.name-label small b { color: #d3deea; font-weight: 700; }
 #nameInput { width: 100%; min-height: 48px; margin: 8px 0 16px; padding: 12px 14px; border: 2px solid #dfe4ea; border-radius: 5px; background: #dfe4ea; color: #0b1a2b; font: 550 16px var(--font-sans); transition: border-color 180ms; }
 #nameInput::placeholder { color: #6b7988; opacity: 1; }
 #nameInput:focus { border-color: var(--ui-orange); }
+/* Soát domain ngay dưới ô nhập. Chưa khớp cũng chỉ là màu cam nhắc nhở: nút Vào chơi không bao
+   giờ bị khoá vì chuyện này — chặn ai đó ở cửa vì gõ lệch một ký tự là hỏng cả buổi. */
+.name-check { margin: -8px 0 14px; text-align: left; font: 600 12px/1.45 var(--font-sans); }
+.name-check[data-tone="ok"] { color: #7fd6a2; }
+.name-check[data-tone="warn"] { color: #ffc37a; }
+.name-check b { color: #fff; }
+.name-check .fixes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.name-check .fix {
+  padding: 5px 9px; border: 1px solid #FF7034; border-radius: 999px;
+  background: #2a1a12; color: #ffd5c8; font: 700 12px var(--font-sans); cursor: pointer;
+}
+.name-check .fix:active { background: #FF7034; color: #2a1a12; }
 /* Primary call to action, matching the Learning Hub landing page: an orange face
    resting on a darker ledge, which it sinks into on press instead of sliding. */
 .cta-ledge {

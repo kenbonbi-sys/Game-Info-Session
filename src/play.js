@@ -6,6 +6,7 @@ import { SPRITES, ITEMS, ANSWERS, REACTIONS, shapeSvg } from './config.js';
 import { paintHudPortrait, drawJoinDuel, galaxyDataUrl } from './hud-art.js';
 import { drawGuideClip, GUIDE_CLIP_SECONDS } from './guide-clips.js';
 import { drawCutscene, cutsceneLines } from './cutscene.js';
+import { normalizeDomain } from './identity.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -15,7 +16,7 @@ const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
 const TAP_FLUSH_MS = 250;
 const PLAY_VIEWS = ['countdown', 'reading', 'answer', 'answered', 'result', 'stunned', 'ceasefire'];
 
-const net = { pid: null, name: '', no: null, es: null, offset: 0 };
+const net = { pid: null, name: '', domain: '', no: null, es: null, offset: 0 };
 const quiz = { phase: 'connecting', index: -1, total: 15, read: 10, time: 15, fire: 6, endsAt: 0, players: 0, options: 4, answer: null, firing: false, boss: 100 };
 // picked: tile chosen for the current question · result: the server's verdict, known from the reveal on.
 // removed: options the hint took away for removedIndex.
@@ -104,17 +105,17 @@ function endCutscene() {
   $('cutsceneLoading').hidden = true;
 }
 
-async function join(name, { cinematic = false } = {}) {
+async function join(domain, { cinematic = false } = {}) {
   $('joinError').textContent = '';
   $('joinBtn').disabled = true;
   $('joinBtn').textContent = 'Đang vào phòng…';
   try {
-    const r = await post('/api/join', { name, pid: net.pid });
+    const r = await post('/api/join', { name: domain, pid: net.pid });
     if (!r.ok) throw new Error(r.data.error || `Lỗi ${r.status}`);
-    Object.assign(net, { pid: r.data.pid, no: r.data.n, name: r.data.name });
+    Object.assign(net, { pid: r.data.pid, no: r.data.n, name: r.data.name, domain: r.data.domain });
     me.turret = r.data.turret;
     session.set('foxquiz.pid', net.pid);
-    local.set('foxquiz.name', net.name);
+    local.set('foxquiz.domain', net.domain);
     $('join').hidden = true;
     $('nameInput').blur();
     connect();
@@ -129,6 +130,60 @@ async function join(name, { cinematic = false } = {}) {
   }
 }
 
+// ---- Soát domain trước khi bấm Vào chơi -----------------------------------------------
+// MC dán danh sách LMS vào bảng điều khiển thì đường này biết ai có trong đó. Gõ sai một ký tự là
+// hiện ra ngay đây, sửa mất hai giây — để tới lúc ghép sau buổi thì người đó đã về mất rồi.
+// Không có danh sách thì dòng này im lặng, và dù có thì nó cũng không bao giờ khoá nút Vào chơi.
+const check = { timer: 0, asked: '', seq: 0 };
+
+function paintCheck(tone, parts = [], fixes = []) {
+  const el = $('nameCheck');
+  el.hidden = !tone;
+  if (!tone) return el.replaceChildren();
+  el.dataset.tone = tone;
+  el.replaceChildren(...parts);
+  if (!fixes.length) return;
+  const row = document.createElement('div');
+  row.className = 'fixes';
+  for (const person of fixes) {
+    const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'fix', textContent: person.domain });
+    btn.title = person.name;
+    btn.addEventListener('click', () => {
+      $('nameInput').value = person.domain;
+      askCheck(person.domain, true);
+      $('nameInput').focus();
+    });
+    row.append(btn);
+  }
+  el.append(row);
+}
+
+const bold = text => Object.assign(document.createElement('b'), { textContent: text });
+
+async function askCheck(raw, force = false) {
+  const domain = normalizeDomain(raw);
+  if (!domain) {
+    check.asked = '';
+    return paintCheck(null);
+  }
+  if (domain === check.asked && !force) return;
+  check.asked = domain;
+  const seq = ++check.seq;
+  try {
+    const res = await fetch(`/api/lookup?d=${encodeURIComponent(domain)}`);
+    const data = await res.json();
+    // Câu trả lời của chữ gõ trước về sau chữ gõ sau: bỏ, đừng đè lên cái mới.
+    if (seq !== check.seq) return;
+    if (!res.ok || !data.on) return paintCheck(null);
+    if (data.ok) return paintCheck('ok', ['✔ ', bold(data.name || domain), data.unit ? ` · ${data.unit}` : '']);
+    if (data.how === 'ambiguous') return paintCheck('warn', ['Có nhiều người trùng domain này — chọn đúng bạn:'], data.near);
+    if (data.near.length) return paintCheck('warn', ['Không có domain này trong danh sách. Ý bạn là:'], data.near);
+    paintCheck('warn', ['Không thấy domain này trong danh sách LMS — gõ lại giúp nhé. Vẫn vào chơi được.']);
+  } catch {
+    paintCheck(null);
+  }
+}
+
 function connect() {
   net.es?.close();
   const es = new EventSource(`/api/events?pid=${encodeURIComponent(net.pid)}`);
@@ -138,9 +193,9 @@ function connect() {
   es.onerror = () => {
     $('conn').hidden = false;
     if (es.readyState !== EventSource.CLOSED) return;
-    // The server no longer knows this player (restarted) → join again under the same name.
+    // The server no longer knows this player (restarted) → join again under the same domain.
     net.pid = null;
-    setTimeout(() => join(net.name), 1500);
+    setTimeout(() => join(net.domain), 1500);
   };
 }
 
@@ -793,6 +848,17 @@ async function boot() {
   window.visualViewport?.addEventListener('scroll', resize);
   $('nameInput').addEventListener('focus', resize);
   $('nameInput').addEventListener('blur', resize);
+  $('nameInput').addEventListener('input', () => {
+    clearTimeout(check.timer);
+    check.timer = setTimeout(() => askCheck($('nameInput').value), 400);
+  });
+  $('nameInput').addEventListener('blur', () => {
+    clearTimeout(check.timer);
+    // Dán cả địa chỉ, gõ hoa, bật bộ gõ tiếng Việt: cho thấy ngay chuỗi sẽ thật sự gửi đi.
+    const domain = normalizeDomain($('nameInput').value);
+    if (domain) $('nameInput').value = domain;
+    askCheck(domain);
+  });
 
   const guide = $('guide');
   $('guideBtn').addEventListener('click', () => showGuide(true));
@@ -847,19 +913,23 @@ async function boot() {
 
   $('joinForm').addEventListener('submit', e => {
     e.preventDefault();
-    const name = $('nameInput').value.trim();
-    if (!name) {
-      $('joinError').textContent = 'Nhập tên của bạn để vào phòng nhé.';
+    const domain = normalizeDomain($('nameInput').value);
+    if (!domain) {
+      $('joinError').textContent = $('nameInput').value.trim()
+        ? 'Domain chỉ gồm chữ, số và dấu chấm — ví dụ: khang.pham2.'
+        : 'Nhập domain mail công ty của bạn (ví dụ: khang.pham2).';
       $('nameInput').focus();
       return;
     }
+    $('nameInput').value = domain;
     net.pid = session.get('foxquiz.pid');
-    join(name, { cinematic: true });
+    join(domain, { cinematic: true });
   });
   $('cutsceneSkip').addEventListener('click', endCutscene);
-  const savedName = local.get('foxquiz.name');
-  const rejoining = !!(savedName && session.get('foxquiz.pid'));
-  $('nameInput').value = savedName ?? '';
+  const savedDomain = local.get('foxquiz.domain');
+  const rejoining = !!(savedDomain && session.get('foxquiz.pid'));
+  $('nameInput').value = savedDomain ?? '';
+  if (savedDomain && !rejoining) askCheck(savedDomain);
   if (!rejoining) openOnboarding();
 
   requestAnimationFrame(function loop(now) {
@@ -873,7 +943,7 @@ async function boot() {
   $('joinBtn').textContent = 'Vào chơi';
   if (rejoining) {
     net.pid = session.get('foxquiz.pid');
-    join(savedName);
+    join(savedDomain);
   }
 
   // Debug helpers for DevTools.

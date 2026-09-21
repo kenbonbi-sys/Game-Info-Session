@@ -173,8 +173,10 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .roster td { padding: 6px 8px; border-bottom: 1px solid #1b2d40; white-space: nowrap; }
 .roster .num { text-align: right; font-variant-numeric: tabular-nums; }
 .roster td:first-child { width: 28px; color: var(--faint); font-variant-numeric: tabular-nums; }
-.roster td.name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.roster td.name { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
 .roster td.name .dot { margin-right: 7px; width: 7px; height: 7px; }
+.roster td.name .domain { display: block; margin-left: 14px; color: var(--faint); font: 500 11px ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; }
+.roster td.name .domain.off-list { color: var(--warn); }
 .roster tr.on td.name .dot { background: var(--good); }
 .roster tr.off td { color: var(--faint); }
 .roster tr.leader td:first-child { color: var(--orange); font-weight: 800; }
@@ -308,6 +310,64 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .check input { width: 16px; height: 16px; accent-color: var(--orange); }
 .btn.wide { width: 100%; margin-top: 8px; }
 .btn.sm.danger, .btn.danger { border-color: #7a3a30; color: #ffb3a5; }
+.btn .pill { padding: 1px 7px; border-radius: 999px; background: var(--warn); color: #241802; font-size: 11.5px; }
+/* Năm nút thì hàng cuối chỉ còn Reset. Để nó co lại đúng bề rộng chữ: nút xoá cả ván không nên là
+   thứ to nhất trong thẻ điều khiển. */
+.control .ctrl-row .btn.danger { flex: 0 0 auto; }
+
+/* Ghép LMS: cột trái nạp danh sách một lần, cột phải là chỗ làm việc thật — mấy người máy không
+   ghép nổi. Cột phải rộng vì mỗi dòng phải chứa cả cái người ta gõ lẫn người trong LMS. */
+.mapper-box { width: min(1100px, 100%); height: min(760px, 100%); }
+.mapper-body { flex: 1; display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 0; }
+.mapper-load { display: flex; flex-direction: column; min-height: 0; padding: 16px; border-right: 1px solid var(--line); overflow-y: auto; }
+.mapper-load h3 { margin: 0 0 6px; font: 800 13px var(--font-disp); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+.mapper-load p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.5; }
+.mapper-load code { padding: 1px 4px; border-radius: 4px; background: #0a1826; color: #b9d4ef; font-size: 11.5px; }
+.mapper-load textarea {
+  width: 100%; min-height: 150px; padding: 9px 11px; box-sizing: border-box; resize: vertical;
+  border: 1px solid var(--line-2); border-radius: 7px 3px; background: #0a1826;
+  font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.mapper-load textarea:focus { border-color: var(--orange); outline: none; }
+.btn.file { cursor: pointer; }
+/* Nạp danh sách là việc làm một lần trước buổi, không phải nút bước tiếp theo: giữ màu cam nhưng
+   đừng to bằng nút điều khiển cả hội trường. */
+.mapper-load .btn-primary { min-height: 36px; padding: 8px 14px; border-radius: 8px 3px; font-size: 14px; box-shadow: inset 0 -3px 0 #6B0009; }
+.mapper-msg { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; }
+.mapper-msg[data-tone="good"] { color: var(--good); }
+.mapper-msg[data-tone="bad"] { color: var(--bad); }
+.mapper-load .btn.wide { margin-top: auto; }
+
+.mapper-result { display: flex; flex-direction: column; min-height: 0; }
+.tabs.three { grid-template-columns: 1fr 1fr; }
+.mapper-list { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 12px 14px; }
+.mapper-result .empty { padding: 30px 12px; text-align: center; }
+
+.map-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 10px; align-items: start; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.map-who > * { display: block; }
+.map-who b { font: 700 14px var(--font-disp); }
+.map-who .domain { color: var(--blue-soft); font: 600 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.map-who .meta { color: var(--faint); font-size: 11.5px; }
+.map-who .dup { color: var(--warn); font-size: 11.5px; }
+.map-to { display: grid; gap: 6px; }
+.map-hit { color: var(--good); font-size: 12.5px; line-height: 1.45; }
+.map-hit b { color: var(--text); }
+.map-hit .how { color: var(--faint); }
+.map-fixes { display: flex; flex-wrap: wrap; gap: 5px; }
+.map-fixes button {
+  padding: 3px 9px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: #16293c; color: #cfe0f0; font: 600 12px var(--font-sans); cursor: pointer; text-align: left;
+}
+.map-fixes button:hover { border-color: var(--orange); color: #fff; }
+.map-fixes button small { color: var(--faint); }
+.map-search { display: flex; gap: 6px; }
+.map-search input {
+  flex: 1; min-width: 0; padding: 5px 9px; border: 1px solid var(--line-2); border-radius: 7px 3px;
+  background: #0a1826; font: 500 12.5px var(--font-sans);
+}
+.map-search input:focus { border-color: var(--orange); outline: none; }
+.map-search button { padding: 4px 9px; border: 1px solid var(--line-2); border-radius: 7px 3px; background: #16293c; color: var(--muted); font: 700 12px var(--font-disp); cursor: pointer; }
+.map-search button:hover { border-color: var(--orange); color: var(--text); }
 
 /* Laptop hẹp: bóp hai cột hai bên trước, vì bảng câu hỏi ở giữa mới là chỗ cần rộng. */
 @media (max-width: 1180px) {
