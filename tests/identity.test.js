@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDomain, prettyName, parseRoster, buildIndex, lookup, search, loginKey } from '../src/identity.js';
+import { normalizeDomain, prettyName, parseRoster, buildIndex, lookup, search, loginKey, REWARD_DAY } from '../src/identity.js';
 
 test('domain nào gõ ra cũng về một khoá', () => {
   const same = [
@@ -24,7 +24,7 @@ test('domain nào gõ ra cũng về một khoá', () => {
   assert.equal(normalizeDomain('x'.repeat(60)).length, 40);
 });
 
-test('bảng tên đọc được khi LMS chưa cho biết tên thật', () => {
+test('bảng tên đọc được khi danh sách chưa cho biết tên thật', () => {
   assert.equal(prettyName('nguyen.thi.thanh.huong'), 'Nguyen Thi Thanh Huong');
   assert.equal(prettyName('khang.pham2'), 'Khang Pham2');
   assert.equal(prettyName(''), 'Buddy');
@@ -40,12 +40,10 @@ test('đọc được bản xuất CSV có tiêu đề', () => {
   assert.equal(columns.name, 0);
   assert.equal(columns.unit, 2);
   assert.equal(people.length, 2);
-  assert.deepEqual(people[0], {
-    domain: 'khang.pham2',
-    email: 'khang.pham2@mservice.com.vn',
-    name: 'Phạm Khang',
-    unit: 'Learning Hub',
-  });
+  assert.equal(people[0].domain, 'khang.pham2');
+  assert.equal(people[0].email, 'khang.pham2@mservice.com.vn');
+  assert.equal(people[0].name, 'Phạm Khang');
+  assert.equal(people[0].unit, 'Learning Hub');
   assert.equal(people[1].domain, 'huong.nguyen');
   assert.equal(people[1].name, 'Nguyễn, Thanh Hương');
 });
@@ -123,4 +121,48 @@ test('ô gợi ý của MC tìm được cả theo tên lẫn theo địa chỉ'
   assert.deepEqual(search(index, 'Hương').map(p => p.domain), ['huong.nguyen']);
   assert.deepEqual(search(index, 'nguyen').map(p => p.domain), ['huong.nguyen']);
   assert.equal(search(index, '').length, 3);
+});
+
+test('phần thưởng suy từ số ngày đăng nhập và cột bảng câu hỏi', () => {
+  const { people, rewards, columns } = parseRoster([
+    'Email,Họ tên,Số ngày đăng nhập,Đã tạo bảng câu hỏi',
+    'a.one@momo.com.vn,Một,7,x',
+    'b.two@momo.com.vn,Hai,5,',
+    'c.three@momo.com.vn,Ba,3,có',
+    'd.four@momo.com.vn,Bốn,2,không',
+    'e.five@momo.com.vn,Năm,0,',
+  ].join('\n'));
+  assert.equal(rewards, true);
+  assert.equal(columns.days, 2);
+  assert.equal(columns.quiz, 3);
+  assert.deepEqual(REWARD_DAY, { hint: 3, boost: 5 });
+  const got = Object.fromEntries(people.map(p => [p.domain, p.items]));
+  // 7 ngày + có tạo bảng câu hỏi = đủ ba món.
+  assert.deepEqual(got['a.one'], { hint: 1, shield: 1, boost: 1 });
+  // Ngày 5 mở Súng, nhưng không tạo bảng câu hỏi thì không có Khiên.
+  assert.deepEqual(got['b.two'], { hint: 1, shield: 0, boost: 1 });
+  // Ngày 3 mới đủ Buddy; "có" ở cột bảng câu hỏi là có Khiên.
+  assert.deepEqual(got['c.three'], { hint: 1, shield: 1, boost: 0 });
+  // Ngày 2 chưa tới mốc nào, và "không" là không.
+  assert.deepEqual(got['d.four'], { hint: 0, shield: 0, boost: 0 });
+  assert.deepEqual(got['e.five'], { hint: 0, shield: 0, boost: 0 });
+});
+
+test('cột vật phẩm dev tính sẵn thì nghe cột đó, không suy lại từ ngày', () => {
+  const { people, rewards } = parseRoster([
+    'email,so ngay,Buddy thong thai,Khien,Sung giot tu tin',
+    'a.one@momo.com.vn,0,1,1,1',
+    'b.two@momo.com.vn,7,0,0,0',
+  ].join('\n'));
+  assert.equal(rewards, true);
+  assert.deepEqual(people[0].items, { hint: 1, shield: 1, boost: 1 });
+  assert.deepEqual(people[1].items, { hint: 0, shield: 0, boost: 0 });
+});
+
+test('bản xuất chỉ có tên thì báo là không có cột phần thưởng', () => {
+  const { people, rewards } = parseRoster('khang.pham2@momo.com.vn\nhuong.nguyen@momo.com.vn');
+  assert.equal(rewards, false);
+  assert.equal(people[0].days, null);
+  // Không có cột nào để suy: server sẽ phát đủ 3 món cho ai có tên trong danh sách.
+  assert.deepEqual(people[0].items, { hint: 0, shield: 0, boost: 0 });
 });

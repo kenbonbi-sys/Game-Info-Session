@@ -163,6 +163,10 @@ button { transition: transform 130ms, filter 130ms; }
 .item.armed .count { background: #7d3525; color: #ffd2c8; }
 .item:disabled { cursor: default; }
 .item:disabled:not(.armed) { opacity: .5; filter: grayscale(.55); }
+/* Chưa kiếm được ở chiến dịch 7 ngày, khác với đã dùng hết: ô khoá hẳn và số đổi thành ổ
+   khoá, để không ai ngồi chờ một món mình chưa từng có. */
+.item.locked { opacity: .34; filter: grayscale(1); }
+.item.locked .count { background: #2b3a4a; color: #8ea3b8; font-size: 10.5px; }
 
 #banner { --face: #193553; --line: #6fa1d6; --bw: 1px; position: fixed; top: 42%; left: 50%; translate: -50% -50%; z-index: 4; width: max-content; max-width: min(380px, calc(100% - 28px)); padding: 13px 20px; font: 800 20px/1.3 var(--font-disp); color: #e6f0fa; text-align: center; overflow-wrap: anywhere; pointer-events: none; opacity: 0; filter: drop-shadow(0 5px 10px #020e1a99); }
 #banner[data-tone="good"] { --face: #1C66BB; --line: #9fc8f2; color: #ffffff; }
@@ -233,6 +237,7 @@ button { transition: transform 130ms, filter 130ms; }
 .name-check[data-tone="ok"] { color: #7fd6a2; }
 .name-check[data-tone="warn"] { color: #ffc37a; }
 .name-check b { color: #fff; }
+.name-check .got { display: block; margin-top: 3px; color: #d3deea; font-weight: 700; }
 .name-check .fixes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .name-check .fix {
   padding: 5px 9px; border: 1px solid #FF7034; border-radius: 999px;

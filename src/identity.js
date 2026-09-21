@@ -1,8 +1,8 @@
-// Ghép mỗi người chơi về đúng một người trong LMS.
+// Nối mỗi người chơi với suất phần thưởng họ đã kiếm được ở chiến dịch 7 ngày trên platform.
 //
 // Ô nhập tên không hỏi biệt danh: hội trường gõ phần trước @ của mail công ty
 // ("khang.pham2" của khang.pham2@mservice.com.vn hoặc @momo.com.vn). Đó là khoá duy nhất
-// nối ván chơi này với bản xuất của LMS.
+// nối ván chơi này với bản xuất danh sách chiến dịch mà dev gửi sang.
 //
 // Người ta gõ sai đủ kiểu: dán nguyên địa chỉ, viết hoa, gõ dấu tiếng Việt, gõ dấu cách thay dấu
 // chấm, thừa khoảng trắng do autocorrect. Mọi chỗ chạm vào chuỗi đó — điện thoại, server, bảng
@@ -57,9 +57,26 @@ export function shortName(full, max = 18) {
   return words.join(' ') || 'Buddy';
 }
 
-// ---- Đọc danh sách LMS ----------------------------------------------------------------
+// ---- Phần thưởng của chiến dịch 7 ngày --------------------------------------------------
+// Luật của chiến dịch trên platform, chép nguyên sang đây:
+//   · đăng nhập tới ngày 3  → Buddy thông thái (loại 2 đáp án sai)
+//   · đăng nhập tới ngày 5  → Súng giọt tự tin (câu đúng kế tiếp x2 điểm, x2 đạn)
+//   · có tạo bảng câu hỏi   → Khiên Research Lab (đỡ 1 lần sai, giữ combo)
+// Bản xuất của dev có thể ghi theo ngày đăng nhập, hoặc đã tính sẵn thành từng cột vật phẩm —
+// cột tính sẵn nói gì thì nghe cột đó, không có mới suy từ số ngày.
+export const REWARD_DAY = { hint: 3, boost: 5 };
+
+export const NO_ITEMS = { hint: 0, shield: 0, boost: 0 };
+export const ALL_ITEMS = { hint: 1, shield: 1, boost: 1 };
+
+const NEGATIVE = new Set(['', '0', 'no', 'n', 'false', 'khong', 'chua', '-', '_', 'na', 'n/a', 'null', 'x0']);
+// Bảng tính của người Việt đánh dấu bằng đủ thứ: 1, x, ✔, "có", "đã tạo", "TRUE". Coi là có hết,
+// trừ mấy chữ nói thẳng là không.
+const truthy = cell => !NEGATIVE.has(deaccent(String(cell ?? '')).trim().toLowerCase());
+
+// ---- Đọc danh sách chiến dịch -----------------------------------------------------------
 // Bản xuất mỗi lần một kiểu: file CSV tải về, dán thẳng từ Excel (ngăn bằng tab), hay chỉ một cột
-// địa chỉ copy từ mail. Đọc hết, tự đoán cột nào là địa chỉ, cột nào là tên.
+// địa chỉ copy từ mail. Đọc hết, tự đoán cột nào là địa chỉ, cột nào là tên, cột nào là phần thưởng.
 
 function parseTable(text, delim) {
   const rows = [];
@@ -84,9 +101,19 @@ function parseTable(text, delim) {
   return rows.filter(r => r.some(c => c.trim()));
 }
 
-const HEAD_MAIL = /(e-?mail|mail|account|username|user ?name|login|domain|tài khoản|địa chỉ)/i;
-const HEAD_NAME = /(full ?name|display ?name|\bname\b|họ|tên|nhân viên|employee)/i;
+const HEAD_MAIL = /(e-?mail|mail|account|username|user ?name|domain|tài khoản|địa chỉ)/i;
+const HEAD_NAME = /(full ?name|display ?name|\bname\b|họ|tên|nhân viên|employee|learner|học viên|người học)/i;
 const HEAD_UNIT = /(department|team|unit|division|block|title|position|phòng|ban|bộ phận|khối|chức danh|chức vụ)/i;
+// Cột số ngày đăng nhập của chiến dịch — chỗ suy ra Buddy thông thái và Súng giọt tự tin.
+const HEAD_DAYS = /(ngày|ngay|streak|chuỗi|\bdays?\b|login|log-?in|đăng nhập|dang nhap|check-?in|điểm danh)/i;
+// Cột đánh dấu đã tạo bảng câu hỏi — chỗ suy ra Khiên.
+const HEAD_QUIZ = /(bảng câu hỏi|bang cau hoi|bộ câu hỏi|tạo quiz|tao quiz|\bquiz\b|question ?(bank|set)|đề|created)/i;
+// Ba cột vật phẩm nếu dev đã tính sẵn giúp.
+const HEAD_ITEM = {
+  hint: /(buddy|thông thái|thong thai|\bhint\b|gợi ý|goi y)/i,
+  shield: /(khiên|khien|shield)/i,
+  boost: /(súng|sung|giọt tự tin|giot tu tin|boost|nhân đôi|x ?2)/i,
+};
 
 // "Khang Phạm <khang.pham2@momo.com.vn>" — mail client dán ra kiểu này suốt.
 function splitAngle(cell) {
@@ -127,8 +154,19 @@ export function parseRoster(text) {
   let nameCol = headerCol(HEAD_NAME);
   if (nameCol === mailCol) nameCol = -1;
   if (nameCol < 0) nameCol = bestCol(c => c.includes(' ') && !c.includes('@'), mailCol);
-  const unitHead = headerCol(HEAD_UNIT);
-  const unitCol = unitHead >= 0 && unitHead !== mailCol && unitHead !== nameCol ? unitHead : -1;
+  // Mấy cột dưới đây chỉ nhận ra được khi bản xuất có dòng tiêu đề; không có thì cả danh sách chỉ
+  // là "ai có mặt trong chiến dịch", và MC chọn phát gì cho cả nhóm ở bảng điều khiển.
+  const taken = new Set([mailCol, nameCol]);
+  const pick = re => {
+    const i = headerCol(re);
+    if (i < 0 || taken.has(i)) return -1;
+    taken.add(i);
+    return i;
+  };
+  const daysCol = pick(HEAD_DAYS);
+  const itemCols = { hint: pick(HEAD_ITEM.hint), shield: pick(HEAD_ITEM.shield), boost: pick(HEAD_ITEM.boost) };
+  const quizCol = pick(HEAD_QUIZ);
+  const unitCol = pick(HEAD_UNIT);
 
   const people = [];
   const seen = new Set();
@@ -141,14 +179,31 @@ export function parseRoster(text) {
     if (seen.has(domain)) { duplicates++; continue; }
     seen.add(domain);
     const mail = cell.mail.includes('@') ? deaccent(cell.mail).trim().toLowerCase() : '';
+    const days = daysCol >= 0 ? Math.max(0, Math.trunc(Number(at(r, daysCol).replace(/[^\d.-]/g, '')) || 0)) : null;
+    const madeQuiz = quizCol >= 0 ? truthy(at(r, quizCol)) : null;
+    const item = (key, earned) => (itemCols[key] >= 0 ? Number(truthy(at(r, itemCols[key]))) : Number(earned));
     people.push({
       domain,
       email: mail || fullEmail(domain),
       name: (nameCol >= 0 ? at(r, nameCol) : '') || cell.name || '',
       unit: unitCol >= 0 ? at(r, unitCol) : '',
+      days,
+      quiz: madeQuiz,
+      items: {
+        hint: item('hint', days !== null && days >= REWARD_DAY.hint),
+        shield: item('shield', madeQuiz === true),
+        boost: item('boost', days !== null && days >= REWARD_DAY.boost),
+      },
     });
   }
-  return { people, columns: { mail: mailCol, name: nameCol, unit: unitCol, header: hasHeader ? head0 : null }, skipped, duplicates };
+  return {
+    people,
+    columns: { mail: mailCol, name: nameCol, unit: unitCol, days: daysCol, quiz: quizCol, ...itemCols, header: hasHeader ? head0 : null },
+    // Bản xuất có nói gì về phần thưởng không, hay chỉ là một danh sách tên trơn.
+    rewards: daysCol >= 0 || quizCol >= 0 || Object.values(itemCols).some(i => i >= 0),
+    skipped,
+    duplicates,
+  };
 }
 
 // ---- Dò một chuỗi về danh sách ----------------------------------------------------------

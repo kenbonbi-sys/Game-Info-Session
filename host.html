@@ -53,7 +53,7 @@
         <div class="ctrl-row">
           <button id="autoBtn" type="button" class="btn toggle" aria-pressed="true">Tự chuyển: <b>BẬT</b></button>
           <button id="editBtn" type="button" class="btn">✎ Sửa câu hỏi</button>
-          <button id="mapBtn" type="button" class="btn">🔗 Ghép LMS <b id="mapBadge" class="pill" hidden>0</b></button>
+          <button id="mapBtn" type="button" class="btn">🎁 Phần thưởng <b id="mapBadge" class="pill" hidden>0</b></button>
           <a id="csvBtn" class="btn" href="#">Tải CSV</a>
           <button id="resetBtn" type="button" class="btn danger">Reset</button>
         </div>
@@ -211,23 +211,24 @@
     </div>
   </div>
 
-  <!-- Ghép LMS: dán bản xuất của LMS vào đây, trước buổi (điện thoại soát ngay lúc gõ) hay sau
+  <!-- Phần thưởng chiến dịch 7 ngày: dán bản xuất của dev vào đây. Người chơi gõ đúng domain là
        buổi (ghép lại từ domain đã ghi) đều cùng một màn hình này. -->
   <div id="mapper" class="editor" role="dialog" aria-modal="true" aria-labelledby="mapperTitle" hidden>
     <div class="editor-box mapper-box">
       <header class="editor-head">
-        <h2 id="mapperTitle">Ghép người chơi với danh sách LMS</h2>
+        <h2 id="mapperTitle">Phần thưởng chiến dịch 7 ngày</h2>
         <span id="mapperMeta" class="muted"></span>
         <span class="spacer"></span>
-        <a id="mapperCsv" class="btn sm" href="#">⭳ Tải CSV đã ghép</a>
+        <a id="mapperCsv" class="btn sm" href="#">⭳ Tải CSV</a>
         <button id="mapperClose" type="button" class="btn sm">Đóng</button>
       </header>
 
       <div class="mapper-body">
         <aside class="mapper-load">
-          <h3>1 · Danh sách từ LMS</h3>
-          <p class="muted">Dán cả bảng từ Excel hoặc chỉ một cột địa chỉ. Tự tìm cột email, cột tên và cột phòng ban; <code>khang.pham2@momo.com.vn</code> hay <code>khang.pham2</code> đều đọc được.</p>
-          <textarea id="mapperPaste" rows="10" spellcheck="false" placeholder="email,name,department&#10;khang.pham2@mservice.com.vn,Phạm Khang,Learning Hub&#10;huong.nguyen@momo.com.vn,Nguyễn Hương,Research Lab"></textarea>
+          <h3>1 · Danh sách từ dev</h3>
+          <p class="muted">Dán cả bảng từ Excel hoặc chỉ một cột địa chỉ. Tự tìm cột email, tên, <b>số ngày đăng nhập</b> và <b>đã tạo bảng câu hỏi</b>; <code>khang.pham2@momo.com.vn</code> hay <code>khang.pham2</code> đều đọc được.</p>
+          <p class="muted reward-rule">Ngày&nbsp;3 → Buddy thông thái · Ngày&nbsp;5 → Súng giọt tự tin · Tạo bảng câu hỏi → Khiên</p>
+          <textarea id="mapperPaste" rows="10" spellcheck="false" placeholder="email,name,so ngay dang nhap,tao bang cau hoi&#10;khang.pham2@mservice.com.vn,Phạm Khang,6,x&#10;huong.nguyen@momo.com.vn,Nguyễn Hương,3,"></textarea>
           <div class="ctrl-row">
             <label class="btn sm file">⭱ Chọn file<input id="mapperFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden></label>
             <button id="mapperLoad" type="button" class="btn-primary sm">Nạp danh sách</button>
@@ -238,8 +239,8 @@
 
         <section class="mapper-result">
           <div class="tabs three" role="tablist">
-            <button id="tabMiss" type="button" role="tab" aria-selected="true" aria-controls="mapperList">Chưa ghép <b id="missCount">0</b></button>
-            <button id="tabHit" type="button" role="tab" aria-selected="false" aria-controls="mapperList">Đã ghép <b id="hitCount">0</b></button>
+            <button id="tabMiss" type="button" role="tab" aria-selected="true" aria-controls="mapperList">Chưa ghép được <b id="missCount">0</b></button>
+            <button id="tabHit" type="button" role="tab" aria-selected="false" aria-controls="mapperList">Đã nhận vật phẩm <b id="hitCount">0</b></button>
           </div>
           <div id="mapperList" class="mapper-list" role="tabpanel"></div>
           <p id="mapperEmpty" class="muted empty">Chưa có ai vào phòng.</p>

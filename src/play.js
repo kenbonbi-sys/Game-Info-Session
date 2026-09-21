@@ -23,7 +23,10 @@ const quiz = { phase: 'connecting', index: -1, total: 15, read: 10, time: 15, fi
 const me = {
   turret: -1, score: 0, correct: 0, rank: 0, players: 0,
   picked: null, submitting: false, error: null, result: null,
-  items: { hint: 0, shield: 0, boost: 0 }, armed: { shield: false, boost: false }, removed: null, removedIndex: -1, busy: false,
+  // items: còn mấy lần dùng được lúc này · granted: suất kiếm được ở chiến dịch 7 ngày, để
+  // phân biệt "đã dùng hết" với "chưa bao giờ có".
+  items: { hint: 0, shield: 0, boost: 0 }, granted: { hint: 0, shield: 0, boost: 0 },
+  armed: { shield: false, boost: false }, removed: null, removedIndex: -1, busy: false,
 };
 // Shots this round: acked by the server, in flight, and tapped but not yet sent.
 const taps = { index: -1, acked: 0, inflight: 0, pending: 0, timer: 0 };
@@ -113,6 +116,7 @@ async function join(domain, { cinematic = false } = {}) {
     const r = await post('/api/join', { name: domain, pid: net.pid });
     if (!r.ok) throw new Error(r.data.error || `Lỗi ${r.status}`);
     Object.assign(net, { pid: r.data.pid, no: r.data.n, name: r.data.name, domain: r.data.domain });
+    me.granted = r.data.granted ?? { hint: 1, shield: 1, boost: 1 };
     me.turret = r.data.turret;
     session.set('foxquiz.pid', net.pid);
     local.set('foxquiz.domain', net.domain);
@@ -131,9 +135,10 @@ async function join(domain, { cinematic = false } = {}) {
 }
 
 // ---- Soát domain trước khi bấm Vào chơi -----------------------------------------------
-// MC dán danh sách LMS vào bảng điều khiển thì đường này biết ai có trong đó. Gõ sai một ký tự là
-// hiện ra ngay đây, sửa mất hai giây — để tới lúc ghép sau buổi thì người đó đã về mất rồi.
-// Không có danh sách thì dòng này im lặng, và dù có thì nó cũng không bao giờ khoá nút Vào chơi.
+// Domain là thứ nối người này với suất phần thưởng họ đã kiếm ở chiến dịch 7 ngày, nên gõ sai là
+// mất vật phẩm. Đường này nói ngay tại chỗ: đúng thì hiện tên và những món sắp cầm vào trận, sai
+// thì gợi ý đúng người để chạm một cái là xong. Chưa nạp danh sách thì dòng này im lặng, và dù có
+// nạp thì nó cũng không bao giờ khoá nút Vào chơi.
 const check = { timer: 0, asked: '', seq: 0 };
 
 function paintCheck(tone, parts = [], fixes = []) {
@@ -175,10 +180,19 @@ async function askCheck(raw, force = false) {
     // Câu trả lời của chữ gõ trước về sau chữ gõ sau: bỏ, đừng đè lên cái mới.
     if (seq !== check.seq) return;
     if (!res.ok || !data.on) return paintCheck(null);
-    if (data.ok) return paintCheck('ok', ['✔ ', bold(data.name || domain), data.unit ? ` · ${data.unit}` : '']);
+    if (data.ok) {
+      const got = ['hint', 'shield', 'boost'].filter(k => data.items?.[k]).map(k => ITEMS[k].name);
+      return paintCheck('ok', [
+        '✔ ', bold(data.name || domain), data.unit ? ` · ${data.unit}` : '',
+        Object.assign(document.createElement('span'), {
+          className: 'got',
+          textContent: got.length ? `Bạn nhận: ${got.join(' + ')}` : 'Chiến dịch 7 ngày chưa ghi nhận vật phẩm nào cho bạn.',
+        }),
+      ]);
+    }
     if (data.how === 'ambiguous') return paintCheck('warn', ['Có nhiều người trùng domain này — chọn đúng bạn:'], data.near);
     if (data.near.length) return paintCheck('warn', ['Không có domain này trong danh sách. Ý bạn là:'], data.near);
-    paintCheck('warn', ['Không thấy domain này trong danh sách LMS — gõ lại giúp nhé. Vẫn vào chơi được.']);
+    paintCheck('warn', ['Không thấy domain này trong danh sách chiến dịch — gõ lại thì mới nhận được vật phẩm đã tích. Vẫn vào chơi được.']);
   } catch {
     paintCheck(null);
   }
@@ -250,7 +264,7 @@ function onState(msg) {
 }
 
 function onYou(msg) {
-  Object.assign(me, { score: msg.score, correct: msg.correct, rank: msg.rank, players: msg.players, turret: msg.turret, items: msg.items, armed: msg.armed, totalShots: msg.totalShots ?? me.totalShots });
+  Object.assign(me, { score: msg.score, correct: msg.correct, rank: msg.rank, players: msg.players, turret: msg.turret, items: msg.items, granted: msg.granted ?? me.granted, armed: msg.armed, totalShots: msg.totalShots ?? me.totalShots });
   if (msg.hint && quiz.phase === 'question') Object.assign(me, { removed: msg.hint, removedIndex: quiz.index });
   // Reconnecting after answering: the server remembers the pick.
   if (msg.picked !== null && me.picked === null) me.picked = msg.picked;
@@ -626,14 +640,19 @@ function renderItems() {
     const item = btn.dataset.item;
     const count = me.items[item] ?? 0;
     const armed = !!me.armed[item];
-    btn.querySelector('.count').textContent = armed ? 'ON' : count;
+    btn.querySelector('.count').textContent = armed ? 'ON' : count <= 0 && !me.granted[item] ? '🔒' : count;
     btn.classList.toggle('armed', armed);
     const usable = item === 'hint'
       ? quiz.phase === 'question' && me.picked === null && me.removedIndex !== quiz.index
       : !armed;
     btn.disabled = me.busy || count <= 0 || !usable;
-    btn.title = `${ITEMS[item].name}: ${ITEMS[item].effect}${armed ? ' (đang bật)' : count <= 0 ? ' (đã dùng)' : ''}`;
-    btn.setAttribute('aria-label', `${btn.title}. ${armed ? 'Đang bật' : `Còn ${count} lần`}`);
+    // Hết vì đã dùng và chưa từng có là hai chuyện khác nhau: món không kiếm được ở chiến dịch
+    // 7 ngày phải nói thẳng, không thì người ta tưởng game nuốt mất vật phẩm của mình.
+    const locked = count <= 0 && !me.granted[item];
+    btn.classList.toggle('locked', locked);
+    const why = armed ? ' (đang bật)' : locked ? ' — chưa nhận được ở chiến dịch 7 ngày' : count <= 0 ? ' (đã dùng)' : '';
+    btn.title = `${ITEMS[item].name}: ${ITEMS[item].effect}${why}`;
+    btn.setAttribute('aria-label', `${btn.title}. ${armed ? 'Đang bật' : locked ? 'Chưa mở khoá' : `Còn ${count} lần`}`);
   }
 }
 

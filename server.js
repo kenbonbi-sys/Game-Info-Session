@@ -13,7 +13,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO, REACTIONS } from './src/config.js';
 import { FINALE } from './src/finale-config.js';
-import { normalizeDomain, prettyName, shortName, fullEmail, parseRoster, buildIndex, EMPTY_INDEX, lookup, nearest, search, MATCHED } from './src/identity.js';
+import { normalizeDomain, prettyName, shortName, fullEmail, parseRoster, buildIndex, EMPTY_INDEX, lookup, nearest, search, MATCHED, NO_ITEMS, ALL_ITEMS, REWARD_DAY } from './src/identity.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const argPort = process.argv.find(a => a.startsWith('--port='))?.slice('--port='.length);
@@ -210,18 +210,22 @@ async function hydrateQuizFromSupabase() {
   }
 }
 
-// ---- Danh sách LMS -------------------------------------------------------------
-// Ô nhập tên hỏi domain mail công ty ("khang.pham2"), nên mỗi ván chơi là một cột khoá ghép được
-// với bản xuất của LMS. Danh sách này là bản xuất đó, dán vào bảng điều khiển:
-//   · dán TRƯỚC buổi → điện thoại soát ngay lúc gõ, ai gõ sai biết liền và sửa tại chỗ;
-//   · dán SAU buổi   → vẫn ghép được hết, chỉ là phải ghép tay mấy người gõ sai.
-// Không dán gì thì mọi thứ chạy y như cũ, chỉ là CSV chỉ có cột domain người ta tự gõ.
+// ---- Danh sách chiến dịch 7 ngày -------------------------------------------------
+// Trên platform học tập đang chạy chiến dịch 7 ngày: đăng nhập tới ngày 3 được Buddy thông thái,
+// tới ngày 5 được Súng giọt tự tin, có tạo bảng câu hỏi thì được Khiên. Dev xuất danh sách ai
+// được gì, MC dán vào bảng điều khiển, và người chơi gõ đúng domain của mình là **nhận đúng
+// những món đã kiếm được** — đó là toàn bộ lý do ô nhập tên hỏi domain chứ không hỏi biệt danh.
+//
+// Chưa dán danh sách thì cả phòng nhận đủ 3 món như cũ: quên nạp file không được phép biến thành
+// cả hội trường tay trắng.
 const ROSTER_FILE = join(root, 'data', 'roster.json');
 const SUPABASE_ROSTER_ROW = `${SUPABASE_ROW}:roster`;
-const EMPTY_ROSTER = { updatedAt: null, source: '', people: [] };
+const EMPTY_ROSTER = { updatedAt: null, source: '', rewards: false, people: [] };
 
 let roster = EMPTY_ROSTER;
 let rosterIndex = EMPTY_INDEX;
+
+const cleanItems = raw => Object.fromEntries(ITEMS.map(k => [k, raw?.[k] ? 1 : 0]));
 
 function validateRoster(data) {
   const people = (Array.isArray(data?.people) ? data.people : []).flatMap(p => {
@@ -231,9 +235,19 @@ function validateRoster(data) {
       email: String(p?.email ?? '').trim().toLowerCase() || fullEmail(domain),
       name: String(p?.name ?? '').trim(),
       unit: String(p?.unit ?? '').trim(),
+      days: Number.isFinite(Number(p?.days)) && p?.days !== null ? Math.max(0, Math.trunc(Number(p.days))) : null,
+      quiz: typeof p?.quiz === 'boolean' ? p.quiz : null,
+      items: cleanItems(p?.items),
     }] : [];
   });
-  return { updatedAt: data?.updatedAt ?? new Date().toISOString(), source: String(data?.source ?? '').slice(0, 120), people };
+  return {
+    updatedAt: data?.updatedAt ?? new Date().toISOString(),
+    source: String(data?.source ?? '').slice(0, 120),
+    // Bản xuất không có cột phần thưởng nào: coi như có tên trong danh sách là đủ điều kiện cả 3
+    // món, thay vì phát tay trắng cho đúng một file thiếu cột.
+    rewards: !!data?.rewards,
+    people,
+  };
 }
 
 // Đổi mỗi lần nạp danh sách mới: gợi ý đã tính cho từng người chơi chỉ hết hạn khi danh sách đổi.
@@ -306,20 +320,42 @@ async function saveRoster(data) {
   return roster;
 }
 
+// Suất vật phẩm của một người: chưa có danh sách thì đủ 3 món như cũ; có danh sách mà bản xuất
+// không nói gì về phần thưởng thì có tên là đủ 3 món; có cột phần thưởng thì đúng những gì kiếm
+// được, và không có tên trong danh sách nghĩa là chiến dịch chưa ghi nhận gì.
+function grantFor(person) {
+  if (!rosterIndex.size) return { ...ALL_ITEMS };
+  if (!person) return { ...NO_ITEMS };
+  return roster.rewards ? { ...person.items } : { ...ALL_ITEMS };
+}
+
 // Ai trong phòng cũng dò lại, trừ người MC đã chỉ tay: chỉ tay là quyết định của người, không được
 // để một lần dán danh sách đè lên.
 function applyIdentity(p) {
-  if (p.match === 'manual') return p;
-  const hit = lookup(rosterIndex, p.domain);
-  p.match = MATCHED.has(hit.how) ? hit.how : 'none';
-  p.lms = hit.person ?? null;
-  p.name = shortName(p.lms?.name || prettyName(p.domain));
+  if (p.match !== 'manual') {
+    const hit = lookup(rosterIndex, p.domain);
+    p.match = MATCHED.has(hit.how) ? hit.how : 'none';
+    p.campaign = hit.person ?? null;
+  }
+  p.name = shortName(p.campaign?.name || prettyName(p.domain));
+  p.grant = grantFor(p.campaign);
   return p;
 }
 
+// Nạp danh sách giữa chừng: suất mới ghi vào p.grant để ván sau đúng, nhưng khay vật phẩm đang
+// cầm trên tay thì chỉ thay khi còn ở phòng chờ — không ai bị lấy lại món vừa dùng, và cũng
+// không ai được phát thêm một món mới giữa ván.
 function rematchPlayers() {
-  for (const p of players.values()) applyIdentity(p);
-  if (players.size) broadcastScreens(seatsMessage());
+  const lobby = ['lobby', 'end'].includes(game.phase);
+  for (const p of players.values()) {
+    applyIdentity(p);
+    if (lobby) p.items = { ...p.grant };
+  }
+  if (players.size) {
+    broadcastScreens(seatsMessage());
+    // Khay vật phẩm trên điện thoại đổi ngay khi MC nạp danh sách, không đợi tới lượt sau.
+    sendRanks();
+  }
   refreshHost();
 }
 
@@ -330,8 +366,13 @@ function rosterMeta() {
     updatedAt: roster.updatedAt,
     source: roster.source,
     remote: REMOTE_QUIZ,
+    // Bản xuất có cột phần thưởng không. Không có thì ai trong danh sách cũng đủ 3 món.
+    rewards: roster.rewards,
+    rewardDay: REWARD_DAY,
     matched: board.filter(p => MATCHED.has(p.match)).length,
     players: board.length,
+    // Số người trong phòng đang tay trắng vì chưa ghép được — con số MC cần nhìn trước giờ chơi.
+    empty: rosterIndex.size ? board.filter(p => !ITEMS.some(k => p.grant[k])).length : 0,
   };
 }
 
@@ -430,9 +471,9 @@ function freshStats(p) {
     score: 0, correct: 0, streak: 0, timeMs: 0, shots: 0, chargeTaps: 0,
     // picks[i] = { choice, ms } as submitted; results[i] is scored at the reveal, never before.
     picks: {}, results: {}, roundShots: 0, tapTokens: 0, tapAt: 0, reactAt: 0,
-    // One of each item per game: hint removes 2 wrong options, shield absorbs the next miss,
-    // boost doubles the next correct answer's points and shots.
-    items: { hint: 1, shield: 1, boost: 1 }, armed: { shield: false, boost: false }, hints: {},
+    // Khay vật phẩm đầu ván là đúng suất người này kiếm được ở chiến dịch 7 ngày (p.grant), chứ
+    // không còn là đủ 3 món cho tất cả. Chưa nạp danh sách thì grant vốn đã là đủ 3 món.
+    items: { ...(p.grant ?? ALL_ITEMS) }, armed: { shield: false, boost: false }, hints: {},
   });
 }
 
@@ -599,7 +640,9 @@ function youMessage(p, rank) {
   const inRound = ['reading', 'question', 'reveal', 'fire'].includes(game.phase);
   return {
     type: 'you', score: p.score, correct: p.correct, rank, players: players.size, turret: p.turret,
-    items: p.items, armed: p.armed,
+    // items: còn dùng được mấy lần · granted: suất kiếm được ở chiến dịch, để khay vật phẩm nói
+    // đúng "đã dùng" hay "chưa bao giờ có".
+    items: p.items, granted: p.grant, armed: p.armed,
     hint: game.phase === 'question' ? p.hints[i] ?? null : null,
     picked: inRound ? p.picks[i]?.choice ?? null
       : ['finalreading', 'final', 'finalreveal'].includes(game.phase) ? game.finalePick?.[p.pid] ?? null
@@ -696,7 +739,7 @@ function stateFor(role) {
       bossFellAt: game.boss.fellAt,
       turrets: TURRET_SLOTS,
       roster: board.map(p => [p.n, p.name, p.turret, isOnline(p) ? 1 : 0, p.score, p.correct, roundStatus(p), p.roundShots, p.shots, p.domain, p.match]),
-      lms: rosterMeta(),
+      campaign: rosterMeta(),
     });
   }
   return s;
@@ -1128,9 +1171,20 @@ function hostAction(action) {
   }
 }
 
+// Câu ngắn cho nhật ký MC: người này vào phòng với những món gì trong tay.
+function grantLabel(p) {
+  const got = ITEMS.filter(k => p.grant[k]);
+  if (!rosterIndex.size) return 'đủ 3 vật phẩm (chưa nạp danh sách chiến dịch)';
+  if (!got.length) return 'chưa có vật phẩm nào từ chiến dịch';
+  return `nhận ${got.map(k => ITEM_INFO[k].name).join(' + ')}`;
+}
+
 const joinPayload = p => ({
   pid: p.pid, n: p.n, name: p.name, domain: p.domain, turret: p.turret, match: p.match,
-  lms: p.lms ? { name: p.lms.name, email: p.lms.email } : null,
+  // granted đứng riêng chứ không nằm trong campaign: chưa nạp danh sách thì campaign là null mà
+  // suất vẫn là đủ 3 món, và điện thoại không phải đoán chuyện đó.
+  granted: p.grant,
+  campaign: p.campaign ? { name: p.campaign.name, email: p.campaign.email, days: p.campaign.days } : null,
 });
 
 function joinPlayer(body) {
@@ -1151,12 +1205,14 @@ function joinPlayer(body) {
       return [400, { error: typed ? 'Domain chỉ gồm chữ, số và dấu chấm — ví dụ: khang.pham2' : 'Nhập domain của bạn để vào chơi' }];
     }
     const twin = [...players.values()].find(o => o.domain === domain);
-    p = applyIdentity(freshStats({ pid: randomUUID(), n: nextPlayerNo++, domain, name: domain, match: 'none', lms: null, turret: -1 }));
+    // applyIdentity trước freshStats: chính nó đặt p.grant, còn freshStats mới là chỗ đổ suất đó
+    // vào khay vật phẩm của ván này.
+    p = freshStats(applyIdentity({ pid: randomUUID(), n: nextPlayerNo++, domain, name: domain, match: 'none', campaign: null, turret: -1 }));
     players.set(p.pid, p);
     autoSeat(p);
-    logEvent(`${p.name} (${domain}) vào phòng · ${p.turret >= 0 ? `ụ ${p.turret + 1}` : 'hết ụ, bắn từ lối đi'}`, 'join');
-    if (twin) logEvent(`⚠ ${domain} đang mở trên hai máy — ghép LMS sẽ thấy hai dòng cho một người`, 'warn');
-    if (rosterIndex.size && p.match === 'none') logEvent(`⚠ ${domain} không có trong danh sách LMS — ghép tay ở bảng ghép`, 'warn');
+    logEvent(`${p.name} (${domain}) vào phòng · ${p.turret >= 0 ? `ụ ${p.turret + 1}` : 'hết ụ, bắn từ lối đi'} · ${grantLabel(p)}`, 'join');
+    if (twin) logEvent(`⚠ ${domain} đang mở trên hai máy — chiến dịch sẽ thấy hai dòng cho một người`, 'warn');
+    if (rosterIndex.size && p.match === 'none') logEvent(`⚠ ${domain} không có trong danh sách chiến dịch — ghép tay ở thẻ Phần thưởng để họ nhận được vật phẩm`, 'warn');
     broadcastScreens(seatsMessage());
     refreshHost();
   } else if (domain && domain !== p.domain) {
@@ -1164,7 +1220,9 @@ function joinPlayer(body) {
     p.domain = domain;
     p.match = 'none';
     applyIdentity(p);
-    logEvent(`${was} đổi domain thành ${domain}`, 'info');
+    // Gõ lại domain khác khi còn ở phòng chờ là đổi hẳn người, nên khay vật phẩm theo người mới.
+    if (['lobby', 'end'].includes(game.phase)) p.items = { ...p.grant };
+    logEvent(`${was} đổi domain thành ${domain} · ${grantLabel(p)}`, 'info');
     if (p.turret >= 0) broadcastScreens(seatsMessage());
     refreshHost();
   }
@@ -1196,24 +1254,31 @@ function lookupDomain(req, raw) {
     how: hit.how,
     name: hit.person?.name ?? '',
     unit: hit.person?.unit ?? '',
+    // Gõ đúng rồi thì cho người ta thấy luôn mình sắp cầm những gì vào trận.
+    items: hit.person ? grantFor(hit.person) : null,
+    days: hit.person?.days ?? null,
     near: hit.near.map(person => ({ domain: person.domain, name: person.name })),
   }];
 }
 
-// Bảng ghép của MC: ai trong phòng ghép được, ai chưa, và ai trong LMS thì hôm nay không chơi.
+// Thẻ Phần thưởng của MC: ai nhận được đúng suất của mình, ai chưa ghép được (nên đang tay
+// trắng), và trong danh sách chiến dịch còn bao nhiêu người hôm nay không tới chơi.
 function mappingReport() {
   const board = leaderboard();
-  const taken = new Set(board.map(p => p.lms?.domain).filter(Boolean));
+  const taken = new Set(board.map(p => p.campaign?.domain).filter(Boolean));
   const seen = new Map();
   for (const p of board) seen.set(p.domain, (seen.get(p.domain) ?? 0) + 1);
   const row = p => ({
     pid: p.pid, n: p.n, name: p.name, domain: p.domain, match: p.match, score: p.score,
     correct: p.correct, shots: p.shots, online: isOnline(p) ? 1 : 0, duplicate: seen.get(p.domain) > 1 ? 1 : 0,
-    lms: p.lms ? { domain: p.lms.domain, email: p.lms.email, name: p.lms.name, unit: p.lms.unit } : null,
+    grant: { ...p.grant }, items: { ...p.items },
+    campaign: p.campaign
+      ? { domain: p.campaign.domain, email: p.campaign.email, name: p.campaign.name, unit: p.campaign.unit, days: p.campaign.days, quiz: p.campaign.quiz }
+      : null,
     near: MATCHED.has(p.match) ? [] : nearPeople(p)
       .filter(person => !taken.has(person.domain))
       .slice(0, 4)
-      .map(person => ({ domain: person.domain, email: person.email, name: person.name, unit: person.unit })),
+      .map(person => ({ domain: person.domain, email: person.email, name: person.name, unit: person.unit, items: grantFor(person) })),
   });
   return {
     roster: rosterMeta(),
@@ -1223,7 +1288,8 @@ function mappingReport() {
   };
 }
 
-// MC chỉ tay một người trong LMS cho một người chơi (hoặc bỏ chỉ định, cho về dò tự động).
+// MC chỉ tay một người trong danh sách chiến dịch cho một người chơi (hoặc bỏ chỉ định, cho về
+// dò tự động). Ghép xong là vật phẩm của người đó về tay ngay, nếu ván chưa bắt đầu.
 function assignPlayer({ pid, domain }) {
   const p = players.get(pid);
   if (!p) return [404, { error: 'Không còn người chơi này' }];
@@ -1232,15 +1298,17 @@ function assignPlayer({ pid, domain }) {
     applyIdentity(p);
   } else {
     const person = rosterIndex.byDomain.get(normalizeDomain(domain));
-    if (!person) return [400, { error: 'Không có ai trong danh sách LMS với domain này' }];
-    const clash = [...players.values()].find(o => o !== p && o.lms?.domain === person.domain);
+    if (!person) return [400, { error: 'Không có ai trong danh sách chiến dịch với domain này' }];
+    const clash = [...players.values()].find(o => o !== p && o.campaign?.domain === person.domain);
     if (clash) return [409, { error: `${person.email} đã ghép cho người chơi gõ "${clash.domain}" — bỏ ghép người đó trước` }];
     p.match = 'manual';
-    p.lms = person;
-    p.name = shortName(person.name || prettyName(p.domain));
-    logEvent(`MC ghép ${p.domain} → ${person.email}`, 'info');
+    p.campaign = person;
+    applyIdentity(p);
+    logEvent(`MC ghép ${p.domain} → ${person.email} · ${grantLabel(p)}`, 'info');
   }
+  if (['lobby', 'end'].includes(game.phase)) p.items = { ...p.grant };
   if (p.turret >= 0) broadcastScreens(seatsMessage());
+  sendRanks();
   refreshHost();
   return [200, { ok: true, match: p.match, name: p.name }];
 }
@@ -1318,19 +1386,23 @@ function useItem(p, item) {
 
 const MATCH_LABEL = { exact: 'khớp', key: 'khớp (thiếu dấu chấm)', manual: 'MC ghép tay', none: 'chưa ghép' };
 
-// Cột đầu là domain người ta tự gõ, cột sau là người trong LMS mà nó ghép về — giữ cả hai để sau
-// buổi còn soát lại được, chứ không phải tin một cột đã bị sửa.
+// Cột `domain` là chuỗi người ta tự gõ, `campaign_email` là người trong danh sách chiến dịch mà
+// nó ghép về — giữ cả hai để sau buổi còn soát lại được, chứ không phải tin một cột đã bị sửa.
+// Ba cột `got_*` ghi lại đúng những gì người đó cầm vào trận, để đối chiếu với chiến dịch.
 function resultsCsv() {
   const cell = v => {
     const s = String(v ?? '');
     return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
   };
   const header = [
-    'rank', 'domain', 'lms_email', 'lms_name', 'lms_unit', 'match', 'name',
+    'domain', 'campaign_email', 'campaign_name', 'campaign_unit', 'match', 'name',
+    'login_days', 'got_hint', 'got_shield', 'got_boost',
     'score', 'correct', 'time_s', 'shots', ...game.round.map(q => q.id),
   ];
-  const rows = leaderboard().map((p, i) => [
-    i + 1, p.domain, p.lms?.email ?? '', p.lms?.name ?? '', p.lms?.unit ?? '', MATCH_LABEL[p.match] ?? p.match, p.name,
+  const yesNo = n => (n ? 'có' : '');
+  const rows = leaderboard().map(p => [
+    p.domain, p.campaign?.email ?? '', p.campaign?.name ?? '', p.campaign?.unit ?? '', MATCH_LABEL[p.match] ?? p.match, p.name,
+    p.campaign?.days ?? '', yesNo(p.grant.hint), yesNo(p.grant.shield), yesNo(p.grant.boost),
     p.score, p.correct, (p.timeMs / 1000).toFixed(1), p.shots,
     ...game.round.map((q, qi) => {
       const a = p.picks[qi]?.choice;
@@ -1513,7 +1585,7 @@ async function handleApi(req, res, url, path) {
     if (action === 'mapping' && req.method === 'GET') return json(res, 200, mappingReport());
     if (action === 'people' && req.method === 'GET') {
       // Ô tìm của MC: cả danh sách nằm trên server, chỉ 8 dòng khớp mới đi qua đường truyền.
-      const taken = new Set([...players.values()].map(p => p.lms?.domain).filter(Boolean));
+      const taken = new Set([...players.values()].map(p => p.campaign?.domain).filter(Boolean));
       return json(res, 200, {
         people: search(rosterIndex, url.searchParams.get('q'), 20)
           .filter(person => !taken.has(person.domain))
@@ -1533,12 +1605,13 @@ async function handleApi(req, res, url, path) {
       const parsed = parseRoster(body.text ?? '');
       if (!parsed.people.length) return json(res, 400, { error: 'Không đọc ra địa chỉ nào — dán lại cột email hoặc cả bảng từ Excel' });
       try {
-        await saveRoster({ people: parsed.people, source: String(body.source ?? 'dán tay').slice(0, 120), updatedAt: new Date().toISOString() });
+        await saveRoster({ people: parsed.people, rewards: parsed.rewards, source: String(body.source ?? 'dán tay').slice(0, 120), updatedAt: new Date().toISOString() });
       } catch (err) {
         return json(res, 500, { error: `Không lưu lên Supabase được nên chưa đổi gì: ${err.message}` });
       }
       rematchPlayers();
-      logEvent(`Nạp danh sách LMS: ${parsed.people.length} người${parsed.duplicates ? `, bỏ ${parsed.duplicates} dòng trùng` : ''}`, 'good');
+      const how = parsed.rewards ? 'theo phần thưởng trong file' : 'không có cột phần thưởng — ai trong danh sách nhận đủ 3 món';
+      logEvent(`Nạp danh sách chiến dịch: ${parsed.people.length} người, ${how}${parsed.duplicates ? `, bỏ ${parsed.duplicates} dòng trùng` : ''}`, 'good');
       return json(res, 200, { ok: true, ...rosterMeta(), skipped: parsed.skipped, duplicates: parsed.duplicates, columns: parsed.columns });
     }
     if (action === 'roster' && req.method === 'DELETE') {
@@ -1549,7 +1622,7 @@ async function handleApi(req, res, url, path) {
       }
       for (const p of players.values()) p.match = 'none';
       rematchPlayers();
-      logEvent('Đã xoá danh sách LMS', 'warn');
+      logEvent('Đã xoá danh sách chiến dịch — cả phòng quay lại nhận đủ 3 vật phẩm', 'warn');
       return json(res, 200, { ok: true, ...rosterMeta() });
     }
     if (action === 'assign' && req.method === 'POST') {
@@ -1667,7 +1740,7 @@ server.listen(PORT, () => {
   console.log(`  Bộ câu hỏi: ${game.quiz.questions.length} câu, ${game.quiz.time}s trả lời + ${game.quiz.fire}s bắn/câu, ${TURRET_SLOTS} ụ súng`);
   console.log(`  Lưu ở: ${store}`);
   console.log(rosterIndex.size
-    ? `  Danh sách LMS: ${rosterIndex.size} người — điện thoại soát domain ngay lúc gõ`
-    : '  Danh sách LMS: chưa có — dán vào "Ghép LMS" trên bảng điều khiển (trước hoặc sau buổi đều được)');
+    ? `  Chiến dịch 7 ngày: ${rosterIndex.size} người${roster.rewards ? ', phát vật phẩm theo file' : ' (file không có cột phần thưởng → ai trong danh sách nhận đủ 3 món)'}`
+    : '  Chiến dịch 7 ngày: chưa nạp danh sách — cả phòng nhận đủ 3 vật phẩm');
   if (unconfirmed.length) console.log(`  ⚠ Đáp án cần team xác nhận: ${unconfirmed.join(', ')}`);
 });

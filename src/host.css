@@ -322,6 +322,7 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .mapper-load { display: flex; flex-direction: column; min-height: 0; padding: 16px; border-right: 1px solid var(--line); overflow-y: auto; }
 .mapper-load h3 { margin: 0 0 6px; font: 800 13px var(--font-disp); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
 .mapper-load p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.5; }
+.mapper-load .reward-rule { padding: 7px 9px; border-left: 2px solid var(--orange); border-radius: 0 6px 6px 0; background: #16293c; color: #cfe0f0; }
 .mapper-load code { padding: 1px 4px; border-radius: 4px; background: #0a1826; color: #b9d4ef; font-size: 11.5px; }
 .mapper-load textarea {
   width: 100%; min-height: 150px; padding: 9px 11px; box-sizing: border-box; resize: vertical;
@@ -353,6 +354,14 @@ body[data-phase="reveal"] .badge, body[data-phase="fire"] .badge { background: #
 .map-hit { color: var(--good); font-size: 12.5px; line-height: 1.45; }
 .map-hit b { color: var(--text); }
 .map-hit .how { color: var(--faint); }
+/* Ba chấm vật phẩm: sáng là nhận được ở chiến dịch, mờ là chưa đủ điều kiện. */
+.map-items { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.map-items i { width: 9px; height: 9px; border-radius: 50%; background: #24384d; }
+.map-items i.on[data-item="hint"] { background: var(--blue-soft); }
+.map-items i.on[data-item="shield"] { background: var(--good); }
+.map-items i.on[data-item="boost"] { background: var(--orange); }
+.map-items b { margin-left: 3px; color: var(--text); font-weight: 600; }
+.map-items.empty b { color: var(--warn); }
 .map-fixes { display: flex; flex-wrap: wrap; gap: 5px; }
 .map-fixes button {
   padding: 3px 9px; border: 1px solid var(--line-2); border-radius: 999px;

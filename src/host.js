@@ -1,7 +1,7 @@
 // MC dashboard on the laptop screen: every control, the answer key, live answers and shots, who is
 // connected, whether the projector is up, and a preview of what the audience sees. The projector
 // itself (/screen) only shows the game.
-import { ANSWERS, shapeSvg } from './config.js';
+import { ANSWERS, ITEMS, shapeSvg } from './config.js';
 import { normalizeDomain } from './identity.js';
 
 const $ = id => document.getElementById(id);
@@ -160,13 +160,17 @@ function onState(s) {
 // kéo lại báo cáo — gom lại một nhịp để cả trăm người vào cùng lúc không thành cả trăm lượt hỏi.
 let mapRefresh = 0;
 function renderMapBadge() {
-  const lms = state?.lms;
-  const behind = lms ? Math.max(0, lms.players - lms.matched) : 0;
-  $('mapBadge').hidden = !lms?.size || !behind;
-  $('mapBadge').textContent = behind;
-  $('mapBtn').title = !lms?.size
-    ? 'Chưa nạp danh sách LMS — dán bản xuất vào đây, trước hay sau buổi đều được'
-    : `${lms.matched}/${lms.players} người chơi đã ghép được về LMS`;
+  const c = state?.campaign;
+  // Con số trên nút là số người MC còn sửa được: gõ sai domain nên chưa ghép ra ai. Người ghép
+  // được mà tay trắng thì đúng luật chiến dịch rồi, không phải việc để MC chạy theo.
+  const fixable = c ? Math.max(0, c.players - c.matched) : 0;
+  $('mapBadge').hidden = !c?.size || !fixable;
+  $('mapBadge').textContent = fixable;
+  $('mapBtn').title = !c?.size
+    ? 'Chưa nạp danh sách chiến dịch — cả phòng đang nhận đủ 3 vật phẩm'
+    : fixable
+      ? `${fixable} người chưa ghép được vào chiến dịch nên đang tay trắng — ghép tay ở đây`
+      : `${c.matched}/${c.players} người chơi đã nhận đúng phần thưởng của mình${c.empty ? ` · ${c.empty} người chưa kiếm được món nào ở chiến dịch` : ''}`;
   if ($('mapper').hidden) return;
   clearTimeout(mapRefresh);
   mapRefresh = setTimeout(() => loadMapping().catch(() => { /* mở lại là có */ }), 600);
@@ -371,7 +375,7 @@ function renderRoster() {
         const unmatched = state.lms?.size && r.match === 'none';
         td.append(Object.assign(document.createElement('i'), { className: 'dot' }), text);
         if (r.domain) td.append(Object.assign(document.createElement('small'), { className: `domain${unmatched ? ' off-list' : ''}`, textContent: unmatched ? `⚠ ${r.domain}` : r.domain }));
-        td.title = `${text} · ${r.domain}${unmatched ? ' — không có trong danh sách LMS' : ''}${r.online ? '' : ' (mất kết nối)'}`;
+        td.title = `${text} · ${r.domain}${unmatched ? ' — không có trong danh sách chiến dịch, đang tay trắng' : ''}${r.online ? '' : ' (mất kết nối)'}`;
       } else if (text === null) {
         const chip = Object.assign(document.createElement('span'), { className: `st ${status}`, textContent: STATUS_LABEL[status] ?? (status === 'pending' ? 'Chưa chọn' : '–') });
         td.append(chip);
@@ -726,10 +730,12 @@ function downloadDraft() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-// ---- Ghép LMS ----------------------------------------------------------------------------
-// Mỗi người chơi gõ domain mail công ty, nên ván chơi và bản xuất của LMS có chung một khoá.
-// Màn này làm hai việc trên cùng một dữ liệu: nạp bản xuất (trước buổi thì điện thoại soát ngay
-// lúc người ta gõ; sau buổi thì ghép lại từ domain đã ghi), và ghép tay những người máy chịu thua.
+// ---- Phần thưởng chiến dịch 7 ngày ---------------------------------------------------------
+// Người chơi gõ domain mail công ty, nên ván chơi và bản xuất chiến dịch của dev có chung một
+// khoá — gõ đúng là nhận đúng vật phẩm đã kiếm được trên platform. Màn này làm hai việc trên
+// cùng một dữ liệu: nạp bản xuất, và ghép tay những người máy dò không ra (họ đang tay trắng).
+const ITEM_KEYS = ['hint', 'shield', 'boost'];
+const itemList = items => ITEM_KEYS.filter(k => items?.[k]).map(k => ITEMS[k].name);
 let report = null;
 let mapTab = 'unmatched';
 let mapSig = '';
@@ -767,6 +773,22 @@ function personLabel(person) {
   return [person.name || person.domain, person.unit].filter(Boolean).join(' · ');
 }
 
+// Ba chấm vật phẩm: sáng là nhận được, mờ là chưa đủ điều kiện ở chiến dịch.
+function itemDots(items) {
+  const row = document.createElement('span');
+  row.className = 'map-items';
+  for (const k of ITEM_KEYS) {
+    const dot = Object.assign(document.createElement('i'), { className: items?.[k] ? 'on' : '' });
+    dot.dataset.item = k;
+    dot.title = `${ITEMS[k].name}${items?.[k] ? '' : ' — chưa nhận được'}`;
+    row.append(dot);
+  }
+  const got = itemList(items);
+  row.append(Object.assign(document.createElement('b'), { textContent: got.length ? got.join(' + ') : 'chưa có vật phẩm nào' }));
+  if (!got.length) row.classList.add('empty');
+  return row;
+}
+
 // Ghép tay: đổi trên server trước, rồi mới vẽ lại từ báo cáo mới — để không bao giờ hiện một
 // đường ghép mà server không có.
 async function assign(pid, domain) {
@@ -778,7 +800,7 @@ async function assign(pid, domain) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
     await loadMapping(true);
-    toast(domain ? `Đã ghép về ${domain}` : 'Đã bỏ ghép, để máy dò lại', 'good');
+    toast(domain ? `Đã ghép về ${domain} — vật phẩm đã về tay người chơi` : 'Đã bỏ ghép, để máy dò lại', 'good');
   } catch (err) {
     toast(err.message, 'bad');
   }
@@ -790,8 +812,11 @@ function chips(people, onPick) {
   for (const person of people) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.title = person.email;
-    btn.append(person.domain, Object.assign(document.createElement('small'), { textContent: person.name ? ` · ${person.name}` : '' }));
+    const got = itemList(person.items);
+    btn.title = `${person.email}${got.length ? ` — ${got.join(' + ')}` : ' — chưa có vật phẩm nào'}`;
+    btn.append(person.domain, Object.assign(document.createElement('small'), {
+      textContent: `${person.name ? ` · ${person.name}` : ''}${got.length ? ` · ${got.length} vật phẩm` : ''}`,
+    }));
     btn.addEventListener('click', () => onPick(person));
     row.append(btn);
   }
@@ -805,7 +830,7 @@ function searchBox(row, results) {
   wrap.className = 'map-search';
   const list = Object.assign(document.createElement('datalist'), { id: `lms-${row.pid}` });
   const input = Object.assign(document.createElement('input'), {
-    type: 'search', placeholder: 'Tìm trong LMS theo tên hoặc domain…', autocomplete: 'off',
+    type: 'search', placeholder: 'Tìm trong danh sách theo tên hoặc domain…', autocomplete: 'off',
   });
   input.setAttribute('list', list.id);
   const btn = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Ghép' });
@@ -831,7 +856,7 @@ function searchBox(row, results) {
       const people = await find();
       const exact = people.find(person => person.domain === normalizeDomain(q));
       if (exact || people.length === 1) return assign(row.pid, (exact ?? people[0]).domain);
-      if (!people.length) return toast(`Không tìm thấy "${q}" trong danh sách LMS`, 'bad');
+      if (!people.length) return toast(`Không tìm thấy "${q}" trong danh sách chiến dịch`, 'bad');
       results.replaceChildren(chips(people, person => assign(row.pid, person.domain)));
     } catch (err) {
       toast(err.message, 'bad');
@@ -860,18 +885,21 @@ function mapRow(row) {
 
   const to = document.createElement('div');
   to.className = 'map-to';
-  if (row.lms) {
+  if (row.campaign) {
+    const c = row.campaign;
+    const earned = [
+      c.days === null ? '' : `đăng nhập ${c.days} ngày`,
+      c.quiz ? 'có tạo bảng câu hỏi' : '',
+      row.match === 'manual' ? 'MC ghép tay' : row.match === 'key' ? 'khớp khi bỏ dấu chấm' : 'khớp',
+    ].filter(Boolean).join(' · ');
     const hit = document.createElement('div');
     hit.className = 'map-hit';
     hit.append(
       '✔ ',
-      Object.assign(document.createElement('b'), { textContent: row.lms.email }),
-      Object.assign(document.createElement('span'), {
-        className: 'how',
-        textContent: ` — ${personLabel(row.lms)} · ${row.match === 'manual' ? 'MC ghép tay' : row.match === 'key' ? 'khớp khi bỏ dấu chấm' : 'khớp'}`,
-      }),
+      Object.assign(document.createElement('b'), { textContent: c.email }),
+      Object.assign(document.createElement('span'), { className: 'how', textContent: ` — ${personLabel(c)} · ${earned}` }),
     );
-    to.append(hit);
+    to.append(hit, itemDots(row.grant));
     const undo = document.createElement('div');
     undo.className = 'map-fixes';
     const btn = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Bỏ ghép' });
@@ -879,6 +907,7 @@ function mapRow(row) {
     undo.append(btn);
     to.append(undo);
   } else {
+    to.append(itemDots(row.grant));
     const results = document.createElement('div');
     if (row.near.length) results.append(chips(row.near, person => assign(row.pid, person.domain)));
     to.append(results, searchBox(row, results));
@@ -892,8 +921,8 @@ function renderMapper(force = false) {
   const { roster, matched, unmatched, absent } = report;
   const when = roster.updatedAt ? new Date(roster.updatedAt).toLocaleString('vi-VN', { hour12: false }) : '';
   $('mapperMeta').textContent = roster.size
-    ? `${fmt(roster.size)} người trong LMS · ${fmt(absent)} người không chơi · nạp lúc ${when}`
-    : 'Chưa nạp danh sách LMS';
+    ? `${fmt(roster.size)} người trong chiến dịch · ${fmt(absent)} người không chơi${roster.rewards ? '' : ' · file không có cột phần thưởng, ai trong danh sách nhận đủ 3 món'} · nạp lúc ${when}`
+    : 'Chưa nạp danh sách — cả phòng đang nhận đủ 3 vật phẩm';
   $('missCount').textContent = unmatched.length;
   $('hitCount').textContent = matched.length;
   $('tabMiss').setAttribute('aria-selected', String(mapTab === 'unmatched'));
@@ -911,8 +940,8 @@ function renderMapper(force = false) {
   $('mapperEmpty').textContent = !matched.length && !unmatched.length
     ? 'Chưa có ai vào phòng.'
     : mapTab === 'unmatched'
-      ? (roster.size ? '🎉 Ai trong phòng cũng đã ghép được về LMS.' : 'Nạp danh sách LMS ở cột bên trái để bắt đầu ghép.')
-      : 'Chưa ghép được ai.';
+      ? (roster.size ? '🎉 Ai trong phòng cũng nhận đúng phần thưởng của mình.' : 'Nạp danh sách chiến dịch ở cột bên trái để phát vật phẩm theo đúng những gì mọi người đã kiếm được.')
+      : 'Chưa ai nhận được vật phẩm từ chiến dịch.';
   $('mapperClear').hidden = !roster.size;
 }
 
@@ -930,6 +959,7 @@ async function loadRosterText(text, source) {
     if (!res.ok) throw new Error(data.error || `Lỗi ${res.status}`);
     const notes = [
       `Đã nạp ${fmt(data.size)} người`,
+      data.rewards ? 'phát vật phẩm theo cột trong file' : '⚠ file không có cột ngày đăng nhập hay bảng câu hỏi — ai trong danh sách nhận đủ 3 món',
       data.duplicates ? `bỏ ${data.duplicates} dòng trùng` : '',
       data.skipped ? `bỏ ${data.skipped} dòng không có địa chỉ` : '',
       data.remote ? 'đã lưu lên Supabase' : 'lưu trên máy chạy server',
@@ -944,7 +974,7 @@ async function loadRosterText(text, source) {
 }
 
 async function clearRoster() {
-  if (!confirm('Xoá danh sách LMS khỏi server? Người chơi đã ghép sẽ về trạng thái chưa ghép.')) return;
+  if (!confirm('Xoá danh sách chiến dịch? Cả phòng sẽ quay lại nhận đủ 3 vật phẩm như khi chưa có danh sách.')) return;
   try {
     const res = await fetch(`/api/host/roster?${keyParam}`, { method: 'DELETE' });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Lỗi ${res.status}`);
