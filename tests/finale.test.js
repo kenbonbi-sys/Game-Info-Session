@@ -66,9 +66,9 @@ async function gameFor(t, { chargeSeconds = 60, finale = fixtureQuestion } = {})
     const stream = {
       messages,
       close: () => abort.abort(),
-      // Long enough to sit out the longest phase there is: one unleash carries the comic, the
-      // throw and the defeat. Tied to the config so lengthening the finale doesn't fail the suite.
-      waitFor(predicate, timeout = (FINALE.unleashSeconds + 6) * 1000) {
+      // Long enough to sit out the longest phase there is: the victory clip. Tied to the config
+      // so lengthening any part of the finale doesn't start failing the suite.
+      waitFor(predicate, timeout = (FINALE.unleashSeconds + FINALE.victorySeconds + 4) * 1000) {
         const found = messages.findLast(predicate);
         if (found) return Promise.resolve(found);
         return new Promise((resolveMessage, reject) => {
@@ -131,13 +131,13 @@ test('server finale sequencing and reconnects', { concurrency: 4, timeout: 45000
       assert.equal(unleash.endsAt - unleash.phaseAt, FINALE.unleashSeconds * 1000);
       for (const action of ['next', 'fill', 'start']) assert.equal((await app.host(action)).status, 200);
       assert.equal((await app.host('end')).status, 404, 'No end shortcut may bypass the clip');
-      await delay(FINALE.impactAt * 1000 + 100);
+      await delay(FINALE.defeatAt * 1000 - 500);
       const reconnected = await app.events();
       const resumed = await reconnected.waitFor(m => m.type === 'state');
       assert.equal(resumed.phase, 'unleash');
       assert.equal(resumed.phaseAt, unleash.phaseAt);
       assert.equal(resumed.endsAt, unleash.endsAt);
-      assert.ok(resumed.bossDmg < resumed.bossMax, 'The boss must still survive during the hurt animation');
+      assert.ok(resumed.bossDmg < resumed.bossMax, 'The boss must still survive while the film is playing');
       const defeated = await app.screen.waitFor(m => m.type === 'state' && m.phase === 'unleash' && m.boss === 0);
       assert.ok(defeated.now - unleash.phaseAt >= FINALE.defeatAt * 1000 - 20);
       const victory = await app.state('victory');

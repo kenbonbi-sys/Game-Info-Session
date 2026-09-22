@@ -82,18 +82,19 @@
       </div>
     </section>
 
-    <div id="unleash" class="unleash-scene" aria-live="polite">
-      <div class="unleash-chapter" aria-hidden="true"><span>ĐÒN KẾT LIỄU</span><i></i><span>CÙNG NHAU VƯỢT QUA NỖI SỢ</span></div>
-      <div class="unleash-caption">
-        <span id="unleashLabel" class="unleash-label"></span>
-        <b id="unleashWord" class="unleash-word"></b>
-        <span id="unleashSub" class="unleash-sub"></span>
-      </div>
+    <!-- Nằm dưới phim, chỉ thấy được nếu phim không chạy nổi. -->
+    <div id="unleash" class="unleash-scene">
+      <div class="unleash-chapter"><span>ĐÒN KẾT LIỄU</span><i></i><span>CÙNG NHAU VƯỢT QUA NỖI SỢ</span></div>
     </div>
 
-    <!-- Sáu khung truyện của đòn kết liễu: ba khung đọc trước cú ném, ba khung còn lại đập vào
-         đúng nhịp cảnh đang chạy bên dưới. Nằm trên caption, dưới clip chiến thắng. -->
-    <canvas id="comic" class="comic-canvas" aria-label="Truyện tranh đòn kết liễu: cáo ném bình nước, nước nổ tung vào Quái Vật Dễ Sợ, cả đàn cáo ăn mừng"></canvas>
+    <!-- Đòn kết liễu: phim 5 giây, chạy ngay khi bình đầy. Có tiếng — máy chiếu đã mở khoá âm
+         thanh từ lần bấm phím đầu tiên; trình duyệt nào vẫn chặn thì rơi về chế độ câm. -->
+    <section id="finisher" class="finisher-scene" aria-label="Đòn kết liễu: cáo ném bình nước, nước nổ tung vào Quái Vật Dễ Sợ và nỗi sợ tan thành khói ướt">
+      <video id="finisherVideo" class="finisher-video" preload="auto" playsinline disablepictureinpicture poster="assets/video/fox-finisher-poster.jpg">
+        <source src="assets/video/fox-finisher.webm" type="video/webm">
+        <source src="assets/video/fox-finisher.mp4" type="video/mp4">
+      </video>
+    </section>
 
     <section id="victory" class="victory-scene" aria-label="Clip các chú cáo cùng hợp sức chiến thắng">
       <video id="victoryVideo" class="victory-video" preload="auto" muted playsinline disablepictureinpicture poster="assets/video/fox-team-victory-poster.jpg" aria-label="Các chú cáo hội tụ, cùng ăn mừng chiến thắng"></video>

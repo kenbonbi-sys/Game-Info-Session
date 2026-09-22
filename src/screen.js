@@ -2,14 +2,12 @@
 // Kahoot-style question board, the shooting rounds and the final Top 5. It has no controls: the MC
 // drives the game from the dashboard at /host, which also embeds this page as a preview (?preview=1).
 import { ANSWERS, ARENA, shapeSvg } from './config.js';
-import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossUnleash, bossHealth } from './arena-view.js';
+import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossHealth } from './arena-view.js';
 import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, startOutro, endStorm } from './fear-cloud.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
-import { finaleBeat } from './finale-scene.js';
 import { FINALE } from './finale-config.js';
-import { loadComicArt, drawComicPage, drawComicCutIn } from './finale-comic.js';
 import { loadVictoryArt, drawVictoryFilm } from './victory-film.js';
 
 const $ = id => document.getElementById(id);
@@ -39,13 +37,7 @@ let victoryArt = null;
 let podiumKey = '';
 
 const phaseElapsed = s => Math.max(0, ((Date.now() + offset) - (s.phaseAt || s.now)) / 1000);
-// The comic reads first, so the throw's own clock starts that much later into the phase.
-const sceneElapsed = s => phaseElapsed(s) - FINALE.comicSeconds;
-
-let comicArt = null;
-let comicScale = 0;
-let comicPainted = false;
-const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
+const finisherPlayback = { active: false, muted: false };
 
 function stopVictory() {
   $('victoryVideo').pause();
@@ -96,6 +88,44 @@ function tickVictory(now) {
   } else if (now - victoryPlayback.progressAt > 2500 && !document.hidden) {
     fallbackVictory();
   }
+}
+
+// The finishing blow plays with sound. A projector has usually had its audio unlocked by the
+// first key press (F for fullscreen); where the browser still refuses a sound-on autoplay we
+// replay muted rather than stall — the hall would rather see the film silent than see nothing.
+function stopFinisher() {
+  $('finisherVideo').pause();
+  finisherPlayback.active = false;
+  $('finisher').hidden = false;
+}
+
+function startFinisher(s) {
+  const video = $('finisherVideo');
+  Object.assign(finisherPlayback, { active: true, muted: false });
+  $('finisher').hidden = false;
+  video.muted = false;
+  const roll = () => {
+    if (!finisherPlayback.active) return;
+    // A projector opened late, or one that reconnects mid-blow, joins at the server's second
+    // instead of replaying the throw the hall has already watched.
+    video.currentTime = Math.min(phaseElapsed(s), Math.max(0, (video.duration || FINALE.finisherSeconds) - 0.05));
+    video.play().catch(() => {
+      if (finisherPlayback.muted) return failFinisher();
+      finisherPlayback.muted = true;
+      video.muted = true;
+      video.play().catch(failFinisher);
+    });
+  };
+  if (video.readyState >= 1) roll();
+  else video.addEventListener('loadedmetadata', roll, { once: true });
+  if (video.error) failFinisher();
+}
+
+// Nothing to play: drop the cover so the arena and the finishing-blow caption underneath carry
+// the moment instead of five seconds of black. The server still fells the boss and moves on.
+function failFinisher() {
+  finisherPlayback.active = false;
+  $('finisher').hidden = true;
 }
 
 function connect() {
@@ -174,13 +204,15 @@ function onState(s) {
   if (changed) enterPhase(s, !!prev);
   if (prev?.phase === 'fire' && s.phase === 'fire' && prev.firing && !s.firing) ceaseFire();
   // Follow the server's boss HP; a new game or a freshly opened page snaps instead of animating.
-  // The finale is the exception: bossUnleash paces the last sliver so the boss suffers on cue.
-  if (s.phase !== 'unleash') syncBoss(s.bossDmg, s.bossMax, !prev || (changed && (s.phase === 'lobby' || s.phase === 'countdown')));
+  // The film covers the stage during the finale, so the arena no longer has to pace the last
+  // sliver itself: the server drops the boss on the frame the fear goes out and this follows.
+  syncBoss(s.bossDmg, s.bossMax, !prev || (changed && (s.phase === 'lobby' || s.phase === 'countdown')));
   render(s);
 }
 
 function enterPhase(s, live) {
   if (!['victory', 'end'].includes(s.phase)) stopVictory();
+  if (s.phase !== 'unleash') stopFinisher();
   setArenaPhase(s.phase);
   switch (s.phase) {
     case 'lobby':
@@ -218,16 +250,10 @@ function enterPhase(s, live) {
       renderCharge(s.charge ?? { taps: 0, goal: 300, full: false });
       if (live) banner('TÍCH NƯỚC — TAP TAP TAP!', 'warn');
       break;
-    case 'unleash': {
-      $('unleash').removeAttribute('data-beat');
+    case 'unleash':
       renderCharge({ ...(s.charge || {}), taps: s.charge?.goal || 300, goal: s.charge?.goal || 300, full: true });
-      const rect = $('chargeBottle').getBoundingClientRect();
-      const stage = $('stage').getBoundingClientRect();
-      const k = stage.width / ARENA.width;
-      syncBoss(s.bossDmg, s.bossMax, true);
-      bossUnleash({ elapsed: sceneElapsed(s), from: { x: (rect.x + rect.width / 2 - stage.x) / k, y: (rect.y + rect.height / 2 - stage.y) / k, width: rect.width / k, height: rect.height / k } });
+      startFinisher(s);
       break;
-    }
     case 'victory':
       startVictory(s);
       break;
@@ -408,15 +434,6 @@ function tickHud() {
     }
   }
   const left = Math.max(0, s.endsAt - (Date.now() + offset)) / 1000;
-  if (s.phase === 'unleash') {
-    const beat = finaleBeat(sceneElapsed(s));
-    if ($('unleash').dataset.beat !== beat.name) {
-      $('unleash').dataset.beat = beat.name;
-      $('unleashLabel').textContent = beat.label;
-      $('unleashWord').textContent = beat.title;
-      $('unleashSub').textContent = beat.sub;
-    }
-  }
   if (scene === 'countdown' || scene === 'breather') {
     const n = Math.max(1, Math.ceil(left));
     if (n !== lastCount) {
@@ -459,31 +476,6 @@ function fit() {
   document.documentElement.style.setProperty('--k', k);
   resizeArena(k * (window.devicePixelRatio || 1));
   resizeFearCloud(k * (window.devicePixelRatio || 1));
-  // The comic is painted art, so it wants the projector's real pixels, not the 1920 design grid.
-  comicScale = Math.max(0.5, Math.min(2, k * (window.devicePixelRatio || 1)));
-  const comic = $('comic');
-  const width = Math.round(ARENA.width * comicScale);
-  if (comic.width !== width) {
-    comic.width = width;
-    comic.height = Math.round(ARENA.height * comicScale);
-  }
-}
-
-// The page covers the stage before the throw; afterwards single panels punctuate the scene.
-// Both are pure functions of server time, so a projector joining late lands on the right panel.
-function tickComic() {
-  const comic = $('comic');
-  if (!comicScale) return;
-  const unleashing = state?.phase === 'unleash';
-  if (!unleashing && !comicPainted) return;
-  const ctx = comic.getContext('2d');
-  ctx.setTransform(comicScale, 0, 0, comicScale, 0, 0);
-  ctx.clearRect(0, 0, ARENA.width, ARENA.height);
-  comicPainted = false;
-  if (!unleashing) return;
-  const reduced = REDUCED_MOTION.matches;
-  comicPainted = drawComicPage(ctx, comicArt, phaseElapsed(state), reduced)
-    || drawComicCutIn(ctx, comicArt, sceneElapsed(state), reduced);
 }
 
 function toggleFullscreen() {
@@ -506,7 +498,6 @@ async function boot() {
   $('victoryVideo').addEventListener('ended', () => { if (victoryPlayback.active) victoryPlayback.complete = true; });
   $('victoryVideo').addEventListener('error', fallbackVictory);
   loadVictoryArt().then(art => { victoryArt = art; }).catch(err => console.warn('Victory fallback artwork:', err));
-  loadComicArt().then(art => { comicArt = art; });
   // initArena takes the canvas synchronously, so the first fit can size it while sprites load.
   const loading = initArena($('arena'));
   initFearCloud($('fearCanvas'));
@@ -541,7 +532,6 @@ async function boot() {
     } else {
       arenaFrame(dt, now / 1000);
     }
-    tickComic();
     tickVictory(now);
     tickBoss();
     if (state) tickHud();

@@ -219,27 +219,16 @@ body[data-scene="unleash"] .unleash-scene { visibility: visible; }
 .unleash-chapter { position: absolute; top: 100px; left: 100px; right: 100px; display: flex; align-items: center; gap: 20px; color: #91b8c7; font: 600 18px var(--font-sans); letter-spacing: .16em; }
 .unleash-chapter span:first-child { color: #d2f8ff; }
 .unleash-chapter i { width: 52px; height: 1px; background: #91b8c766; }
-.unleash-caption { position: absolute; bottom: 100px; left: 120px; right: 120px; display: grid; justify-items: center; gap: 13px; text-align: center; }
-.unleash-label { color: #86b9ca; font: 700 19px/1.4 var(--font-sans); letter-spacing: .19em; }
-.unleash-word { display: block; color: #e0faff; font: 800 76px/1.08 var(--font-disp); letter-spacing: -.025em; text-shadow: 0 3px 24px #75ddff22; text-wrap: balance; }
-.unleash-sub { color: #a9c8d3; font: 500 25px/1.4 var(--font-sans); }
-.unleash-scene[data-beat="throw"] .unleash-word { font-size: 90px; letter-spacing: .02em; }
-.unleash-scene[data-beat="impact"] .unleash-word { color: #fff; text-shadow: 0 0 35px #92eaff66; }
-.unleash-scene[data-beat="defeated"] .unleash-word { color: #ffe4b2; font-size: 72px; text-shadow: 0 3px 30px #eac68722; }
-.unleash-scene[data-beat="defeated"] .unleash-label { color: #d5b883; }
-.unleash-scene[data-beat="ready"] .unleash-caption { animation: finale-ready 550ms both; }
-.unleash-scene[data-beat="throw"] .unleash-caption { animation: finale-throw 300ms both; }
-.unleash-scene[data-beat="impact"] .unleash-caption { animation: finale-impact 380ms both; }
-.unleash-scene[data-beat="defeated"] .unleash-caption { animation: finale-victory 650ms both; }
 body[data-scene="unleash"] .hud, body[data-scene="unleash"] .banner { visibility: hidden; }
 @keyframes finale-ready { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes finale-throw { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
 @keyframes finale-impact { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 @keyframes finale-victory { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-/* Trang truyen phu kin san khau truoc cu nem, roi dap tung khung mot len canh dang chay.
-   z-index 6: tren caption cua unleash (5), duoi clip chien thang (8). */
-.comic-canvas { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; visibility: hidden; pointer-events: none; }
-body[data-scene="unleash"] .comic-canvas { visibility: visible; }
+/* Phim don ket lieu phu kin san khau. z-index 6: tren dong chu chuong cua unleash (5), duoi
+   clip chien thang (8). Nen den de khung 16:9 cua phim khong lo ra dau truong o hai ben. */
+.finisher-scene { position: absolute; inset: 0; z-index: 6; background: #06121c; visibility: hidden; pointer-events: none; }
+body[data-scene="unleash"] .finisher-scene { visibility: visible; }
+.finisher-video { width: 100%; height: 100%; object-fit: contain; background: #06121c; }
 .victory-scene { position: absolute; inset: 0; z-index: 8; background: #091623; visibility: hidden; opacity: 0; pointer-events: none; }
 body[data-scene="victory"] .victory-scene { visibility: visible; opacity: 1; pointer-events: auto; }
 .victory-video { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -278,7 +267,6 @@ body.idle .fs-hint, body.fullscreen .fs-hint, body.preview .fs-hint { opacity: 0
   *, *::before, *::after { transition-duration: 1ms !important; }
   .arrivals li, .top5 li, .podium li, .count-scene b.tick, .q-timer b, .opt-check,
   .bottle, .bottle svg { animation: none !important; }
-  .unleash-scene .unleash-caption { animation: none !important; }
   body[data-scene="end"] .podium li { animation: none; opacity: 1; }
   .banner.pop { animation: toast-pop 1.8s steps(1, end) both; }
 }

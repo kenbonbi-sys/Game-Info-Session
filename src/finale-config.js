@@ -1,21 +1,19 @@
-// Shared timing for the comic cut-in, the bottle throw, the boss defeat, and the team victory clip.
+// Shared timing for the finishing blow, the boss defeat, and the team victory clip.
 
-// The hall reads three comic panels before anything moves: the fox winds up, throws, and the
-// bottle is in the air with the boss finally noticing it. The canvas takes over on that
-// cliffhanger, so the panels lead into the action instead of retelling it.
-const COMIC = 4.2;
+// The finishing blow is a five-second film: the fox throws, the water lands, the fear fizzles
+// out. It starts the instant the bottle fills — nothing reads, nothing winds up first — and
+// hands straight over to the team clip.
+const FINISHER = 5.06;
 
-// liftAt…defeatAt are seconds from the start of the *scene*, which begins once the comic has
-// had its say. Everything that draws the throw counts from there and needs no comic awareness.
-// Only the phase length and the server's defeat timer run on phase time, which is comic + scene.
 export const FINALE = Object.freeze({
-  comicSeconds: COMIC,
-  liftAt: 0.95,
-  throwAt: 2.6,
-  impactAt: 4.15,
-  defeatAt: 6.85,
-  sceneSeconds: 9.1,
-  unleashSeconds: COMIC + 9.1,
+  finisherSeconds: FINISHER,
+  finisherWebm: '/assets/video/fox-finisher.webm',
+  finisherMp4: '/assets/video/fox-finisher.mp4',
+  // The film cuts to the wet, smoking skull here. The hall watches the fear go out at this
+  // second, so this is the second the boss loses its last HP.
+  defeatAt: 4.15,
+  // Half a second on the last frame before the celebration takes over.
+  unleashSeconds: FINISHER + 0.5,
   victorySeconds: 10,
   videoUrl: '/assets/video/fox-team-victory.webm',
 });

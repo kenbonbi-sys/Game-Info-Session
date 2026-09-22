@@ -954,13 +954,12 @@ function fillCharge(why) {
   game.boss.finisher = true;
   logEvent(`Bình nước đầy (${why}) — cùng ném bình vào Quái Vật!`, 'good');
   schedule('unleash', FINALE.unleashSeconds, startVictory);
-  // The boss stays alive while the comic reads, the bottle flies, hits, and makes it reel. Only
-  // the actual defeat moment may remove the last HP. schedule() also cancels this on reset.
-  // defeatAt is scene time, so the comic ahead of the scene has to be counted in.
+  // The boss stays alive while the film plays: it only loses its last HP on the frame the hall
+  // watches the fear go out. schedule() also cancels this on reset.
   const timer = setTimeout(() => {
     phaseTimers.delete(timer);
     defeatBoss();
-  }, (FINALE.comicSeconds + FINALE.defeatAt) * 1000);
+  }, FINALE.defeatAt * 1000);
   phaseTimers.add(timer);
   broadcastScreens(chargeMessage());
 }
