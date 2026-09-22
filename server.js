@@ -52,8 +52,7 @@ const CHARGE_MIN = 300;
 // but auto-clickers gain nothing either.
 const TAP_RATE = 12;
 const TAP_BURST = 12;
-// Seconds between the end of shooting and the next question when auto-advance is on.
-const FIRE_COOLDOWN = 2;
+// Nghỉ giữa hai câu là thứ MC chỉnh được (breakSeconds), không phải hằng số ở đây.
 // Seconds before the reveal once every connected player has answered.
 const ALL_ANSWERED_DELAY = 1.5;
 // A second "next" this soon after a step is a double press, not a request to skip the step.
@@ -136,6 +135,7 @@ function validateQuizData(data) {
     timePerQuestion: secs(data.timePerQuestion, 15, 5, 120),
     revealSeconds: secs(data.revealSeconds, 5, 1, 60),
     fireSeconds: secs(data.fireSeconds, 6, 1, 60),
+    breakSeconds: secs(data.breakSeconds, 5, 1, 60),
     shuffleOptions: data.shuffleOptions !== false,
     chargeSeconds: secs(data.chargeSeconds, 45, 5, 300),
     ...(finale ? { finale } : {}),
@@ -399,6 +399,9 @@ function loadQuiz() {
     time: data.timePerQuestion ?? 15,
     reveal: data.revealSeconds ?? 5,
     fire: data.fireSeconds ?? 6,
+    // Bắn xong là hội trường còn đang thở: chừng này giây để ngẩng lên, đặt tay lại rồi mới
+    // tới câu sau. MC chỉnh được trong phần cài đặt, thấp nhất 1 giây để vòng lặp không đứng.
+    pause: Math.max(1, Number(data.breakSeconds) || 5),
     shuffle: data.shuffleOptions !== false,
     // The hall gets this long to fill the bottle before it tops itself up, so a quiet or
     // half-empty room can never leave the finale hanging.
@@ -694,6 +697,7 @@ function stateFor(role) {
     time: game.quiz.time,
     reveal: game.quiz.reveal,
     fire: game.quiz.fire,
+    pause: game.quiz.pause,
     endsAt: game.endsAt,
     now: Date.now(),
     players: players.size,
@@ -1087,7 +1091,7 @@ function startFire() {
 
 function endFire() {
   game.firing = false;
-  schedule('fire', game.auto ? FIRE_COOLDOWN : 0, nextQuestion);
+  schedule('fire', game.auto ? game.quiz.pause : 0, nextQuestion);
 }
 
 function hostAction(action) {
@@ -1163,7 +1167,7 @@ function hostAction(action) {
       logEvent(`Tự chuyển: ${game.auto ? 'BẬT' : 'TẮT'}`, 'info');
       // Takes effect on the current pause too: off holds it for the MC, on resumes the countdown.
       if (game.phase === 'reveal') schedule('reveal', game.auto ? game.quiz.reveal : 0, startFire);
-      else if (game.phase === 'fire' && !game.firing) schedule('fire', game.auto ? FIRE_COOLDOWN : 0, nextQuestion);
+      else if (game.phase === 'fire' && !game.firing) schedule('fire', game.auto ? game.quiz.pause : 0, nextQuestion);
       else broadcast();
       return true;
     default:

@@ -17,7 +17,7 @@ const TAP_FLUSH_MS = 250;
 const PLAY_VIEWS = ['countdown', 'reading', 'answer', 'answered', 'result', 'stunned', 'ceasefire'];
 
 const net = { pid: null, name: '', domain: '', no: null, es: null, offset: 0 };
-const quiz = { phase: 'connecting', index: -1, total: 15, read: 10, time: 15, fire: 6, endsAt: 0, players: 0, options: 4, answer: null, firing: false, boss: 100 };
+const quiz = { phase: 'connecting', index: -1, total: 15, read: 10, time: 15, fire: 6, pause: 5, endsAt: 0, players: 0, options: 4, answer: null, firing: false, boss: 100 };
 // picked: tile chosen for the current question · result: the server's verdict, known from the reveal on.
 // removed: options the hint took away for removedIndex.
 const me = {
@@ -236,7 +236,7 @@ function onState(msg) {
   net.offset = msg.now - Date.now();
   const prev = { phase: quiz.phase, index: quiz.index };
   Object.assign(quiz, {
-    phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, read: msg.read ?? quiz.read, time: msg.time, fire: msg.fire, endsAt: msg.endsAt,
+    phase: msg.phase, phaseAt: msg.phaseAt, index: msg.index, total: msg.total, read: msg.read ?? quiz.read, time: msg.time, fire: msg.fire, pause: msg.pause ?? quiz.pause, endsAt: msg.endsAt,
     players: msg.players, options: msg.options ?? 4, answer: msg.answer ?? null, firing: msg.firing, boss: msg.boss, react: !!msg.react,
     charge: msg.charge ?? quiz.charge,
   });
@@ -563,9 +563,10 @@ function renderWait(view) {
       extra.push(bossLine());
       break;
     case 'ceasefire':
-      badge = { kind: 'info', content: '✋' };
-      title = 'Ngưng bắn!';
-      text = r?.correct ? '' : 'Chờ câu hỏi tiếp theo nhé.';
+      // Quãng nghỉ có đồng hồ thì nó là lúc chuẩn bị; không có thì nó chỉ là lúc chờ MC.
+      badge = quiz.endsAt ? { kind: 'count', content: String(quiz.pause) } : { kind: 'info', content: '✋' };
+      title = quiz.endsAt ? 'Chuẩn bị câu sau!' : 'Ngưng bắn!';
+      text = quiz.endsAt ? 'Ngẩng lên màn hình lớn, câu tiếp theo sắp hiện.' : r?.correct ? '' : 'Chờ câu hỏi tiếp theo nhé.';
       if (r?.correct) extra.push(Object.assign(document.createElement('span'), { className: 'stat-line', innerHTML: `Bạn đã bắn <b>${shotCount().toLocaleString('vi-VN')}</b> phát` }));
       extra.push(bossLine());
       break;
@@ -702,7 +703,7 @@ function frame(t) {
       $('timer').querySelector('[role="progressbar"]').setAttribute('aria-valuenow', seconds);
     }
     $('timer').classList.toggle('urgent', seconds <= 5);
-  } else if (view === 'countdown' || view === 'reading') {
+  } else if (view === 'countdown' || view === 'reading' || (view === 'ceasefire' && quiz.endsAt)) {
     const n = String(Math.max(1, Math.ceil(left)));
     if ($('waitBadge').textContent !== n) $('waitBadge').textContent = n;
   } else if (view === 'fire') {

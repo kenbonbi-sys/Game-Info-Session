@@ -626,6 +626,7 @@ const SECOND_CHOICES = {
   fTime: [10, 15, 20, 25, 30, 45, 60, 90],
   fReveal: [3, 5, 8, 10, 15, 20],
   fFire: [4, 5, 6, 8, 10, 15],
+  fBreak: [2, 3, 5, 8, 10, 15],
   fCharge: [30, 45, 60, 90, 120, 180],
 };
 
@@ -656,6 +657,7 @@ function renderEditor() {
   fillSeconds('fTime', draft.timePerQuestion ?? 15);
   fillSeconds('fReveal', draft.revealSeconds ?? 5);
   fillSeconds('fFire', draft.fireSeconds ?? 6);
+  fillSeconds('fBreak', draft.breakSeconds ?? 5);
   fillSeconds('fCharge', draft.chargeSeconds ?? 45);
   $('fShuffle').value = String(draft.shuffleOptions !== false);
 }
@@ -694,6 +696,7 @@ function payload() {
     timePerQuestion: Number($('fTime').value),
     revealSeconds: Number($('fReveal').value),
     fireSeconds: Number($('fFire').value),
+    breakSeconds: Number($('fBreak').value),
     chargeSeconds: Number($('fCharge').value),
     shuffleOptions: $('fShuffle').value === 'true',
     finale: shrink(draft.finale),

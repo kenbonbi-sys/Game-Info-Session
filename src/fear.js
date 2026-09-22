@@ -98,10 +98,33 @@ function toast(text) {
 
 // ---- Vẽ ---------------------------------------------------------------------------
 
+// Điện thoại đang nằm trong túi hoặc trên đùi: một nhịp rung dài một giây là cách duy nhất
+// nói được "tới lượt bạn gõ" mà không cần ai nhìn màn hình.
+// Trình duyệt chỉ cho rung sau khi người ta đã chạm vào trang, nên lần rung bị nuốt sẽ được
+// hẹn lại cho cú chạm kế tiếp.
+let buzzPending = false;
+
+function buzz() {
+  if (!navigator.vibrate) return;
+  // Trang chưa được chạm lần nào thì Chrome nuốt lệnh rung — có khi còn trả về true. Nên chỉ coi
+  // là rung thật khi máy đã có tương tác; không thì để cú chạm kế tiếp rung bù.
+  const landed = navigator.vibrate(1000) && (navigator.userActivation?.hasBeenActive ?? true);
+  buzzPending = !landed;
+}
+
+function armBuzzRetry() {
+  const retry = () => {
+    if (buzzPending && !$('typeView').hidden) buzz();
+  };
+  addEventListener('pointerdown', retry);
+  $('fearInput').addEventListener('focus', retry);
+}
+
 function render() {
   const view = state.phase === 'open' ? 'type'
     : ['storm', 'outro', 'done'].includes(state.phase) ? 'storm'
     : 'wait';
+  const opened = view === 'type' && $('typeView').hidden;
   document.body.dataset.phase = state.phase;
   $('waitView').hidden = view !== 'wait';
   $('typeView').hidden = view !== 'type';
@@ -109,6 +132,8 @@ function render() {
   if (view === 'wait') {
     $('waitTitle').textContent = state.phase === 'connecting' ? 'Đang kết nối…' : 'Chờ MC một chút…';
   }
+  if (opened) buzz();
+  if (view !== 'type') buzzPending = false;
 }
 
 function boot() {
@@ -126,6 +151,7 @@ function boot() {
   window.visualViewport?.addEventListener('scroll', setHeight);
   $('fearInput').addEventListener('focus', setHeight);
   $('fearInput').addEventListener('blur', setHeight);
+  armBuzzRetry();
 
   $('fearForm').addEventListener('submit', e => {
     e.preventDefault();

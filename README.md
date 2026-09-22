@@ -334,7 +334,8 @@ mất khi server ngủ dậy.
 - `order`: danh sách ID câu hỏi theo thứ tự sẽ chơi.
 - `answer`: vị trí đáp án đúng, **đếm từ 0** (A = 0, B = 1, C = 2, D = 3) theo thứ tự `options` trong file. Mỗi câu 2–4 đáp án.
 - `answerConfirmed: false`: đáp án do tôi suy ra, team cần xác nhận. Server in danh sách này khi khởi động.
-- `timePerQuestion`, `revealSeconds`, `fireSeconds`, `shuffleOptions`: thời gian trả lời, hiện đáp án, lượt bắn, có đảo đáp án không.
+- `readSeconds`, `timePerQuestion`, `revealSeconds`, `fireSeconds`, `shuffleOptions`: thời gian đọc đề, trả lời, hiện đáp án, lượt bắn, có đảo đáp án không.
+- `breakSeconds`: quãng nghỉ sau lượt bắn để hội trường chuẩn bị, trước khi câu sau hiện ra (mặc định 5 giây, thấp nhất 1). MC chỉnh ngay trong **Sửa câu hỏi → Nghỉ chuẩn bị**.
 
 File này không tải được từ trình duyệt nên người chơi không xem trộm đáp án được.
 

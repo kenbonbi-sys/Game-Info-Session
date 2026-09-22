@@ -2,6 +2,7 @@
   "timePerQuestion": 15,
   "revealSeconds": 5,
   "fireSeconds": 6,
+  "breakSeconds": 5,
   "shuffleOptions": true,
   "chargeSeconds": 45,
   "finale": {

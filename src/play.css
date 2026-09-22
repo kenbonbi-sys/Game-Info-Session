@@ -145,15 +145,15 @@ button { transition: transform 130ms, filter 130ms; }
 @keyframes charge-done { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); box-shadow: inset 0 -16px 0 #0a2f54, 0 0 0 26px #6fd2ff33, 0 0 120px #6fd2ffcc; } }
 
 /* ---- Items ---------------------------------------------------------------------------- */
-.items { padding: 8px 12px 9px; background: #0c1b2c; border-bottom: 1px solid #3c5066; box-shadow: 0 4px 14px #030a1133; }
-.items-cap { margin: 0 1px 6px; }
-.items-cap b { color: #ffd5cb; font: 800 11px/1 var(--font-disp); letter-spacing: .08em; }
-.items-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.item { --face: #19314a; --line: #3c546e; --bw: 1px; --c-out: var(--clip-card); --c-in: var(--clip-card-in); display: grid; grid-template-rows: auto auto minmax(0, 1fr); justify-items: center; align-content: start; gap: 3px; min-width: 0; min-height: 78px; padding: 8px 6px 9px; color: #e4ebf3; font: 800 11.5px/1.15 var(--font-disp); text-align: center; text-wrap: balance; filter: none; }
-.item img { width: 30px; height: 30px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px #0007); }
+.items { padding: 10px 12px 11px; background: #0c1b2c; border-bottom: 1px solid #3c5066; box-shadow: 0 4px 14px #030a1133; }
+.items-cap { margin: 0 1px 7px; }
+.items-cap b { color: #ffd5cb; font: 800 13px/1 var(--font-disp); letter-spacing: .08em; }
+.items-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.item { --face: #19314a; --line: #3c546e; --bw: 1px; --c-out: var(--clip-card); --c-in: var(--clip-card-in); display: grid; grid-template-rows: auto auto minmax(0, 1fr); justify-items: center; align-content: start; gap: 4px; min-width: 0; min-height: 94px; padding: 10px 5px 11px; color: #e4ebf3; font: 800 13px/1.15 var(--font-disp); text-align: center; text-wrap: balance; filter: none; }
+.item img { width: 36px; height: 36px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px #0007); }
 .item span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item small { min-width: 0; color: #a8b9cb; font: 500 9.5px/1.18 var(--font-sans); }
-.item .count { position: absolute; top: 3px; right: 4px; min-width: 15px; padding: 1px 4px; border-radius: 3px; background: #5a2f26; color: #ffd0c4; font: 800 9.5px/1.15 var(--font-disp); text-align: center; }
+.item small { min-width: 0; color: #a8b9cb; font: 500 11px/1.2 var(--font-sans); }
+.item .count { position: absolute; top: 3px; right: 4px; min-width: 18px; padding: 2px 5px; border-radius: 3px; background: #5a2f26; color: #ffd0c4; font: 800 11px/1.15 var(--font-disp); text-align: center; }
 .item:hover:not(:disabled) { --face: #203b58; --line: #6f97c2; }
 .item:active:not(:disabled) { transform: translateY(2px); }
 /* Còn dùng được: viền cam và một nhịp thở rất nhẹ — đủ để mắt liếc qua là thấy, không nhấp nháy. */
@@ -309,10 +309,10 @@ body[data-keyboard="true"] .dialog h1 { font-size: 23px; margin: 8px 0 14px; }
   .wait-icon, .wait-icon canvas { width: 88px; height: 88px; }
   .wait-badge { width: 84px; height: 84px; font-size: 42px; }
   .wait-card h1 { font-size: 22px; }
-  .items { padding-block: 5px 6px; }
+  .items { padding-block: 6px 7px; }
   .items-cap { display: none; }
-  .item { min-height: 44px; grid-template-rows: auto; grid-template-columns: 26px minmax(0, 1fr); justify-items: start; align-items: center; column-gap: 7px; padding: 5px 8px; text-align: left; }
-  .item img { grid-row: 1 / 3; width: 26px; height: 26px; }
+  .item { min-height: 53px; grid-template-rows: auto; grid-template-columns: 31px minmax(0, 1fr); justify-items: start; align-items: center; column-gap: 8px; padding: 6px 9px; text-align: left; }
+  .item img { grid-row: 1 / 3; width: 31px; height: 31px; }
   .dialog { padding: 18px 24px; }
   .dialog h1 { font-size: 25px; }
   .join-art-wrap { width: 60%; margin-block: 0; }
@@ -324,10 +324,10 @@ body[data-keyboard="true"] .dialog h1 { font-size: 23px; margin: 8px 0 14px; }
   .tiles { gap: 9px; }
   .wait-card h1 { font-size: 24px; }
   .items { padding-inline: 10px; }
-  .items-row { gap: 6px; }
-  .item { min-height: 74px; padding: 7px 4px 8px; font-size: 10.5px; }
-  .item img { width: 27px; height: 27px; }
-  .item small { font-size: 8.5px; }
+  .items-row { gap: 7px; }
+  .item { min-height: 89px; padding: 9px 3px 10px; font-size: 12px; }
+  .item img { width: 32px; height: 32px; }
+  .item small { font-size: 10px; }
   .dialog { padding: 22px; }
   .dialog h1 { font-size: 27px; }
 }
