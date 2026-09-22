@@ -343,6 +343,8 @@ function sceneFor(s) {
   // Câu hỏi đọng lại sau đoạn phim: giữ máy chiếu ở đây cho tới khi MC bấm, đừng để lộ đấu trường.
   if (fear.phase === 'outro') return 'fearoutro';
   if (s.phase === 'end' && victoryPlayback.active && !victoryPlayback.complete) return 'victory';
+  // Hết lượt bắn mà còn đồng hồ nghỉ: máy chiếu đếm cùng điện thoại tới câu sau.
+  if (s.phase === 'fire' && !s.firing && s.endsAt) return 'breather';
   return s.phase;
 }
 
@@ -376,7 +378,7 @@ function renderPodium(list, total) {
     step.append(
       Object.assign(document.createElement('b'), { textContent: String(i + 1) }),
       Object.assign(document.createElement('em'), { textContent: p.score.toLocaleString('vi-VN') }),
-      Object.assign(document.createElement('i'), { textContent: `đúng ${p.correct ?? 0}/${total} câu` }),
+      Object.assign(document.createElement('i'), { textContent: `${p.correct ?? 0}/${total} câu` }),
     );
     li.append(
       Object.assign(document.createElement('img'), { className: 'podium-fox', src: '/assets/design/icons/default-mascot.svg', alt: '', width: 120, height: 120 }),
@@ -390,7 +392,13 @@ function renderPodium(list, total) {
 function tickHud() {
   const s = state;
   const scene = sceneFor(s);
-  if (document.body.dataset.scene !== scene) document.body.dataset.scene = scene;
+  if (document.body.dataset.scene !== scene) {
+    document.body.dataset.scene = scene;
+    if (scene === 'countdown' || scene === 'breather') {
+      lastCount = -1;
+      $('countLabel').textContent = scene === 'breather' ? 'Câu tiếp theo sắp hiện!' : 'Chuẩn bị!';
+    }
+  }
   const left = Math.max(0, s.endsAt - (Date.now() + offset)) / 1000;
   if (s.phase === 'unleash') {
     const t = phaseElapsed(s);
@@ -402,7 +410,7 @@ function tickHud() {
       $('unleashSub').textContent = beat.sub;
     }
   }
-  if (s.phase === 'countdown') {
+  if (scene === 'countdown' || scene === 'breather') {
     const n = Math.max(1, Math.ceil(left));
     if (n !== lastCount) {
       lastCount = n;
