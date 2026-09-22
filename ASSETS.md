@@ -7,6 +7,7 @@
 | Nhân vật chính | `assets/source/hero-360.svg` | 7 hướng nhìn, frame 64×64 |
 | Logo lockup | `assets/source/learning-hub-x-research-lab.png` | Hiện trên thẻ vào phòng. Chữ đã đảo sang trắng để đọc được trên nền tối; con cáo, chữ "Learning" cam và vòng tròn xanh giữ nguyên màu gốc |
 | Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 205×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần). Dựng từ `boss-smoke-raw.webp`, xem [Thay sprite boss](#thay-sprite-boss) |
+| Cáo ăn mừng | `assets/source/fox-cheer.png` | Sheet 7×5, ô 186×201: 35 tư thế nhìn thẳng, chân đứng trên đáy ô. Chỉ dùng cho clip chiến thắng — mỗi con cáo trong clip chọn ô riêng. Dựng từ `fox-cheer-raw.webp`, xem [Thay sprite cáo ăn mừng](#thay-sprite-cáo-ăn-mừng) |
 | Vật phẩm | `assets/source/items/*.png` | 128×128, hiện ở thanh vật phẩm và trong clip hướng dẫn |
 | Icon thả chơi | `assets/source/reactions/*.png` | 192×192, 5 con cáo người chơi thả cho nhau xem lúc chờ |
 
@@ -55,6 +56,26 @@ Yêu cầu khi thay file SVG khác:
 
 Game tự tìm `assets/fox.json` + `assets/fox.png` khi mở. Chưa có thì dùng con cáo vẽ bằng code (procedural).
 Bấm **K** trong game để xuất sprite sheet đang dùng ra `fox.png` + `fox.json` — mở bằng Aseprite để vẽ đè lên làm template.
+
+## Thay sprite cáo ăn mừng
+
+Clip chiến thắng cuối chương trình (`src/victory-film.js`) không dùng sprite trong game: nó có
+bộ riêng, 35 con cáo nhìn thẳng đang ăn mừng.
+
+1. Chép bản vẽ gốc (giữ nguyên, đừng sửa) vào `assets/source/fox-cheer-raw.webp` — lưới 7×5,
+   nền trong suốt, giữa các con phải có khoảng trống để script tách được từng con.
+2. `python tools/build-fox-cheer-sheet.py`
+3. `node scripts/render-victory.mjs` để dựng lại clip `.webm` (xem đầu file script về ffmpeg
+   và Playwright). Không chạy bước này thì máy chiếu vẫn phát clip cũ.
+
+Script canh từng con theo hai mốc của chính nó: **đáy người** (chỗ nó đứng) và **tâm cái đầu**
+(chỗ căn giữa). Lấy tâm theo bounding box cả con là cái đuôi kéo lệch hẳn sang một bên. Nó in ra
+bề rộng ô và `pivot.y`; **chép hai con số đó vào `SPRITES.foxCheer` trong
+[src/config.js](src/config.js)**. Con nào bị xén script cũng báo.
+
+Số ô của từng con cáo trong clip nằm ở bảng `FOXES` trong
+[src/victory-film.js](src/victory-film.js) (`idle` lúc đứng chờ, `cheer` là hai ô đổi qua lại
+lúc hò reo) — đếm từ 0, trái sang phải, trên xuống dưới.
 
 ## Spec nhân vật
 

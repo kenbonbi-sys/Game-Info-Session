@@ -15,6 +15,15 @@ export const SPRITES = {
       attack: { frames: [14, 15, 16, 17, 18, 19, 20], fps: 12, loop: false },
     },
   },
+  // 7×5 grid PNG (186×201 cells): 35 tư thế ăn mừng, con nào cũng nhìn thẳng và đứng trên đáy
+  // ô. Chỉ dùng cho clip chiến thắng, nên không có anim chung — victory-film.js chọn từng ô
+  // cho từng con cáo. Dựng từ fox-cheer-raw.webp bằng tools/build-fox-cheer-sheet.py.
+  foxCheer: {
+    url: 'assets/source/fox-cheer.png',
+    cols: 7, rows: 5, size: 186,
+    pivot: { x: 0.5, y: 0.9751 },
+    anims: {},
+  },
   // 4×3 grid PNG (362×373 cells, bases aligned): row 1 idle, row 2 charging, row 3 firing upward.
   // Cleaned from turret-topdown-raw.png, whose "transparent" background was a painted checkerboard.
   turret: {

@@ -1,7 +1,7 @@
 // The 10-second victory film is rendered from this same deterministic scene. Keeping the
 // source renderer lets the projector show every beat even if its video decoder is unavailable.
 import { SPRITES } from './config.js';
-import { loadSvgStrip } from './sprites.js';
+import { loadGridSheet } from './sprites.js';
 import { createArenaBackdrop } from './arena-scene.js';
 
 export const VICTORY_FILM_SECONDS = 10;
@@ -20,11 +20,11 @@ let artPromise;
 export function loadVictoryFilmArt() {
   if (!artPromise) artPromise = (async () => {
     const font = new FontFace('Victory Display', 'url(/assets/fonts/MoMoTrustDisplay.otf)');
-    const [, hero] = await Promise.all([
+    const [, foxes] = await Promise.all([
       font.load().then(f => document.fonts.add(f)),
-      loadSvgStrip(new URL('../assets/source/hero-360.svg', import.meta.url).href, { views: SPRITES.hero.views }),
+      loadGridSheet(new URL(`../${SPRITES.foxCheer.url}`, import.meta.url).href, SPRITES.foxCheer),
     ]);
-    return { hero, backdrop: createArenaBackdrop() };
+    return { foxes, backdrop: createArenaBackdrop() };
   })();
   return artPromise;
 }
@@ -94,16 +94,26 @@ function backdrop(ctx, art, t) {
   }
 }
 
-// Every fox retains the exact in-game artwork; directional changes, anticipation, running
-// bobs, jump arcs, squash and landing rings give the group performance its character.
+// Frame numbers are cells of assets/source/fox-cheer.png, counted left to right from 0 over the
+// 7x5 grid. Every fox skips in on the same two strides, then each one has its own way of
+// standing and its own two-frame cheer — the hall should be able to pick a favourite.
+const RUN = [22, 29];
+const RUN_FPS = 7;
+const CHEER_FPS = 5;
+// Khi tiêu đề hiện lên thì bầy cáo đứng lại: cú nhảy vẫn rơi xuống cho trọn, nhưng hết đổi tư
+// thế, hết nhún nhẹ. Cáo cứ động tiếp là mắt không biết đọc chữ hay nhìn cáo.
+const HOLD_FROM = 4.75;
+
+// Anticipation, running bobs, jump arcs, squash and landing rings give the group performance its
+// character; the foxes coming in from the left are mirrored so every tail streams out behind.
 const FOXES = [
-  { start: [-120, 380], end: [304, 481], height: 140, delay: .22 },
-  { start: [1420, 380], end: [980, 481], height: 140, delay: .38 },
-  { start: [-170, 600], end: [391, 525], height: 174, delay: .1 },
-  { start: [1450, 600], end: [886, 525], height: 174, delay: .25 },
-  { start: [20, 850], end: [498, 552], height: 207, delay: .4 },
-  { start: [1260, 850], end: [783, 552], height: 207, delay: .5 },
-  { start: [640, 900], end: [640, 579], height: 237, delay: 0 },
+  { start: [-120, 380], end: [304, 481], height: 140, delay: .22, idle: 19, cheer: [23, 34] },
+  { start: [1420, 380], end: [980, 481], height: 140, delay: .38, idle: 14, cheer: [26, 31] },
+  { start: [-170, 600], end: [391, 525], height: 174, delay: .1, idle: 17, cheer: [25, 24] },
+  { start: [1450, 600], end: [886, 525], height: 174, delay: .25, idle: 16, cheer: [33, 29] },
+  { start: [20, 850], end: [498, 552], height: 207, delay: .4, idle: 15, cheer: [30, 22] },
+  { start: [1260, 850], end: [783, 552], height: 207, delay: .5, idle: 18, cheer: [9, 11] },
+  { start: [640, 900], end: [640, 579], height: 237, delay: 0, idle: 20, cheer: [23, 2] },
 ];
 
 function foxPose(t, fox, i) {
@@ -114,22 +124,24 @@ function foxPose(t, fox, i) {
   const jumpAt = 4.1 + (i === 6 ? 0 : i % 3 * .07);
   const jumpU = clamp((t - jumpAt) / .9);
   const jump = Math.sin(jumpU * Math.PI) * (i === 6 ? 92 : 66);
-  const afterHop = t > 6.6 + i * .09 ? Math.max(0, Math.sin((t - 6.6 - i * .09) * 4)) * 7 : 0;
   let squash = 1 - seg(t, jumpAt - .2, jumpAt) * .13 * (1 - seg(t, jumpAt, jumpAt + .1));
   squash += Math.sin(jumpU * Math.PI) * .035;
   const land = t - jumpAt - .9;
   if (land > 0 && land < .28) squash -= Math.sin(land / .28 * Math.PI) * .14;
-  const lookingIn = t > 2.4 && t < 4.2;
-  let view = x < 620 ? 'right' : x > 660 ? 'left' : 'up';
-  if (move >= .97 && !lookingIn) view = i % 2 ? 'down-left' : 'down-right';
-  if (i === 6 && t > 3.1) view = 'down-right';
-  return { x, y: baseY - runBob - jump - afterHop, baseY, squash, view, moving: move < .98, land };
+  // Skipping in, waiting together, then cheering: the pose carries the beat the motion is on.
+  const held = Math.min(t, HOLD_FROM);
+  const moving = move < .98;
+  const cheering = t > jumpAt - .25;
+  const frame = moving ? RUN[Math.floor(t * RUN_FPS + i) % 2]
+    : cheering ? fox.cheer[Math.floor(held * CHEER_FPS + i) % 2]
+    : fox.idle;
+  return { x, y: baseY - runBob - jump, baseY, squash, frame, moving, land, held };
 }
 
 function drawFox(ctx, art, t, fox, i) {
-  const pose = foxPose(t, fox, i), sheet = art?.hero;
+  const pose = foxPose(t, fox, i), sheet = art?.foxes;
   if (!sheet) return;
-  const { x, y, baseY, squash, view, moving, land } = pose;
+  const { x, y, baseY, squash, frame, moving, land, held } = pose;
   ellipse(ctx, x, baseY + 2, fox.height * .32, fox.height * .075, '#010a1666');
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   ellipse(ctx, x, baseY + 1, fox.height * .37, fox.height * .07, `rgba(255,180,99,${.12 + seg(t, 4, 5) * .16})`);
@@ -146,11 +158,15 @@ function drawFox(ctx, art, t, fox, i) {
     ctx.strokeStyle = '#ffe6af'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, baseY, 15 + land * 120, 4 + land * 20, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
-  const f = sheet.frames[sheet.anims[view]?.frames[0] ?? 0];
+  const f = sheet.frames[frame] ?? sheet.frames[0];
   const k = fox.height / sheet.headroom;
   ctx.save(); ctx.translate(x, y);
-  ctx.rotate(moving ? Math.sin(t * 15 + i) * .035 : Math.sin(t * 2.4 + i) * .014);
-  ctx.scale(1 / Math.sqrt(squash), squash); ctx.imageSmoothingEnabled = false;
+  ctx.rotate(moving ? Math.sin(t * 15 + i) * .035 : Math.sin(held * 2.4 + i) * .014);
+  // The art is drawn at a single front-facing angle, so the mirror is what gives the run a
+  // direction: the tail ends up trailing the fox instead of leading it.
+  ctx.scale((fox.end[0] > fox.start[0] ? -1 : 1) / Math.sqrt(squash), squash);
+  // Smooth, not nearest: this art is painted at full resolution, not on a pixel grid.
+  ctx.imageSmoothingEnabled = true;
   ctx.drawImage(sheet.image, f.x, f.y, f.w, f.h, -sheet.pivot.x * k, -sheet.pivot.y * k, f.w * k, f.h * k);
   ctx.restore();
   // Three short celebratory marks belong to each fox; they read as a shared cheer.
@@ -229,13 +245,11 @@ export function drawVictoryFilm(canvasOrContext, art, seconds) {
   FOXES.forEach((fox, i) => drawFox(ctx, art, t, fox, i));
   confetti(ctx, t);
   const opening = 1 - seg(t, 2.7, 3.4);
-  type(ctx, 'MỘT ĐỘI. MỘT TINH THẦN.', 152, 42, '#f9ecd4', opening, 1.4);
-  type(ctx, 'Từng giọt nước. Từng nỗ lực. Một chiến thắng chung.', 213, 23, '#c5d6e0', opening);
+  type(ctx, 'One Team - One Spirit', 168, 42, '#f9ecd4', opening, 1.4);
   const title = seg(t, 4.75, 5.6);
   const lift = lerp(16, 0, title);
   type(ctx, 'CÙNG NHAU,', 117 + lift, 28, '#ffe0a0', title, 5);
   type(ctx, 'CHÚNG TA LÀM ĐƯỢC!', 175 + lift, 62, '#fff8e9', title);
-  type(ctx, 'MỖI CHÚ CÁO  ·  MỘT PHẦN CHIẾN THẮNG', 630, 23, '#ffe0a0', seg(t, 6.0, 6.7), 1.2);
   // A subtle cinematic frame; the last shot holds visibly until the separate podium reveal.
   ctx.fillStyle = '#06101bbd'; ctx.fillRect(0, 0, W, 26); ctx.fillRect(0, H - 26, W, 26);
   ctx.restore();
