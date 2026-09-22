@@ -7,6 +7,8 @@ import { paintHudPortrait, drawJoinDuel, galaxyDataUrl } from './hud-art.js';
 import { drawGuideClip, GUIDE_CLIP_SECONDS } from './guide-clips.js';
 import { drawCutscene, cutsceneLines } from './cutscene.js';
 import { normalizeDomain } from './identity.js';
+import { FINALE } from './finale-config.js';
+import { COMIC_PAGE_AT, COMIC_CUT_AT, comicPanelSrc } from './finale-comic.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -421,7 +423,10 @@ function render() {
   $('answerView').hidden = view !== 'answer';
   $('fireView').hidden = view !== 'fire';
   $('chargeView').hidden = view !== 'charge';
-  $('waitView').hidden = view === 'answer' || view === 'fire' || view === 'charge';
+  const comic = view === 'unleash' && !comicBroken;
+  $('comicView').hidden = !comic;
+  $('waitView').hidden = comic || ['answer', 'fire', 'charge'].includes(view);
+  if (view === 'charge' || view === 'unleash') preloadComic();
   if (view === 'answer') renderTiles();
   else if (view === 'fire') renderFire();
   else if (view === 'charge') renderCharge();
@@ -612,6 +617,40 @@ function renderFire() {
   renderBoss();
 }
 
+// The panels are fetched while the hall is still tapping: by the time the bottle is full they
+// are in cache, so the phone cuts straight to the comic instead of showing gaps.
+let comicReady = false;
+let comicBroken = false;
+function preloadComic() {
+  if (comicReady) return;
+  comicReady = true;
+  for (const img of document.querySelectorAll('#comicView img')) {
+    // A blank cream screen is the worst thing to hand someone at the climax: if the art can't
+    // be fetched, fall back to the wait card that tells them to look up at the projector.
+    img.addEventListener('error', () => { comicBroken = true; render(); }, { once: true });
+    img.src = new URL(`../${comicPanelSrc(img.dataset.panel)}`, import.meta.url).href;
+  }
+}
+
+// Same story, same beats as the projector — the phone just reads it in a column. Driven by
+// server time, so a phone that locks and wakes up mid-finale is on the right panel.
+function tickComic() {
+  const phaseT = Math.max(0, (Date.now() + net.offset - (quiz.phaseAt || 0)) / 1000);
+  const sceneT = phaseT - FINALE.comicSeconds;
+  // One panel at a time: the last one whose turn has come. It holds while the bottle is in the
+  // air, which is exactly what that panel shows, until the first cut-in lands on the impact.
+  let page = -1;
+  COMIC_PAGE_AT.forEach((at, i) => { if (phaseT >= at) page = i; });
+  for (const img of document.querySelectorAll('#comicView .comic-page img')) {
+    img.classList.toggle('on', Number(img.dataset.panel) === page + 1);
+  }
+  const cut = COMIC_CUT_AT.find(c => sceneT >= c.at && sceneT < c.at + c.hold);
+  $('comicView').querySelector('.comic-cut').classList.toggle('on', !!cut);
+  for (const img of document.querySelectorAll('#comicView .comic-cut img')) {
+    img.classList.toggle('on', cut?.n === Number(img.dataset.panel));
+  }
+}
+
 function renderCharge() {
   const c = quiz.charge ?? { taps: 0, goal: 1, full: false };
   const p = Math.min(1, c.taps / Math.max(1, c.goal));
@@ -708,6 +747,8 @@ function frame(t) {
     if ($('waitBadge').textContent !== n) $('waitBadge').textContent = n;
   } else if (view === 'fire') {
     $('fireFill').style.width = `${clamp(left / quiz.fire, 0, 1) * 100}%`;
+  } else if (view === 'unleash') {
+    tickComic();
   }
   if (!$('join').hidden && hero) drawJoinDuel($('joinArt'), hero, bossSheet, t, { reducedMotion: REDUCED_MOTION.matches });
   if (!$('guide').hidden) renderGuide(t);

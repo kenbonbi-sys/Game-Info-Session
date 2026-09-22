@@ -8,6 +8,7 @@
 | Logo lockup | `assets/source/learning-hub-x-research-lab.png` | Hiện trên thẻ vào phòng. Chữ đã đảo sang trắng để đọc được trên nền tối; con cáo, chữ "Learning" cam và vòng tròn xanh giữ nguyên màu gốc |
 | Boss | `assets/source/boss-smoke.png` | Sheet 7×3, frame 205×168: hàng 1 `idle` (8 fps), hàng 2 `hurt` (14 fps, chạy 1 lần), hàng 3 `attack` (12 fps, chạy 1 lần). Dựng từ `boss-smoke-raw.webp`, xem [Thay sprite boss](#thay-sprite-boss) |
 | Cáo ăn mừng | `assets/source/fox-cheer.png` | Sheet 7×5, ô 186×201: 35 tư thế nhìn thẳng, chân đứng trên đáy ô. Chỉ dùng cho clip chiến thắng — mỗi con cáo trong clip chọn ô riêng. Dựng từ `fox-cheer-raw.webp`, xem [Thay sprite cáo ăn mừng](#thay-sprite-cáo-ăn-mừng) |
+| Truyện đòn kết liễu | `assets/source/comic/panel-1..6.webp` | Sáu khung cắt rời từ `finale-comic-raw.webp`. Khung 1–3 dựng thành trang truyện đọc trước cú ném; khung 4–6 đập lên cảnh đang chạy đúng lúc bình trúng, Quái Vật xèo và cả đàn cáo ăn mừng. Xem [Thay truyện đòn kết liễu](#thay-truyện-đòn-kết-liễu) |
 | Vật phẩm | `assets/source/items/*.png` | 128×128, hiện ở thanh vật phẩm và trong clip hướng dẫn |
 | Icon thả chơi | `assets/source/reactions/*.png` | 192×192, 5 con cáo người chơi thả cho nhau xem lúc chờ |
 
@@ -76,6 +77,28 @@ bề rộng ô và `pivot.y`; **chép hai con số đó vào `SPRITES.foxCheer` 
 Số ô của từng con cáo trong clip nằm ở bảng `FOXES` trong
 [src/victory-film.js](src/victory-film.js) (`idle` lúc đứng chờ, `cheer` là hai ô đổi qua lại
 lúc hò reo) — đếm từ 0, trái sang phải, trên xuống dưới.
+
+## Thay truyện đòn kết liễu
+
+Đoạn kết kể bằng truyện tranh trước khi cảnh 3D chạy: cáo lấy đà, ném, bình lao tới — rồi máy
+chiếu giao lại cho cảnh thật đúng ở khung treo "!!". Ba khung còn lại đập vào đúng nhịp cảnh đó.
+
+1. Chép trang truyện gốc vào `assets/source/finale-comic-raw.webp` — 2 cột × 3 hàng, **rãnh giấy
+   giữa các khung phải sạch** (script dò rãnh, không dò viền: ruột khung toàn khói đen thì viền
+   không tách được).
+2. `python tools/build-finale-comic.py --check` — `--check` xuất thêm
+   `assets/source/comic/panels-check.png` để soi sáu khung trước khi tin.
+
+Script cắt lấy **ruột** khung, bỏ viền vẽ tay: viền gốc phóng to 2–3 lần thì thấy rung, nên
+[src/finale-comic.js](src/finale-comic.js) tự vẽ viền mới cho sắc. Hai chỗ dễ vỡ, script đã
+chặn nhưng vẫn nên biết: bong bóng thoại màu trắng chỉ cách màu giấy 21 bậc (lấy dung sai rộng
+là bong bóng bị tính thành rãnh, khung 1 đứt đôi), và hàng 2 khói đen tràn qua rãnh (cắt giữa
+rãnh là khung "ÀO!" dính một sọc trời xanh của khung bên trái).
+
+Vị trí và giờ của từng khung nằm ở `PAGE` và `CUT_INS` trong
+[src/finale-comic.js](src/finale-comic.js); đổi độ dài đoạn truyện thì sửa `comicSeconds` trong
+[src/finale-config.js](src/finale-config.js) — máy chiếu, điện thoại và hẹn giờ hạ boss của
+server đều đọc từ đó.
 
 ## Spec nhân vật
 

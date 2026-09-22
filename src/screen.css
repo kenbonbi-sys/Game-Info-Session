@@ -236,6 +236,10 @@ body[data-scene="unleash"] .hud, body[data-scene="unleash"] .banner { visibility
 @keyframes finale-throw { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
 @keyframes finale-impact { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 @keyframes finale-victory { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+/* Trang truyen phu kin san khau truoc cu nem, roi dap tung khung mot len canh dang chay.
+   z-index 6: tren caption cua unleash (5), duoi clip chien thang (8). */
+.comic-canvas { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; visibility: hidden; pointer-events: none; }
+body[data-scene="unleash"] .comic-canvas { visibility: visible; }
 .victory-scene { position: absolute; inset: 0; z-index: 8; background: #091623; visibility: hidden; opacity: 0; pointer-events: none; }
 body[data-scene="victory"] .victory-scene { visibility: visible; opacity: 1; pointer-events: auto; }
 .victory-video { display: block; width: 100%; height: 100%; object-fit: contain; }

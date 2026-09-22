@@ -9,6 +9,7 @@ import { initGameAudio } from './audio.js';
 import { mountBottle, setBottleFill } from './bottle.js';
 import { finaleBeat } from './finale-scene.js';
 import { FINALE } from './finale-config.js';
+import { loadComicArt, drawComicPage, drawComicCutIn } from './finale-comic.js';
 import { loadVictoryArt, drawVictoryFilm } from './victory-film.js';
 
 const $ = id => document.getElementById(id);
@@ -38,6 +39,13 @@ let victoryArt = null;
 let podiumKey = '';
 
 const phaseElapsed = s => Math.max(0, ((Date.now() + offset) - (s.phaseAt || s.now)) / 1000);
+// The comic reads first, so the throw's own clock starts that much later into the phase.
+const sceneElapsed = s => phaseElapsed(s) - FINALE.comicSeconds;
+
+let comicArt = null;
+let comicScale = 0;
+let comicPainted = false;
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
 
 function stopVictory() {
   $('victoryVideo').pause();
@@ -217,7 +225,7 @@ function enterPhase(s, live) {
       const stage = $('stage').getBoundingClientRect();
       const k = stage.width / ARENA.width;
       syncBoss(s.bossDmg, s.bossMax, true);
-      bossUnleash({ elapsed: phaseElapsed(s), from: { x: (rect.x + rect.width / 2 - stage.x) / k, y: (rect.y + rect.height / 2 - stage.y) / k, width: rect.width / k, height: rect.height / k } });
+      bossUnleash({ elapsed: sceneElapsed(s), from: { x: (rect.x + rect.width / 2 - stage.x) / k, y: (rect.y + rect.height / 2 - stage.y) / k, width: rect.width / k, height: rect.height / k } });
       break;
     }
     case 'victory':
@@ -401,8 +409,7 @@ function tickHud() {
   }
   const left = Math.max(0, s.endsAt - (Date.now() + offset)) / 1000;
   if (s.phase === 'unleash') {
-    const t = phaseElapsed(s);
-    const beat = finaleBeat(t);
+    const beat = finaleBeat(sceneElapsed(s));
     if ($('unleash').dataset.beat !== beat.name) {
       $('unleash').dataset.beat = beat.name;
       $('unleashLabel').textContent = beat.label;
@@ -452,6 +459,31 @@ function fit() {
   document.documentElement.style.setProperty('--k', k);
   resizeArena(k * (window.devicePixelRatio || 1));
   resizeFearCloud(k * (window.devicePixelRatio || 1));
+  // The comic is painted art, so it wants the projector's real pixels, not the 1920 design grid.
+  comicScale = Math.max(0.5, Math.min(2, k * (window.devicePixelRatio || 1)));
+  const comic = $('comic');
+  const width = Math.round(ARENA.width * comicScale);
+  if (comic.width !== width) {
+    comic.width = width;
+    comic.height = Math.round(ARENA.height * comicScale);
+  }
+}
+
+// The page covers the stage before the throw; afterwards single panels punctuate the scene.
+// Both are pure functions of server time, so a projector joining late lands on the right panel.
+function tickComic() {
+  const comic = $('comic');
+  if (!comicScale) return;
+  const unleashing = state?.phase === 'unleash';
+  if (!unleashing && !comicPainted) return;
+  const ctx = comic.getContext('2d');
+  ctx.setTransform(comicScale, 0, 0, comicScale, 0, 0);
+  ctx.clearRect(0, 0, ARENA.width, ARENA.height);
+  comicPainted = false;
+  if (!unleashing) return;
+  const reduced = REDUCED_MOTION.matches;
+  comicPainted = drawComicPage(ctx, comicArt, phaseElapsed(state), reduced)
+    || drawComicCutIn(ctx, comicArt, sceneElapsed(state), reduced);
 }
 
 function toggleFullscreen() {
@@ -474,6 +506,7 @@ async function boot() {
   $('victoryVideo').addEventListener('ended', () => { if (victoryPlayback.active) victoryPlayback.complete = true; });
   $('victoryVideo').addEventListener('error', fallbackVictory);
   loadVictoryArt().then(art => { victoryArt = art; }).catch(err => console.warn('Victory fallback artwork:', err));
+  loadComicArt().then(art => { comicArt = art; });
   // initArena takes the canvas synchronously, so the first fit can size it while sprites load.
   const loading = initArena($('arena'));
   initFearCloud($('fearCanvas'));
@@ -508,6 +541,7 @@ async function boot() {
     } else {
       arenaFrame(dt, now / 1000);
     }
+    tickComic();
     tickVictory(now);
     tickBoss();
     if (state) tickHud();

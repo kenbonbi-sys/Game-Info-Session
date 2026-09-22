@@ -60,7 +60,7 @@ Hết 15 câu kiến thức là tới màn cuối, chạy tự động theo 4 b�
 1. **Câu đố vui** (`final`): một câu đố cho vui, **không tính điểm**, đọc từ khối `finale` trong `data/questions.json`. Đáp án giữ nguyên thứ tự A/B/C/D như file (không xáo), vì câu chốt thường nằm ở một chữ cái cụ thể.
 2. **Đáp án** (`finalreveal`): màn chiếu hiện ai đoán gì, giống một reveal bình thường.
 3. **Tích nước** (`charge`): **cả hội trường** cùng tap — kể cả người trả lời sai. Mỗi tap đổ nước vào một bình chung trên màn chiếu; bình sáng dần từ dưới lên, qua 90% thì rung và phát hào quang. Mục tiêu = `max(300, số người online × 25)` lượt tap.
-4. **Đòn kết liễu** (`unleash`, 9 giây): tia nước dựng lên, nổ vào Quái Vật, boss quằn quại mấy giây rồi gục. Xong là bảng xếp hạng: Top 5 kèm **số lượt tap của từng người**, và tổng lượt tap của cả hội trường.
+4. **Đòn kết liễu** (`unleash`, 13 giây): mở bằng **truyện tranh** — cáo lấy đà, ném, bình lao tới, treo lại đúng khung "!!" (4,2 giây); rồi cảnh thật nhận cú ném: tia nước dựng lên, nổ vào Quái Vật, boss quằn quại mấy giây rồi gục. Ba khung truyện còn lại đập vào đúng nhịp đó — **ÀO!** lúc trúng, **XÈO…** lúc boss tan, **THẮNG RỒI!** lúc giao cho clip chiến thắng. Điện thoại kể cùng câu chuyện, từng khung một, khớp giờ server. Xong là bảng xếp hạng: Top 5 kèm **số lượt tap của từng người**, và tổng lượt tap của cả hội trường.
 
 Hai lối thoát cho MC nếu hội trường vắng hoặc tap không tới:
 

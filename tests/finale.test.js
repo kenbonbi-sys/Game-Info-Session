@@ -66,7 +66,9 @@ async function gameFor(t, { chargeSeconds = 60, finale = fixtureQuestion } = {})
     const stream = {
       messages,
       close: () => abort.abort(),
-      waitFor(predicate, timeout = 12000) {
+      // Long enough to sit out the longest phase there is: one unleash carries the comic, the
+      // throw and the defeat. Tied to the config so lengthening the finale doesn't fail the suite.
+      waitFor(predicate, timeout = (FINALE.unleashSeconds + 6) * 1000) {
         const found = messages.findLast(predicate);
         if (found) return Promise.resolve(found);
         return new Promise((resolveMessage, reject) => {
