@@ -17,7 +17,7 @@ const midi = m => 440 * 2 ** ((m - 69) / 12);
 
 const LOBBY = {
   bpm: 116,
-  volume: 0.55,
+  volume: 0.9,
   bars: [
     { root: 41, chord: [65, 69, 72] },   // F
     { root: 38, chord: [62, 65, 69] },   // Dm
@@ -35,7 +35,7 @@ const LOBBY = {
 
 const QUESTION = {
   bpm: 138,
-  volume: 0.5,
+  volume: 0.85,
   bars: [
     { root: 45, chord: [57, 60, 64] },   // Am
     { root: 41, chord: [57, 60, 65] },   // F

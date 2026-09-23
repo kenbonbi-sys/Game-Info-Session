@@ -426,7 +426,7 @@ function shuffle(arr) {
 }
 
 const game = {
-  phase: 'lobby', phaseAt: 0, quiz: loadQuiz(), round: [], index: -1, startedAt: 0, endsAt: 0, timer: null, auto: true, music: true,
+  phase: 'lobby', phaseAt: 0, quiz: loadQuiz(), round: [], index: -1, startedAt: 0, endsAt: 0, timer: null, auto: true, music: true, chargeGoal: null, screenAudio: false,
   // firing: the shooting window of the 'fire' phase is open (it stays in 'fire' briefly after).
   firing: false, turrets: [], boss: { max: 1, dmg: 0, finisher: false, fellAt: -1 }, roundShots: 0, totalShots: 0,
   // The finale's shared meter: taps the hall has landed into the bottle, and what it takes to fill it.
@@ -743,6 +743,9 @@ function stateFor(role) {
     if (fq) s.finaleReady = true;
     Object.assign(s, {
       screens: screenStreams.size,
+      screenAudio: game.screenAudio,
+      chargeGoal: game.chargeGoal,
+      chargeAuto: chargeAuto(),
       bossFellAt: game.boss.fellAt,
       turrets: TURRET_SLOTS,
       roster: board.map(p => [p.n, p.name, p.turret, isOnline(p) ? 1 : 0, p.score, p.correct, roundStatus(p), p.roundShots, p.shots, p.domain, p.match]),
@@ -939,9 +942,33 @@ function revealFinale() {
   schedule('finalreveal', game.quiz.reveal, startCharge);
 }
 
-function startCharge() {
+// Mục tiêu tự tính theo số người đang online. MC đặt một con số cố định ở bảng điều khiển thì
+// con số đó thắng.
+function chargeAuto() {
   const online = [...players.values()].filter(isOnline).length || players.size;
-  game.charge = { taps: 0, goal: Math.max(CHARGE_MIN, online * CHARGE_PER_PLAYER), full: false };
+  return Math.max(CHARGE_MIN, online * CHARGE_PER_PLAYER);
+}
+
+const CHARGE_GOAL_MAX = 100_000;
+
+// goal: số lượt tap cố định, hoặc null để về tự động. Đổi giữa lúc đang tích nước thì bình trên
+// màn chiếu co giãn theo ngay, và hạ xuống dưới số đã tap là bình đầy luôn.
+function setChargeGoal(raw) {
+  const goal = raw === null || raw === '' || raw === undefined ? null : Math.trunc(Number(raw));
+  if (goal !== null && !(goal >= 1 && goal <= CHARGE_GOAL_MAX)) return [400, { error: `Mục tiêu phải từ 1 đến ${CHARGE_GOAL_MAX.toLocaleString('vi-VN')} lượt tap` }];
+  game.chargeGoal = goal;
+  logEvent(goal === null ? `Mục tiêu tích nước: tự động (${chargeAuto().toLocaleString('vi-VN')} lượt)` : `Mục tiêu tích nước: ${goal.toLocaleString('vi-VN')} lượt tap`, 'info');
+  if (game.phase === 'charge' && !game.charge.full) {
+    game.charge.goal = goal ?? chargeAuto();
+    broadcastScreens(chargeMessage());
+    if (game.charge.taps >= game.charge.goal) fillCharge('MC hạ mục tiêu');
+  }
+  broadcast();
+  return [200, { ok: true, goal: game.chargeGoal, auto: chargeAuto() }];
+}
+
+function startCharge() {
+  game.charge = { taps: 0, goal: game.chargeGoal ?? chargeAuto(), full: false };
   const now = Date.now();
   for (const p of players.values()) Object.assign(p, { chargeTaps: 0, tapTokens: TAP_BURST, tapAt: now });
   logEvent(`Tích nước: cần ${game.charge.goal.toLocaleString('vi-VN')} lượt tap từ cả hội trường`, 'phase');
@@ -1023,6 +1050,7 @@ function tapCharge(p, n) {
     game.totalShots += taps;
     // No muzzle flashes here: the taps pour into the bottle, they do not shoot the boss.
     broadcastScreens(chargeMessage());
+    refreshHost();
     if (game.charge.taps >= game.charge.goal) fillCharge('cả hội trường tap đầy');
   }
   return [200, { taps, charge: game.charge.taps, goal: game.charge.goal, mine: p.chargeTaps ?? 0 }];
@@ -1473,6 +1501,8 @@ function openHostStream(req, res, view) {
     const projector = view === 'screen';
     openStream(req, res, projector ? screenStreams : previewStreams, () => {
       if (!projector) return;
+      // Màn chiếu mở lại là một trang mới: tiếng phải được bật lại, nó sẽ tự báo khi xong.
+      if (!screenStreams.size) game.screenAudio = false;
       logEvent(screenStreams.size ? `Một màn chiếu đã đóng (còn ${screenStreams.size})` : 'Màn chiếu mất kết nối', 'bad');
       refreshHost();
     });
@@ -1647,6 +1677,18 @@ async function handleApi(req, res, url, path) {
       game.joinUrl = chosen;
       logEvent(`Màn chiếu đổi link vào chơi: ${chosen}`, 'info');
       broadcastHost();
+      return json(res, 200, { ok: true });
+    }
+    if (action === 'charge-goal' && req.method === 'POST') {
+      return json(res, ...setChargeGoal((await readJson(req)).goal));
+    }
+    // Máy chiếu báo trình duyệt đã cho phát tiếng chưa, để MC biết mà bấm vào màn chiếu một cái.
+    if (action === 'screen-audio' && req.method === 'POST') {
+      const on = !!(await readJson(req)).on;
+      if (on !== game.screenAudio) {
+        game.screenAudio = on;
+        refreshHost();
+      }
       return json(res, 200, { ok: true });
     }
     if (req.method === 'POST') {

@@ -64,6 +64,8 @@ body[data-phase="fire"] .phase-pill .dot { background: var(--orange); box-shadow
 .chip-status[data-state="on"] .dot { background: var(--good); box-shadow: 0 0 8px var(--good); }
 .chip-status[data-state="off"] { border-color: #8a3b30; background: #2d1614; color: #ffc4b8; }
 .chip-status[data-state="off"] .dot { background: var(--bad); animation: blink 1s steps(2, jump-none) infinite; }
+.chip-status[data-state="mute"] { border-color: #8a7330; background: #2d2614; color: #ffe7a8; }
+.chip-status[data-state="mute"] .dot { background: var(--warn); animation: blink 1s steps(2, jump-none) infinite; }
 .chip-status.online b { color: var(--blue-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 8px 3px; background: var(--panel-2); color: var(--text); font: 700 13px var(--font-disp); text-decoration: none; white-space: nowrap; cursor: pointer; }
@@ -106,6 +108,14 @@ body[data-phase="fire"] .phase-bar i { background: linear-gradient(90deg, #FF703
 /* Hàng nút phụ: bọc xuống dòng khi cột hẹp, không thì nút cuối rơi ra ngoài thẻ. */
 .ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .ctrl-row > * { flex: 1 1 auto; }
+.charge-goal { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line-2); }
+.charge-goal label { display: block; margin-bottom: 6px; color: var(--muted); font: 700 12px var(--font-disp); }
+.charge-goal-row { display: flex; gap: 8px; }
+.charge-goal-row input { flex: 1 1 90px; min-width: 0; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 7px 3px; background: #0a1826; color: inherit; font: 700 15px var(--font-sans); font-variant-numeric: tabular-nums; }
+.charge-goal-row input:focus { border-color: var(--orange); outline: none; }
+.charge-goal-row .btn { flex: 0 0 auto; }
+.charge-goal-hint { margin: 6px 0 0 !important; color: var(--faint); font-size: 12px; }
+.charge-goal-hint b { color: var(--blue-soft); }
 .keys { margin-top: 10px !important; color: var(--faint) !important; font-size: 12px; }
 kbd { padding: 1px 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; background: #132a42; color: #dce8f4; font: 700 11px var(--font-sans); }
 

@@ -5,7 +5,7 @@ import { ANSWERS, ARENA, shapeSvg } from './config.js';
 import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, queueShots, bossAttack, armTurret, reactAt, bossHealth } from './arena-view.js';
 import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, startOutro, endStorm } from './fear-cloud.js';
 import { paintHudPortrait } from './hud-art.js';
-import { initGameAudio } from './audio.js';
+import { initGameAudio, audioOut } from './audio.js';
 import { setMusic, setMusicEnabled, playSting } from './music.js';
 import { mountBottle, setBottleFill } from './bottle.js';
 import { FINALE } from './finale-config.js';
@@ -131,7 +131,11 @@ function failFinisher() {
 
 function connect() {
   const es = new EventSource(`/api/host/events?key=${encodeURIComponent(key)}&view=${PREVIEW ? 'preview' : 'screen'}`);
-  es.onopen = () => { $('conn').hidden = true; };
+  es.onopen = () => {
+    $('conn').hidden = true;
+    // Server khởi động lại thì quên mất máy chiếu đã có tiếng: báo lại.
+    audioReported = null;
+  };
   es.onmessage = e => onMessage(JSON.parse(e.data));
   es.onerror = () => {
     $('conn').hidden = false;
@@ -462,8 +466,18 @@ function tickHud() {
 // Lúc bắn, lúc lật đáp án và lúc chiếu phim thì im để tiếng bắn và tiếng phim nghe rõ.
 // Chạy theo đồng hồ riêng chứ không theo khung hình: cửa sổ bị che thì khung hình dừng, còn nút
 // tắt nhạc của MC vẫn phải có hiệu lực ngay.
+let audioReported = null;
+
 function updateMusic() {
   if (!state) return;
+  const audible = !!audioOut();
+  $('soundHint').hidden = audible;
+  if (audible !== audioReported) {
+    audioReported = audible;
+    fetch(`/api/host/screen-audio?key=${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: audible }),
+    }).catch(() => { audioReported = null; });
+  }
   const scene = sceneFor(state);
   const left = Math.max(0, state.endsAt - (Date.now() + offset)) / 1000;
   setMusicEnabled(state.music !== false);

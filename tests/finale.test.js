@@ -159,6 +159,28 @@ test('server finale sequencing and reconnects', { concurrency: 4, timeout: 45000
       const phases = app.screen.messages.filter(m => m.type === 'state').map(m => m.phase);
       assert.deepEqual(phases.filter((phase, i) => phase !== phases[i - 1]).slice(-4), ['charge', 'unleash', 'victory', 'end']);
     }),
+    t.test('MC sets the bottle goal ahead of time and can move it while the hall taps', async t => {
+      const app = await gameFor(t);
+      const goal = value => fetch(`${app.base}/api/host/charge-goal?key=finale-test-key`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goal: value }),
+      });
+      assert.equal((await goal(0)).status, 400);
+      assert.equal((await goal(40)).status, 200);
+      const joined = await fetch(`${app.base}/api/join`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'tap.fox' }),
+      }).then(r => r.json());
+      const charge = await app.start();
+      assert.equal(charge.charge.goal, 40);
+      const tapped = await fetch(`${app.base}/api/tap`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pid: joined.pid, index: -1, n: 5 }),
+      }).then(r => r.json());
+      assert.ok(tapped.taps > 0);
+      await goal(500);
+      assert.equal((await app.screen.waitFor(m => m.type === 'charge' && m.goal === 500)).full, false);
+      // Hạ mục tiêu xuống dưới số đã tap là bình đầy luôn.
+      await goal(1);
+      assert.equal((await app.state('unleash')).charge.full, true);
+    }),
     t.test('reset during throw cancels defeat and all later finale phases', async t => {
       const app = await gameFor(t);
       await app.start();

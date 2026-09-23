@@ -66,10 +66,11 @@ Hai lối thoát cho MC nếu hội trường vắng hoặc tap không tới:
 
 - Bình **tự đầy sau 45 giây** (`chargeSeconds` trong `data/questions.json`).
 - Nút **💧 Nạp đầy bình ngay** trên bảng điều khiển, hiện sẵn suốt màn tích nước.
+- Ô **💧 Số tap để đầy bình** trên bảng điều khiển: để trống là tự động (`max(300, số người online × 25)`), gõ một con số là cố định. Đổi được cả lúc hội trường đang tap — bình trên màn chiếu co giãn theo ngay, hạ xuống dưới số đã tap thì bình đầy luôn. Con số nằm trong RAM: server khởi động lại thì về tự động.
 
 Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu cũ: hết câu là vào thẳng bảng xếp hạng.
 - **Âm thanh** phát từ cửa sổ màn game (trình duyệt chỉ mở tiếng sau lần bấm phím/chuột đầu tiên trên cửa sổ đó, ví dụ lúc bấm F). Điện thoại rung nhẹ khi chạm (Android).
-- **Nhạc nền kiểu Kahoot** ([src/music.js](src/music.js)), tự tổng hợp bằng Web Audio nên không có file nhạc nào: phòng chờ và bảng vinh danh có nhạc sảnh chờ vui nhộn; lúc đọc đề có tiếng tích tắc + bass, lúc trả lời thêm marimba và trống, 5 giây cuối trống dồn. Lật đáp án có tiếng "ta-da", đếm ngược giữa các câu có tiếng bíp. Lúc bắn và lúc chiếu phim thì im để nghe rõ tiếng bắn/tiếng phim. Nút **♪ Nhạc** trên bảng điều khiển tắt/bật ngay lập tức (ví dụ khi MC cần nói).
+- **Nhạc nền kiểu Kahoot** ([src/music.js](src/music.js)), tự tổng hợp bằng Web Audio nên không có file nhạc nào: phòng chờ và bảng vinh danh có nhạc sảnh chờ vui nhộn; lúc đọc đề có tiếng tích tắc + bass, lúc trả lời thêm marimba và trống, 5 giây cuối trống dồn. Lật đáp án có tiếng "ta-da", đếm ngược giữa các câu có tiếng bíp. Lúc bắn và lúc chiếu phim thì im để nghe rõ tiếng bắn/tiếng phim. Nút **♪ Nhạc** trên bảng điều khiển tắt/bật ngay lập tức (ví dụ khi MC cần nói). Trình duyệt chặn tiếng tới khi có người bấm vào cửa sổ máy chiếu: lúc đó màn chiếu hiện dòng nhắc *"🔇 Bấm vào màn hình…"* ở góc dưới, và thanh trên bảng điều khiển báo vàng **"Màn chiếu chưa có tiếng"** — bấm vào màn chiếu một lần (hoặc nhấn F) là xong.
 
 ## Điện thoại vào phòng
 

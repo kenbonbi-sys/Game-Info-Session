@@ -186,8 +186,11 @@ function renderTop() {
   $('phaseName').textContent = s.phase === 'fire' && !s.firing ? 'Ngưng bắn' : s.phase === 'reading' || s.phase === 'question' || s.phase === 'reveal' || s.phase === 'fire'
     ? `${PHASE_NAME[s.phase]} · Câu ${s.index + 1}/${s.total}` : PHASE_NAME[s.phase];
   const chip = $('screenChip');
-  chip.dataset.state = s.screens > 0 ? 'on' : 'off';
-  $('screenText').textContent = s.screens > 1 ? `${s.screens} màn chiếu đang mở` : s.screens ? 'Màn chiếu đã kết nối' : 'Chưa có màn chiếu';
+  // Trình duyệt chặn tiếng tới khi có người bấm vào cửa sổ máy chiếu: nhắc MC ngay trên thanh trên.
+  const muted = s.screens > 0 && !s.screenAudio;
+  chip.dataset.state = !s.screens ? 'off' : muted ? 'mute' : 'on';
+  $('screenText').textContent = muted ? '🔇 Màn chiếu chưa có tiếng — bấm vào màn chiếu 1 lần'
+    : s.screens > 1 ? `${s.screens} màn chiếu đang mở` : s.screens ? 'Màn chiếu đã kết nối 🔊' : 'Chưa có màn chiếu';
   $('onlineNum').textContent = s.online;
   $('playersNum').textContent = s.players;
 }
@@ -238,6 +241,21 @@ function renderControl() {
   $('autoBtn').querySelector('b').textContent = s.auto ? 'BẬT' : 'TẮT';
   $('musicBtn').setAttribute('aria-pressed', String(s.music !== false));
   $('musicBtn').querySelector('b').textContent = s.music !== false ? 'BẬT' : 'TẮT';
+  renderChargeGoal(s);
+}
+
+// Ô số tap của màn tích nước: để trống là tự động theo số người online, gõ số là cố định. Đổi giữa
+// lúc cả hội trường đang tap cũng được — bình trên màn chiếu co giãn theo ngay.
+function renderChargeGoal(s) {
+  const input = $('chargeGoalInput');
+  if (document.activeElement !== input) input.value = s.chargeGoal ?? '';
+  input.placeholder = `Tự động · ${fmt(s.chargeAuto)}`;
+  const live = s.phase === 'charge' && s.charge && !s.charge.full;
+  const goal = live ? s.charge.goal : s.chargeGoal ?? s.chargeAuto;
+  const how = s.chargeGoal == null ? 'tự động: số người online × 25, tối thiểu 300' : 'MC đặt';
+  $('chargeGoalHint').innerHTML = live
+    ? `Đang tích: <b>${fmt(s.charge.taps)}</b> / <b>${fmt(goal)}</b> lượt (${how})`
+    : `Sẽ cần <b>${fmt(goal)}</b> lượt tap (${how})`;
 }
 
 function renderRound() {
@@ -1029,6 +1047,16 @@ function boot() {
   $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
   $('musicBtn').addEventListener('click', () => action('music'));
+  $('chargeGoalForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const raw = $('chargeGoalInput').value.trim();
+    action('charge-goal', { goal: raw === '' ? null : Number(raw) });
+    $('chargeGoalInput').blur();
+  });
+  $('chargeGoalAuto').addEventListener('click', () => {
+    $('chargeGoalInput').value = '';
+    action('charge-goal', { goal: null });
+  });
   $('resetBtn').addEventListener('click', () => confirm('Reset về phòng chờ? Điểm hiện tại sẽ bị xoá.') && action('reset'));
   $('fearBtn').addEventListener('click', () => {
     if (!fearAction) return;
