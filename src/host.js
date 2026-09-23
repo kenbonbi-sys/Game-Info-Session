@@ -236,6 +236,8 @@ function renderControl() {
   $('nextBtn').disabled = ['charge', 'unleash', 'victory'].includes(s.phase) || performance.now() < nextLockedUntil;
   $('autoBtn').setAttribute('aria-pressed', String(s.auto));
   $('autoBtn').querySelector('b').textContent = s.auto ? 'BẬT' : 'TẮT';
+  $('musicBtn').setAttribute('aria-pressed', String(s.music !== false));
+  $('musicBtn').querySelector('b').textContent = s.music !== false ? 'BẬT' : 'TẮT';
 }
 
 function renderRound() {
@@ -1026,6 +1028,7 @@ function boot() {
   $('nextBtn').addEventListener('click', next);
   $('fillBtn').addEventListener('click', () => action('fill'));
   $('autoBtn').addEventListener('click', () => action('auto'));
+  $('musicBtn').addEventListener('click', () => action('music'));
   $('resetBtn').addEventListener('click', () => confirm('Reset về phòng chờ? Điểm hiện tại sẽ bị xoá.') && action('reset'));
   $('fearBtn').addEventListener('click', () => {
     if (!fearAction) return;

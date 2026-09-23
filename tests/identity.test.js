@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDomain, prettyName, parseRoster, buildIndex, lookup, search, loginKey, REWARD_DAY } from '../src/identity.js';
+import { normalizeDomain, parseRoster, buildIndex, lookup, search, loginKey, REWARD_DAY } from '../src/identity.js';
 
 test('domain nào gõ ra cũng về một khoá', () => {
   const same = [
@@ -22,12 +22,6 @@ test('domain nào gõ ra cũng về một khoá', () => {
   assert.equal(normalizeDomain(null), '');
   assert.equal(normalizeDomain('ĐỨC.anh'), 'duc.anh');
   assert.equal(normalizeDomain('x'.repeat(60)).length, 40);
-});
-
-test('bảng tên đọc được khi danh sách chưa cho biết tên thật', () => {
-  assert.equal(prettyName('nguyen.thi.thanh.huong'), 'Nguyen Thi Thanh Huong');
-  assert.equal(prettyName('khang.pham2'), 'Khang Pham2');
-  assert.equal(prettyName(''), 'Buddy');
 });
 
 test('đọc được bản xuất CSV có tiêu đề', () => {

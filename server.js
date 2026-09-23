@@ -13,7 +13,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ARENA, SEAT_ORDER, ITEMS as ITEM_INFO, REACTIONS } from './src/config.js';
 import { FINALE } from './src/finale-config.js';
-import { normalizeDomain, prettyName, shortName, fullEmail, parseRoster, buildIndex, EMPTY_INDEX, lookup, nearest, search, MATCHED, NO_ITEMS, ALL_ITEMS, REWARD_DAY } from './src/identity.js';
+import { normalizeDomain, fullEmail, parseRoster, buildIndex, EMPTY_INDEX, lookup, nearest, search, MATCHED, NO_ITEMS, ALL_ITEMS, REWARD_DAY } from './src/identity.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const argPort = process.argv.find(a => a.startsWith('--port='))?.slice('--port='.length);
@@ -337,7 +337,9 @@ function applyIdentity(p) {
     p.match = MATCHED.has(hit.how) ? hit.how : 'none';
     p.campaign = hit.person ?? null;
   }
-  p.name = shortName(p.campaign?.name || prettyName(p.domain));
+  // Danh sách chỉ quyết định ai nhận được món gì. Tên trong trận là đúng domain người đó tự gõ,
+  // không bao giờ bị tên thật trong file nhân sự đè lên.
+  p.name = p.domain;
   p.grant = grantFor(p.campaign);
   return p;
 }
@@ -424,7 +426,7 @@ function shuffle(arr) {
 }
 
 const game = {
-  phase: 'lobby', phaseAt: 0, quiz: loadQuiz(), round: [], index: -1, startedAt: 0, endsAt: 0, timer: null, auto: true,
+  phase: 'lobby', phaseAt: 0, quiz: loadQuiz(), round: [], index: -1, startedAt: 0, endsAt: 0, timer: null, auto: true, music: true,
   // firing: the shooting window of the 'fire' phase is open (it stays in 'fire' briefly after).
   firing: false, turrets: [], boss: { max: 1, dmg: 0, finisher: false, fellAt: -1 }, roundShots: 0, totalShots: 0,
   // The finale's shared meter: taps the hall has landed into the bottle, and what it takes to fill it.
@@ -704,6 +706,7 @@ function stateFor(role) {
     react: reactionsOpen(),
     firing: game.firing,
     auto: game.auto,
+    music: game.music,
     boss: bossPercent(),
   };
   const fq = game.quiz.finale;
@@ -1162,6 +1165,11 @@ function hostAction(action) {
       schedule('lobby', 0);
       sendRanks();
       return true;
+    case 'music':
+      game.music = !game.music;
+      logEvent(`Nhạc nền máy chiếu: ${game.music ? 'BẬT' : 'TẮT'}`, 'info');
+      broadcast();
+      return true;
     case 'auto':
       game.auto = !game.auto;
       logEvent(`Tự chuyển: ${game.auto ? 'BẬT' : 'TẮT'}`, 'info');
@@ -1188,7 +1196,7 @@ const joinPayload = p => ({
   // granted đứng riêng chứ không nằm trong campaign: chưa nạp danh sách thì campaign là null mà
   // suất vẫn là đủ 3 món, và điện thoại không phải đoán chuyện đó.
   granted: p.grant,
-  campaign: p.campaign ? { name: p.campaign.name, email: p.campaign.email, days: p.campaign.days } : null,
+  campaign: p.campaign ? { email: p.campaign.email, days: p.campaign.days } : null,
 });
 
 function joinPlayer(body) {
@@ -1256,12 +1264,11 @@ function lookupDomain(req, raw) {
     domain: hit.domain,
     ok: MATCHED.has(hit.how),
     how: hit.how,
-    name: hit.person?.name ?? '',
-    unit: hit.person?.unit ?? '',
-    // Gõ đúng rồi thì cho người ta thấy luôn mình sắp cầm những gì vào trận.
+    // Gõ đúng rồi thì cho người ta thấy luôn mình sắp cầm những gì vào trận. Tên thật và đơn vị
+    // trong danh sách không đi ra đường công khai này: danh sách chỉ để biết ai được nhận thưởng.
     items: hit.person ? grantFor(hit.person) : null,
     days: hit.person?.days ?? null,
-    near: hit.near.map(person => ({ domain: person.domain, name: person.name })),
+    near: hit.near.map(person => ({ domain: person.domain })),
   }];
 }
 

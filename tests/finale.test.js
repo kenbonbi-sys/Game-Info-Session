@@ -153,9 +153,8 @@ test('server finale sequencing and reconnects', { concurrency: 4, timeout: 45000
       assert.equal(resumedClip.phaseAt, victory.phaseAt);
       const end = await app.state('end');
       assert.ok(end.phaseAt - victory.phaseAt >= FINALE.victorySeconds * 1000 - 20, 'Top 5 must wait for the full clip');
-      // Người chơi gõ domain ("test.fox"); bảng vinh danh hiện tên đọc được dựng từ domain đó,
-      // vì danh sách LMS chưa được nạp nên chưa biết tên thật.
-      assert.equal(end.top[0].name, 'Test Fox');
+      // Bảng vinh danh hiện đúng domain người chơi đã gõ.
+      assert.equal(end.top[0].name, 'test.fox');
       assert.equal((await phone.waitFor(m => m.type === 'state' && m.phase === 'end')).phaseAt, end.phaseAt);
       const phases = app.screen.messages.filter(m => m.type === 'state').map(m => m.phase);
       assert.deepEqual(phases.filter((phase, i) => phase !== phases[i - 1]).slice(-4), ['charge', 'unleash', 'victory', 'end']);

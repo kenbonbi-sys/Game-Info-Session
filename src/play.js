@@ -136,7 +136,7 @@ async function join(domain, { cinematic = false } = {}) {
 
 // ---- Soát domain trước khi bấm Vào chơi -----------------------------------------------
 // Domain là thứ nối người này với suất phần thưởng họ đã kiếm ở chiến dịch 7 ngày, nên gõ sai là
-// mất vật phẩm. Đường này nói ngay tại chỗ: đúng thì hiện tên và những món sắp cầm vào trận, sai
+// mất vật phẩm. Đường này nói ngay tại chỗ: đúng thì hiện những món sắp cầm vào trận, sai
 // thì gợi ý đúng người để chạm một cái là xong. Chưa nạp danh sách thì dòng này im lặng, và dù có
 // nạp thì nó cũng không bao giờ khoá nút Vào chơi.
 const check = { timer: 0, asked: '', seq: 0 };
@@ -152,7 +152,6 @@ function paintCheck(tone, parts = [], fixes = []) {
   row.className = 'fixes';
   for (const person of fixes) {
     const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'fix', textContent: person.domain });
-    btn.title = person.name;
     btn.addEventListener('click', () => {
       $('nameInput').value = person.domain;
       askCheck(person.domain, true);
@@ -183,7 +182,7 @@ async function askCheck(raw, force = false) {
     if (data.ok) {
       const got = ['hint', 'shield', 'boost'].filter(k => data.items?.[k]).map(k => ITEMS[k].name);
       return paintCheck('ok', [
-        '✔ ', bold(data.name || domain), data.unit ? ` · ${data.unit}` : '',
+        '✔ ', bold(domain),
         Object.assign(document.createElement('span'), {
           className: 'got',
           textContent: got.length ? `Bạn nhận: ${got.join(' + ')}` : 'Chiến dịch 7 ngày chưa ghi nhận vật phẩm nào cho bạn.',

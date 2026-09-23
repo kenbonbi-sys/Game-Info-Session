@@ -33,6 +33,9 @@ function unlockAudio(event) {
   }
 }
 
+// The music layer rides the same unlocked context and limiter as the shots.
+export const audioOut = () => (context?.state === 'running' ? { context, master } : null);
+
 export function initGameAudio() {
   if (installed || typeof document === 'undefined') return;
   installed = true;

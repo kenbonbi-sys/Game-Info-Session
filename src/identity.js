@@ -37,25 +37,7 @@ export function normalizeDomain(raw) {
 // để dò, không bao giờ để hiển thị hay ghi xuống CSV.
 export const loginKey = domain => normalizeDomain(domain).replace(/[._-]/g, '');
 
-// Nhãn trên bảng tên ụ súng khi LMS chưa cho biết tên thật.
-export function prettyName(domain) {
-  return normalizeDomain(domain)
-    .split('.')
-    .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ') || 'Buddy';
-}
-
 export const fullEmail = (domain, mailDomain = MAIL_DOMAINS[0]) => (domain ? `${domain}@${mailDomain}` : '');
-
-// Bảng tên trên ụ súng rộng chừng 18 ký tự rồi cắt bằng dấu "…". "Nguyễn Thị Thanh Hương" cắt máy
-// móc thành "Nguyễn Thị T…" thì chủ nhân nó cũng không nhận ra ụ của mình, nên bỏ bớt từ đầu —
-// đúng cách người Việt gọi nhau — và giữ lại phần tên.
-export function shortName(full, max = 18) {
-  const words = String(full ?? '').trim().split(/\s+/).filter(Boolean);
-  while (words.length > 2 && words.join(' ').length > max) words.shift();
-  return words.join(' ') || 'Buddy';
-}
 
 // ---- Phần thưởng của chiến dịch 7 ngày --------------------------------------------------
 // Luật của chiến dịch trên platform, chép nguyên sang đây:

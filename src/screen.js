@@ -6,6 +6,7 @@ import { initArena, resizeArena, arenaFrame, setSeats, setArenaPhase, syncBoss, 
 import { initFearCloud, resizeFearCloud, fearFrame, setFearWords, startStorm, startOutro, endStorm } from './fear-cloud.js';
 import { paintHudPortrait } from './hud-art.js';
 import { initGameAudio } from './audio.js';
+import { setMusic, setMusicEnabled, playSting } from './music.js';
 import { mountBottle, setBottleFill } from './bottle.js';
 import { FINALE } from './finale-config.js';
 import { loadVictoryArt, drawVictoryFilm } from './victory-film.js';
@@ -228,6 +229,7 @@ function enterPhase(s, live) {
       break;
     case 'reveal':
       revealQuestion(s);
+      if (live) playSting('reveal');
       break;
     case 'fire': {
       roundShots = s.roundShots;
@@ -244,6 +246,7 @@ function enterPhase(s, live) {
     case 'finalreveal':
       revealQuestion(s);
       $('top5').hidden = true;
+      if (live) playSting('reveal');
       break;
     case 'charge':
       $('chargeTitle').textContent = 'CẢ HỘI TRƯỜNG TAP ĐI!';
@@ -442,6 +445,7 @@ function tickHud() {
       $('countNum').classList.remove('tick');
       void $('countNum').offsetWidth;
       $('countNum').classList.add('tick');
+      playSting('count', n);
     }
   }
   if (['reading', 'question', 'finalreading'].includes(s.phase)) {
@@ -452,6 +456,23 @@ function tickHud() {
     if ($('timerNum').textContent !== String(seconds)) $('timerNum').textContent = seconds;
     $('qTimer').classList.toggle('urgent', !reading && seconds <= 5);
   }
+}
+
+// Sảnh chờ và bảng vinh danh: nhạc lobby. Đọc đề → trả lời → 5 giây cuối: bài câu hỏi dồn dần.
+// Lúc bắn, lúc lật đáp án và lúc chiếu phim thì im để tiếng bắn và tiếng phim nghe rõ.
+// Chạy theo đồng hồ riêng chứ không theo khung hình: cửa sổ bị che thì khung hình dừng, còn nút
+// tắt nhạc của MC vẫn phải có hiệu lực ngay.
+function updateMusic() {
+  if (!state) return;
+  const scene = sceneFor(state);
+  const left = Math.max(0, state.endsAt - (Date.now() + offset)) / 1000;
+  setMusicEnabled(state.music !== false);
+  if (scene === 'lobby' || scene === 'end') setMusic('lobby');
+  else if (scene === 'reading' || scene === 'finalreading') setMusic('question', 1);
+  else if (scene === 'question') setMusic('question', left <= 5 ? 3 : 2);
+  else if (scene === 'final') setMusic('question', 2);
+  else if (scene === 'charge') setMusic('question', 3);
+  else setMusic(null);
 }
 
 function tickBoss() {
@@ -506,6 +527,7 @@ async function boot() {
   if (!PREVIEW) {
     // The first key press or click on the projector window also unlocks its sound.
     initGameAudio();
+    setInterval(updateMusic, 200);
     addEventListener('keydown', e => {
       if (e.code === 'KeyF' && !e.repeat) toggleFullscreen();
     });

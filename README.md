@@ -69,6 +69,7 @@ Hai lối thoát cho MC nếu hội trường vắng hoặc tap không tới:
 
 Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu cũ: hết câu là vào thẳng bảng xếp hạng.
 - **Âm thanh** phát từ cửa sổ màn game (trình duyệt chỉ mở tiếng sau lần bấm phím/chuột đầu tiên trên cửa sổ đó, ví dụ lúc bấm F). Điện thoại rung nhẹ khi chạm (Android).
+- **Nhạc nền kiểu Kahoot** ([src/music.js](src/music.js)), tự tổng hợp bằng Web Audio nên không có file nhạc nào: phòng chờ và bảng vinh danh có nhạc sảnh chờ vui nhộn; lúc đọc đề có tiếng tích tắc + bass, lúc trả lời thêm marimba và trống, 5 giây cuối trống dồn. Lật đáp án có tiếng "ta-da", đếm ngược giữa các câu có tiếng bíp. Lúc bắn và lúc chiếu phim thì im để nghe rõ tiếng bắn/tiếng phim. Nút **♪ Nhạc** trên bảng điều khiển tắt/bật ngay lập tức (ví dụ khi MC cần nói).
 
 ## Điện thoại vào phòng
 
@@ -79,8 +80,9 @@ Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu c�
    nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang chạy chứ không treo. Hướng dẫn
    mở trước khi hình về tới thì chữ vẫn đọc được, chỉ ô hình chờ và đồng hồ chưa chạy.
 3. Gõ **domain** của mình → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra). Nếu MC đã nạp
-   danh sách chiến dịch thì ngay dưới ô nhập hiện tên thật của bạn và những vật phẩm bạn sắp cầm
-   vào trận; gõ lệch thì nó gợi ý đúng người để chạm một cái là sửa xong.
+   danh sách chiến dịch thì ngay dưới ô nhập hiện những vật phẩm bạn sắp cầm vào trận; gõ lệch thì
+   nó gợi ý đúng domain để chạm một cái là sửa xong. Tên trong trận (bảng tên ụ súng, Top 5) luôn
+   là **đúng domain bạn gõ** — danh sách chỉ dùng để biết ai được nhận thưởng.
 4. Trong lúc chờ MC bấm bắt đầu, dưới màn hình có **hàng 5 icon cáo** — thả cái nào thì cả hội
    trường thấy cáo đó bay lên trên máy mình, **và icon đó nhảy lên ngay trên ụ súng mang tên
    người thả** ở màn chiếu lẫn khung xem trước của MC. Chỉ mở ở phòng chờ; game bắt đầu là hàng
@@ -206,7 +208,7 @@ Dán được: cả bảng copy từ Excel (ngăn bằng tab), file CSV tải v�
 tự tìm cột:
 
 - **địa chỉ** — đọc được cả `khang.pham2@momo.com.vn`, `khang.pham2` lẫn `Phạm Khang <khang.pham2@momo.com.vn>`;
-- **tên** và **phòng ban** — để hiện tên thật trên ụ súng thay vì domain;
+- **tên** và **phòng ban** — chỉ hiện cho MC ở thẻ Phần thưởng và trong CSV; trong trận vẫn hiện domain người chơi gõ;
 - **số ngày đăng nhập** (`ngày`, `days`, `streak`, `đăng nhập`, `check-in`…) → suy ra Buddy và Súng;
 - **đã tạo bảng câu hỏi** (`bảng câu hỏi`, `quiz`, `created`…) → suy ra Khiên. Ô nào ghi `1`, `x`,
   `có`, `TRUE` đều tính là có; `0`, `không`, `no`, ô trống là không.
@@ -230,7 +232,7 @@ duc.anh@mservice.com.vn,Đức Anh,3,có,Data Platform
 
 | Nạp lúc nào | Được gì |
 |---|---|
-| **Trước buổi** (nên làm) | Điện thoại soát domain ngay lúc người ta gõ: đúng thì hiện tên thật **và những món sắp cầm vào trận**, lệch thì gợi ý đúng người để chạm một cái là sửa |
+| **Trước buổi** (nên làm) | Điện thoại soát domain ngay lúc người ta gõ: đúng thì hiện **những món sắp cầm vào trận**, lệch thì gợi ý đúng domain để chạm một cái là sửa |
 | **Giữa phòng chờ** | Ai đang ngồi trong phòng cũng được cập nhật lại khay vật phẩm ngay, không cần vào lại |
 | **Sau khi game đã bắt đầu** | Suất mới chỉ áp cho ván sau: không ai bị lấy lại món vừa dùng, cũng không ai được phát thêm giữa ván |
 
