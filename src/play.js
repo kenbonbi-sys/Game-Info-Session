@@ -136,9 +136,9 @@ async function join(domain, { cinematic = false } = {}) {
 
 // ---- Soát domain trước khi bấm Vào chơi -----------------------------------------------
 // Domain là thứ nối người này với suất phần thưởng họ đã kiếm ở chiến dịch 7 ngày, nên gõ sai là
-// mất vật phẩm. Đường này nói ngay tại chỗ: đúng thì hiện những món sắp cầm vào trận, sai
-// thì gợi ý đúng người để chạm một cái là xong. Chưa nạp danh sách thì dòng này im lặng, và dù có
-// nạp thì nó cũng không bao giờ khoá nút Vào chơi.
+// mất vật phẩm. Đường này nói ngay tại chỗ: có tên trong danh sách thì hiện những món sắp cầm vào
+// trận, không có thì im lặng. Chưa nạp danh sách thì dòng này cũng im, và dù có nạp thì nó không
+// bao giờ khoá nút Vào chơi.
 const check = { timer: 0, asked: '', seq: 0 };
 
 function paintCheck(tone, parts = [], fixes = []) {
@@ -190,8 +190,9 @@ async function askCheck(raw, force = false) {
       ]);
     }
     if (data.how === 'ambiguous') return paintCheck('warn', ['Có nhiều người trùng domain này — chọn đúng bạn:'], data.near);
-    if (data.near.length) return paintCheck('warn', ['Không có domain này trong danh sách. Ý bạn là:'], data.near);
-    paintCheck('warn', ['Không thấy domain này trong danh sách chiến dịch — gõ lại thì mới nhận được vật phẩm đã tích. Vẫn vào chơi được.']);
+    // Danh sách chỉ gồm những người có phần thưởng, nên phần lớn hội trường không có tên trong đó:
+    // không có tên thì im lặng, không cảnh báo và không gợi ý domain của người khác.
+    paintCheck(null);
   } catch {
     paintCheck(null);
   }

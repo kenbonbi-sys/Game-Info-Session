@@ -81,8 +81,8 @@ Bỏ khối `finale` khỏi `data/questions.json` thì game quay lại kiểu c�
    nền, có thanh tiến trình ngay dưới nút để người ta biết máy đang chạy chứ không treo. Hướng dẫn
    mở trước khi hình về tới thì chữ vẫn đọc được, chỉ ô hình chờ và đồng hồ chưa chạy.
 3. Gõ **domain** của mình → **đoạn phim vào phòng** (ụ súng mang tên bạn hiện ra). Nếu MC đã nạp
-   danh sách chiến dịch thì ngay dưới ô nhập hiện những vật phẩm bạn sắp cầm vào trận; gõ lệch thì
-   nó gợi ý đúng domain để chạm một cái là sửa xong. Tên trong trận (bảng tên ụ súng, Top 5) luôn
+   danh sách chiến dịch và bạn có tên trong đó thì ngay dưới ô nhập hiện những vật phẩm bạn sắp cầm
+   vào trận; không có tên thì không hiện gì cả, vẫn vào chơi bình thường. Tên trong trận (bảng tên ụ súng, Top 5) luôn
    là **đúng domain bạn gõ** — danh sách chỉ dùng để biết ai được nhận thưởng.
 4. Trong lúc chờ MC bấm bắt đầu, dưới màn hình có **hàng 5 icon cáo** — thả cái nào thì cả hội
    trường thấy cáo đó bay lên trên máy mình, **và icon đó nhảy lên ngay trên ụ súng mang tên
@@ -233,7 +233,7 @@ duc.anh@mservice.com.vn,Đức Anh,3,có,Data Platform
 
 | Nạp lúc nào | Được gì |
 |---|---|
-| **Trước buổi** (nên làm) | Điện thoại soát domain ngay lúc người ta gõ: đúng thì hiện **những món sắp cầm vào trận**, lệch thì gợi ý đúng domain để chạm một cái là sửa |
+| **Trước buổi** (nên làm) | Điện thoại soát domain ngay lúc người ta gõ: có tên trong danh sách thì hiện **những món sắp cầm vào trận**, không có tên thì im lặng |
 | **Giữa phòng chờ** | Ai đang ngồi trong phòng cũng được cập nhật lại khay vật phẩm ngay, không cần vào lại |
 | **Sau khi game đã bắt đầu** | Suất mới chỉ áp cho ván sau: không ai bị lấy lại món vừa dùng, cũng không ai được phát thêm giữa ván |
 
